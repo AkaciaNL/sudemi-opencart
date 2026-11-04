@@ -1,0 +1,118 @@
+{# Everything printed here goes through Twig's autoescaping; nothing is marked raw. #}
+{{ header }}{{ column_left }}
+<div id="content">
+  <div class="page-header">
+    <div class="container-fluid">
+      <h1>{{ heading_title }}</h1>
+    </div>
+  </div>
+
+  <div class="container-fluid">
+    <div id="alert" class="toast-container position-fixed top-0 end-0 p-3"></div>
+
+    {% if not supported %}
+      <div class="alert alert-danger">{{ text_sodium_missing }}</div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-header"><i class="fa-solid fa-store"></i> sudemi</div>
+      <div class="card-body">
+
+        {% if connected %}
+          <div class="alert alert-success">{{ text_connected }}</div>
+
+          <table class="table">
+            <tr>
+              <th style="width:14rem">{{ entry_shop_url }}</th>
+              <td><code>{{ shop_url }}</code><div class="form-text">{{ text_shop_url_fixed }}</div></td>
+            </tr>
+            <tr>
+              <th>{{ entry_install }}</th>
+              <td><code>{{ install_id }}</code></td>
+            </tr>
+            <tr>
+              <th>{{ entry_key }}</th>
+              <td><code>held on this server</code><div class="form-text">{{ text_key_held }}</div></td>
+            </tr>
+          </table>
+
+          {# Whether sudemi is showing this shop's products, in sudemi's own words. Worth its
+             own block because the failure it reports is invisible from here: products stop being
+             listed when the beats stop arriving, and from this side everything looks normal. The
+             usual cause is no cron entry on the host. #}
+          <h2 class="h5 mt-4">{{ text_listing_status }}</h2>
+          {% if not status %}
+            <div class="alert alert-warning">{{ text_never_reported }}</div>
+          {% elseif not status.reachable %}
+            <div class="alert alert-danger">{{ text_unreachable }}</div>
+          {% elseif not status.connected %}
+            <div class="alert alert-danger">{{ status.message }}</div>
+          {% elseif not status.listed %}
+            <div class="alert alert-warning">{{ status.reason }}</div>
+          {% else %}
+            <div class="alert alert-success">{{ text_listed }}</div>
+          {% endif %}
+
+          <table class="table">
+            <tr>
+              <th style="width:14rem">{{ entry_pending }}</th>
+              <td><code>{{ pending }}</code><div class="form-text">{{ text_pending }}</div></td>
+            </tr>
+            {% if status.trusted_until %}
+            <tr>
+              <th>{{ entry_trusted_until }}</th>
+              <td><code>{{ status.trusted_until }}</code><div class="form-text">{{ text_trusted_until }}</div></td>
+            </tr>
+            {% endif %}
+            <tr>
+              <th>{{ entry_cron }}</th>
+              <td><code>*/5 * * * * curl -fsS "{{ cron_url }}" &gt;/dev/null</code><div class="form-text">{{ text_cron }}</div></td>
+            </tr>
+          </table>
+
+          <p>{{ text_locked }}</p>
+
+          <button class="btn btn-secondary" onclick="sudemiPost('sync')">{{ button_sync }}</button>
+          <button class="btn btn-danger" onclick="sudemiPost('disconnect')">{{ button_disconnect }}</button>
+
+        {% elseif claim_url %}
+          <p><a class="btn btn-primary" target="_blank" rel="noopener noreferrer" href="{{ claim_url }}">{{ button_confirm }}</a></p>
+          <button class="btn btn-secondary" onclick="sudemiPost('check')">{{ button_check }}</button>
+
+        {% else %}
+          <p>{{ text_intro }}</p>
+          <button class="btn btn-primary" {% if not supported %}disabled{% endif %} onclick="sudemiPost('connect')">{{ button_connect }}</button>
+        {% endif %}
+
+        {% if log %}
+          <h5 class="mt-4">Recent activity</h5>
+          <table class="table table-sm">
+            {% for entry in log %}
+              <tr><td style="width:14rem">{{ entry.at }}</td><td>{{ entry.message }}</td></tr>
+            {% endfor %}
+          </table>
+        {% endif %}
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="text/javascript">
+// The user token travels in the query string, which is how OpenCart's admin authenticates an
+// AJAX call; the controller compares it with hash_equals before doing anything.
+function sudemiPost(action) {
+    $.ajax({
+        url: 'index.php?route=extension/sudemi/sudemi.' + action + '&user_token={{ user_token }}',
+        type: 'post',
+        dataType: 'json',
+        success: function (json) {
+            if (json.error) { alert(json.error); }
+            if (json.success) { alert(json.success); location.reload(); }
+            if (json.claim_url) { window.open(json.claim_url, '_blank', 'noopener'); location.reload(); }
+        },
+        error: function () { alert('The request failed.'); }
+    });
+}
+</script>
+{{ footer }}
