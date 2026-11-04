@@ -138,6 +138,12 @@ class Heartbeat
             $this->orders->handlePending($body['pending_orders']);
         }
 
+        // Orders this shop accepted while the buyer's payment still covered other shops: now
+        // paid (ship them) or released after all (put the stock back).
+        if (!empty($body['settled_orders']) && $this->orders !== null) {
+            $this->orders->handleSettled($body['settled_orders']);
+        }
+
         // sudemi and this shop disagree about what the catalogue is, so something did not
         // arrive. A full sync is the only answer that does not involve guessing which product.
         if (!empty($body['full_sync_requested'])) {

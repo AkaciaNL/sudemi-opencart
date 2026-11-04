@@ -29,6 +29,11 @@ class Logger
         $this->write('warn', $message);
     }
 
+    public function error($message)
+    {
+        $this->write('error', $message);
+    }
+
     public function entries()
     {
         $raw = $this->store->read(self::SETTING);

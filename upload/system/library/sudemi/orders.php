@@ -122,6 +122,22 @@ class Orders
         $status = isset($response['status']) ? (int) $response['status'] : 0;
         $body = isset($response['body']) ? $response['body'] : array();
 
+        if ($status === 200 && isset($body['status']) && $body['status'] === 'ok'
+            && isset($body['payment']) && $body['payment'] === 'waiting_for_other_shops') {
+            // Accepted, but not paid. The buyer paid several shops in one payment and a card
+            // authorisation can be captured only once, so sudemi takes the money when the last of
+            // them has answered and says so in settled_orders on a later heartbeat. Until then
+            // the order stays unconfirmed and has no address: shipping it now could mean shipping
+            // goods nobody ever pays for.
+            $this->logger->info(sprintf(
+                'Accepted sudemi order %s (order %d). Not paid yet: waiting for the other shops in the '
+                . 'same payment. Do NOT ship until it is confirmed.',
+                $sudemiId,
+                $orderId
+            ));
+            return;
+        }
+
         if ($status === 200 && isset($body['status']) && $body['status'] === 'ok') {
             // The address arrives only now. sudemi withholds it while the order is still being
             // decided, because answering "do I have stock" needs nobody's address -- so this is
@@ -350,6 +366,101 @@ class Orders
                       WHERE product_id = '" . $productId . "' AND subtract = '1'"
                 );
             }
+        }
+    }
+
+    /**
+     * Works through the settled_orders block of a heartbeat.
+     *
+     * These are orders this shop accepted while the buyer's payment still had other shops to
+     * hear from. sudemi repeats each one for a week, so applying one must change nothing the
+     * second time: only an order still unconfirmed here is touched, and every outcome moves it.
+     *
+     * @param array $settled The settled_orders block of a heartbeat response
+     */
+    public function handleSettled($settled)
+    {
+        if (empty($settled) || !is_array($settled)) {
+            return;
+        }
+        foreach ($settled as $entry) {
+            if (!is_array($entry) || empty($entry['order_id']) || empty($entry['status'])) {
+                continue;
+            }
+            try {
+                $this->settle($entry);
+            } catch (\Exception $e) {
+                $this->logger->error(sprintf(
+                    'Could not apply the outcome of sudemi order %s: %s',
+                    $entry['order_id'],
+                    $e->getMessage()
+                ));
+            }
+        }
+    }
+
+    /** Paid means ship it; declined means it never happened. */
+    private function settle(array $settled)
+    {
+        $sudemiId = (string) $settled['order_id'];
+        $state = (string) $settled['status'];
+        if ($state === 'ACCEPTED' || $state === 'AWAITING_SELLER') {
+            return;
+        }
+        $orderId = $this->findLocalOrder($sudemiId);
+        // Only an order still unconfirmed here. One already confirmed or voided was settled
+        // before -- by an earlier beat, or by an accept that captured straight away.
+        if (!$orderId || $this->statusOf($orderId) !== self::STATE_INCOMPLETE) {
+            return;
+        }
+
+        if ($state === 'DECLINED') {
+            // Released without being charged: the capture failed, or the authorisation lapsed
+            // before the last shop answered. The stock the order reserved goes back, and the order
+            // stays voided.
+            $reason = !empty($settled['declined_reason']) ? (string) $settled['declined_reason'] : 'reason not given';
+            $this->restockOrder($orderId);
+            // Marked so a second beat does not restock again: the comment no longer matches.
+            $this->db->query(
+                "UPDATE " . $this->prefix . "order
+                    SET comment = CONCAT(comment, ' (released)'), date_modified = NOW()
+                  WHERE order_id = '" . (int) $orderId . "'"
+            );
+            $this->logger->warn(sprintf(
+                'sudemi order %s was released after all: %s. Stock restored; nothing was charged.',
+                $sudemiId,
+                $reason
+            ));
+            return;
+        }
+
+        // PAID, or already further along: the money was taken, and only now is the address released.
+        $this->fillCustomer($orderId, $sudemiId);
+        $this->setStatus($orderId, (int) $this->config->get('config_order_status_id'));
+        $this->logger->info(sprintf('sudemi order %s is paid; order %d can be shipped.', $sudemiId, $orderId));
+    }
+
+    private function statusOf($orderId)
+    {
+        $query = $this->db->query(
+            "SELECT order_status_id FROM " . $this->prefix . "order WHERE order_id = '" . (int) $orderId . "'"
+        );
+        return $query->num_rows ? (int) $query->row['order_status_id'] : -1;
+    }
+
+    /** Puts back what a local order reserved, from its own lines. */
+    private function restockOrder($orderId)
+    {
+        $lines = $this->db->query(
+            "SELECT product_id, quantity FROM " . $this->prefix . "order_product
+              WHERE order_id = '" . (int) $orderId . "'"
+        );
+        foreach ($lines->rows as $line) {
+            $this->db->query(
+                "UPDATE " . $this->prefix . "product
+                    SET quantity = quantity + '" . (int) $line['quantity'] . "'
+                  WHERE product_id = '" . (int) $line['product_id'] . "' AND subtract = '1'"
+            );
         }
     }
 
