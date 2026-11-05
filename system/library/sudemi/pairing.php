@@ -15,6 +15,7 @@ namespace Sudemi;
 class Pairing
 {
     const SETTING_CHALLENGE = 'sudemi_challenge_token';
+    const CHALLENGE_PATH = '/.well-known/sudemi-challenge';
     const SETTING_CODE = 'sudemi_pairing_code';
     const SETTING_POLL = 'sudemi_pairing_poll';
     const SETTING_CLAIM_URL = 'sudemi_claim_url';
@@ -60,10 +61,15 @@ class Pairing
         }
 
         $body = $result['body'];
-        $this->store->write(self::SETTING_CHALLENGE, isset($body['challenge_token']) ? $body['challenge_token'] : '');
+        $this->storeChallenge(isset($body['challenge_token']) ? $body['challenge_token'] : '');
         $this->store->write(self::SETTING_CODE, isset($body['public_code']) ? $body['public_code'] : '');
         $this->store->write(self::SETTING_POLL, isset($body['poll_token']) ? $body['poll_token'] : '');
         $this->store->write(self::SETTING_CLAIM_URL, isset($body['claim_url']) ? $body['claim_url'] : '');
+
+        if (!$this->challengeFileServed()) {
+            $this->logger->warn('The challenge file could not be written to ' . self::CHALLENGE_PATH
+                . ' in the shop folder; sudemi will only reach the challenge if SEO URLs are on.');
+        }
 
         return ['ok' => true, 'message' => 'Open the link and confirm the shop on sudemi.'];
     }
@@ -96,7 +102,7 @@ class Pairing
             $this->store->write(Client::SETTING_INSTALL_ID, $result['body']['install_id']);
             // The challenge has done its job; leaving it served would keep a token on a public
             // path for no reason.
-            $this->store->delete(self::SETTING_CHALLENGE);
+            $this->clearChallenge();
             $this->forget();
             $this->logger->info('Connected to sudemi.');
 
@@ -117,6 +123,61 @@ class Pairing
     public function storeChallenge($token)
     {
         $this->store->write(self::SETTING_CHALLENGE, (string) $token);
+        $this->writeChallengeFile((string) $token);
+    }
+
+    public function clearChallenge()
+    {
+        $this->store->delete(self::SETTING_CHALLENGE);
+        $this->writeChallengeFile('');
+    }
+
+    /** True when the token is in the static file (so SEO URLs do not matter). */
+    public function challengeFileServed()
+    {
+        $file = self::challengeFile();
+
+        return $file !== null && is_file($file) && trim((string) @file_get_contents($file)) !== '';
+    }
+
+    /**
+     * The token as a plain file at <shop folder>/.well-known/sudemi-challenge, which any web
+     * server serves as it is. OpenCart only routes that path to the extension when SEO URLs are
+     * switched on; the file makes pairing independent of that setting. Removed again when the
+     * token is cleared, so no token stays on a public path for longer than needed.
+     */
+    private function writeChallengeFile($token)
+    {
+        $file = self::challengeFile();
+        if ($file === null) {
+            return;
+        }
+        if ($token === '') {
+            if (is_file($file)) {
+                @unlink($file);
+            }
+
+            return;
+        }
+        // Only ever a token goes into the public web folder: strictly letters, digits, - and _,
+        // so nothing a tampered response sends could become a script or markup there.
+        if (!preg_match('/^[A-Za-z0-9_-]{20,128}$/', $token)) {
+            $this->logger->error('Refused to write a challenge token with an unexpected format.');
+
+            return;
+        }
+        $dir = dirname($file);
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0755, true);
+        }
+        if (@file_put_contents($file, $token, LOCK_EX) === false) {
+            $this->logger->warn('Could not write ' . $file . '.');
+        }
+    }
+
+    private static function challengeFile()
+    {
+        return defined('DIR_OPENCART') ? rtrim(DIR_OPENCART, '/') . self::CHALLENGE_PATH : null;
     }
 
     public function challengeToken()

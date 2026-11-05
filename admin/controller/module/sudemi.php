@@ -134,7 +134,7 @@ class Sudemi extends \Opencart\System\Engine\Controller
         // them: leaving them would mean a reconnect pushing stale prices.
         $sudemi['queue']->forget();
         $sudemi['store']->delete(\Sudemi\Client::SETTING_INSTALL_ID);
-        $sudemi['store']->delete(\Sudemi\Pairing::SETTING_CHALLENGE);
+        $sudemi['pairing']->clearChallenge();
         $json['success'] = $this->language->get('text_disconnected');
 
         $this->respond($json);
