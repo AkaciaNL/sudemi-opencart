@@ -276,6 +276,7 @@ class Sudemi extends \Opencart\System\Engine\Controller
             'claim_url' => $sudemi['pairing']->claimUrl(),
             'shop_url' => $this->shopUrl(),
             'install_id' => $sudemi['client']->installId(),
+            'history' => $sudemi['client']->isConnected() ? $this->orderHistory($sudemi['client']) : null,
             'log' => $sudemi['logger']->entries(),
             'status' => $sudemi['heartbeat']->status(),
             'pending' => $sudemi['queue']->count(),
@@ -286,6 +287,48 @@ class Sudemi extends \Opencart\System\Engine\Controller
             // the template must not put it anywhere a non-admin can read.
             'cron_url' => $this->shopUrl() . 'index.php?route=extension/sudemi/cron&token='
                 . rawurlencode($sudemi['heartbeat']->cronToken()),
+        ];
+    }
+
+    /**
+     * The shop's orders as sudemi holds them (approved, declined, shipped, who bought), for this
+     * page. Read from sudemi, not from OpenCart's orders: an order sudemi declined because nobody
+     * answered in time leaves no local order at all.
+     *
+     * @return array|null null when sudemi could not be reached
+     */
+    private function orderHistory($client): ?array
+    {
+        $response = $client->getSigned('/integration/v1/orders?limit=20');
+        if ($response === null || (int) $response['status'] !== 200 || !is_array($response['body'])) {
+            return null;
+        }
+        $body = $response['body'];
+        $rows = [];
+        foreach ((isset($body['orders']) && is_array($body['orders']) ? $body['orders'] : []) as $order) {
+            $items = [];
+            foreach ((isset($order['lines']) && is_array($order['lines']) ? $order['lines'] : []) as $line) {
+                $qty = isset($line['quantity']) ? (int) $line['quantity'] : 1;
+                $items[] = (isset($line['title']) ? (string) $line['title'] : '') . ($qty > 1 ? ' × ' . $qty : '');
+            }
+            $status = isset($order['status']) ? (string) $order['status'] : '';
+            $label = $this->language->get('text_status_' . strtolower($status));
+            $rows[] = [
+                'id' => substr((string) $order['order_id'], 0, 8),
+                'date' => isset($order['placed_at']) ? substr((string) $order['placed_at'], 0, 10) : '',
+                'items' => implode(', ', $items),
+                'status' => $label !== 'text_status_' . strtolower($status) ? $label : $status,
+                'net' => number_format((isset($order['your_net_minor']) ? (int) $order['your_net_minor'] : 0) / 100, 2)
+                    . ' ' . (isset($order['currency_code']) ? (string) $order['currency_code'] : 'EUR'),
+                // Only present once sudemi has released it, which is only after this shop confirmed.
+                'customer' => isset($order['customer_name']) ? (string) $order['customer_name'] : '—',
+            ];
+        }
+        $awaiting = isset($body['counts']['AWAITING_SELLER']) ? (int) $body['counts']['AWAITING_SELLER'] : 0;
+
+        return [
+            'rows' => $rows,
+            'awaiting' => $awaiting > 0 ? sprintf($this->language->get('text_history_awaiting'), $awaiting) : '',
         ];
     }
 

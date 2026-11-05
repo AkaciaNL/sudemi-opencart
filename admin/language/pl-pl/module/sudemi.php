@@ -56,3 +56,22 @@ $_['entry_transit_days'] = 'Liczba dni transportu przez przewoźnika (maksymalni
 $_['button_delivery'] = 'Zapisz czasy dostawy';
 $_['text_delivery_help'] = 'Kupujący widzą sumę jako najpóźniejszy przewidywany termin dostawy. Ustaw swoje rzeczywiste czasy; wartości domyślne są celowo ostrożne. Katalog zostanie ponownie wysłany przy następnej synchronizacji.';
 $_['text_delivery_saved'] = 'Zapisano czasy dostawy.';
+
+// Order history on this page
+$_['text_history_title'] = 'Zamówienia przez sudemi';
+$_['text_history_error'] = 'Nie udało się teraz połączyć z sudemi, aby wczytać historię zamówień. Z samymi zamówieniami wszystko jest w porządku; spróbuj ponownie za chwilę.';
+$_['text_history_empty'] = 'Brak jeszcze zamówień przez sudemi.';
+$_['column_order'] = 'Zamówienie';
+$_['column_items'] = 'Co sprzedano';
+$_['column_status'] = 'Status';
+$_['column_net'] = 'Otrzymujesz';
+$_['column_customer'] = 'Klient';
+$_['text_status_awaiting_seller'] = 'Czeka na Ciebie — kupujący nie został obciążony';
+$_['text_status_accepted'] = 'Przyjęte — oczekiwanie na pozostałe sklepy objęte płatnością kupującego; kupujący nie został jeszcze obciążony, nie wysyłaj';
+$_['text_status_paid'] = 'Potwierdzone i opłacone';
+$_['text_status_declined'] = 'Odrzucone — nic nie pobrano';
+$_['text_status_shipped'] = 'Wysłane';
+$_['text_status_delivered'] = 'Dostarczone';
+$_['text_status_cancelled'] = 'Anulowane';
+$_['text_status_refunded'] = 'Zwrócone';
+$_['text_history_awaiting'] = 'Zamówienia czekające na potwierdzenie: %d. Tych kupujących jeszcze nie obciążono.';

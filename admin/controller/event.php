@@ -86,7 +86,8 @@ class Event extends \Opencart\System\Engine\Controller
             // did not, and delivery is what starts the withdrawal period running.
             $this->reportFulfilment($services, $orderId, isset($args[1]) ? (int) $args[1] : 0);
         } catch (\Throwable $e) {
-            return;
+            $this->report('Order status change for order ' . (isset($args[0]) ? (int) $args[0] : 0)
+                . ' could not be reported: ' . $e->getMessage());
         }
     }
 
@@ -116,11 +117,14 @@ class Event extends \Opencart\System\Engine\Controller
         $complete = $this->config->get('config_complete_status');
         $complete = is_array($complete) ? array_map('intval', $complete) : [];
 
+        // Shipped first: OpenCart's default "complete" statuses include Shipped (3), and reading
+        // complete as delivered made every dispatch a delivery -- starting the buyer's withdrawal
+        // period on the day the parcel left instead of the day it arrived.
         $event = null;
-        if (in_array($statusId, $complete, true)) {
-            $event = 'delivered';
-        } elseif (self::STATUS_SHIPPED === $statusId) {
+        if (self::STATUS_SHIPPED === $statusId) {
             $event = 'shipped';
+        } elseif (in_array($statusId, $complete, true)) {
+            $event = 'delivered';
         }
         if ($event === null) {
             return;

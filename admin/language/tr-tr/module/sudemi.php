@@ -56,3 +56,22 @@ $_['entry_transit_days'] = 'Kargo firmasının teslimat süresi, gün (en fazla)
 $_['button_delivery'] = 'Teslimat sürelerini kaydet';
 $_['text_delivery_help'] = 'Alıcılar bu iki sürenin toplamını en geç teslimat tahmini olarak görür. Gerçek sürelerinizi girin; varsayılan değerler bilerek temkinli tutulmuştur. Katalog bir sonraki eşitlemede yeniden gönderilir.';
 $_['text_delivery_saved'] = 'Teslimat süreleri kaydedildi.';
+
+// Order history on this page
+$_['text_history_title'] = 'sudemi üzerinden gelen siparişler';
+$_['text_history_error'] = 'Sipariş geçmişini yüklemek için şu anda sudemi\'ye ulaşılamadı. Siparişlerin kendisinde bir sorun yok; kısa bir süre sonra tekrar deneyin.';
+$_['text_history_empty'] = 'Henüz sudemi üzerinden gelen sipariş yok.';
+$_['column_order'] = 'Sipariş';
+$_['column_items'] = 'Satılanlar';
+$_['column_status'] = 'Durum';
+$_['column_net'] = 'Size kalan';
+$_['column_customer'] = 'Müşteri';
+$_['text_status_awaiting_seller'] = 'Sizi bekliyor — alıcıdan ücret alınmadı';
+$_['text_status_accepted'] = 'Kabul edildi — alıcının ödemesindeki diğer mağazalar bekleniyor; alıcıdan henüz ücret alınmadı, kargolamayın';
+$_['text_status_paid'] = 'Onaylandı ve tahsil edildi';
+$_['text_status_declined'] = 'Reddedildi — ücret alınmadı';
+$_['text_status_shipped'] = 'Kargolandı';
+$_['text_status_delivered'] = 'Teslim edildi';
+$_['text_status_cancelled'] = 'İptal edildi';
+$_['text_status_refunded'] = 'İade edildi';
+$_['text_history_awaiting'] = 'Onay bekleyen siparişler: %d. Bu alıcılardan henüz ücret alınmadı.';

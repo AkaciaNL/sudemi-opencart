@@ -56,3 +56,22 @@ $_['entry_transit_days'] = 'ימים שלוקח לחברת המשלוחים (ל�
 $_['button_delivery'] = 'שמירת זמני משלוח';
 $_['text_delivery_help'] = 'הקונים רואים את הסכום כהערכת המסירה המאוחרת ביותר. יש להגדיר את הזמנים האמיתיים שלך; ברירות המחדל זהירות בכוונה. הקטלוג יישלח שוב בסנכרון הבא.';
 $_['text_delivery_saved'] = 'זמני המשלוח נשמרו.';
+
+// Order history on this page
+$_['text_history_title'] = 'הזמנות דרך sudemi';
+$_['text_history_error'] = 'לא ניתן היה להגיע ל-sudemi כדי לטעון את היסטוריית ההזמנות כרגע. אין שום בעיה בהזמנות עצמן; כדאי לנסות שוב בעוד רגע.';
+$_['text_history_empty'] = 'עדיין אין הזמנות דרך sudemi.';
+$_['column_order'] = 'הזמנה';
+$_['column_items'] = 'מה נמכר';
+$_['column_status'] = 'סטטוס';
+$_['column_net'] = 'הסכום שתקבל';
+$_['column_customer'] = 'לקוח';
+$_['text_status_awaiting_seller'] = 'ממתין לך — הקונה לא חויב';
+$_['text_status_accepted'] = 'התקבלה — ממתינה לחנויות האחרות בתשלום של הקונה; הקונה עדיין לא חויב, אין לשלוח';
+$_['text_status_paid'] = 'אושרה וחויבה';
+$_['text_status_declined'] = 'נדחתה — לא בוצע חיוב';
+$_['text_status_shipped'] = 'נשלחה';
+$_['text_status_delivered'] = 'נמסרה';
+$_['text_status_cancelled'] = 'בוטל';
+$_['text_status_refunded'] = 'הוחזר';
+$_['text_history_awaiting'] = 'הזמנות שממתינות לאישור: %d. הקונים האלה עדיין לא חויבו.';

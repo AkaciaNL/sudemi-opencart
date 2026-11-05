@@ -56,3 +56,22 @@ $_['entry_transit_days'] = 'عدد الأيام التي يستغرقها الن
 $_['button_delivery'] = 'حفظ أوقات التوصيل';
 $_['text_delivery_help'] = 'يرى المشترون المجموع على أنه أبعد موعد تسليم متوقع. أدخل أوقاتك الفعلية؛ القيم الافتراضية متحفّظة عن قصد. سيُرسل الكتالوج من جديد مع المزامنة التالية.';
 $_['text_delivery_saved'] = 'تم حفظ أوقات التوصيل.';
+
+// Order history on this page
+$_['text_history_title'] = 'الطلبات عبر sudemi';
+$_['text_history_error'] = 'تعذّر الوصول إلى sudemi لتحميل سجل الطلبات حاليًا. الطلبات نفسها سليمة؛ حاول مجددًا بعد قليل.';
+$_['text_history_empty'] = 'لا توجد طلبات عبر sudemi بعد.';
+$_['column_order'] = 'الطلب';
+$_['column_items'] = 'ما بيع';
+$_['column_status'] = 'الحالة';
+$_['column_net'] = 'ما تستلمه';
+$_['column_customer'] = 'العميل';
+$_['text_status_awaiting_seller'] = 'بانتظارك — لم يُخصم من المشتري';
+$_['text_status_accepted'] = 'مقبول — بانتظار المتاجر الأخرى في دفعة المشتري؛ لم يُخصم من المشتري بعد، لا تشحن';
+$_['text_status_paid'] = 'مؤكَّد ومحصَّل';
+$_['text_status_declined'] = 'مرفوض — لم يُخصم شيء';
+$_['text_status_shipped'] = 'تم الشحن';
+$_['text_status_delivered'] = 'تم التسليم';
+$_['text_status_cancelled'] = 'ملغى';
+$_['text_status_refunded'] = 'تم الاسترداد';
+$_['text_history_awaiting'] = 'طلبات بانتظار التأكيد: %d. لم يُخصم أي مبلغ من هؤلاء المشترين بعد.';

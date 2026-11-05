@@ -56,3 +56,22 @@ $_['entry_transit_days'] = 'Laufzeit beim Versanddienstleister in Tagen (höchst
 $_['button_delivery'] = 'Lieferzeiten speichern';
 $_['text_delivery_help'] = 'Käufer sehen die Summe als spätesten voraussichtlichen Liefertermin. Tragen Sie Ihre tatsächlichen Zeiten ein; die Standardwerte sind bewusst vorsichtig. Der Katalog wird mit der nächsten Synchronisierung erneut gesendet.';
 $_['text_delivery_saved'] = 'Lieferzeiten gespeichert.';
+
+// Order history on this page
+$_['text_history_title'] = 'Bestellungen über sudemi';
+$_['text_history_error'] = 'Der Bestellverlauf konnte gerade nicht von sudemi geladen werden. Mit den Bestellungen selbst ist alles in Ordnung; versuchen Sie es gleich noch einmal.';
+$_['text_history_empty'] = 'Noch keine Bestellungen über sudemi.';
+$_['column_order'] = 'Bestellung';
+$_['column_items'] = 'Verkauft';
+$_['column_status'] = 'Status';
+$_['column_net'] = 'Sie erhalten';
+$_['column_customer'] = 'Kunde';
+$_['text_status_awaiting_seller'] = 'Wartet auf Sie — Käufer nicht belastet';
+$_['text_status_accepted'] = 'Angenommen — wartet auf die anderen Shops in der Zahlung des Käufers; Käufer noch nicht belastet, nicht versenden';
+$_['text_status_paid'] = 'Bestätigt und belastet';
+$_['text_status_declined'] = 'Abgelehnt — nichts belastet';
+$_['text_status_shipped'] = 'Versandt';
+$_['text_status_delivered'] = 'Zugestellt';
+$_['text_status_cancelled'] = 'Storniert';
+$_['text_status_refunded'] = 'Erstattet';
+$_['text_history_awaiting'] = 'Bestellungen, die auf Bestätigung warten: %d. Diesen Käufern wurde noch nichts berechnet.';

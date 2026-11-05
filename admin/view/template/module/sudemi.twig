@@ -70,6 +70,25 @@
             </tr>
           </table>
 
+          {% if history is null %}
+            <div class="alert alert-warning">{{ text_history_error }}</div>
+          {% else %}
+            <h5 class="mt-4">{{ text_history_title }}</h5>
+            {% if history.awaiting %}<div class="alert alert-warning">{{ history.awaiting }}</div>{% endif %}
+            {% if history.rows %}
+              <table class="table table-sm" id="sudemi-order-history">
+                <thead><tr><th>{{ column_order }}</th><th>{{ column_items }}</th><th>{{ column_status }}</th><th>{{ column_net }}</th><th>{{ column_customer }}</th></tr></thead>
+                <tbody>
+                {% for row in history.rows %}
+                  <tr><td><code>{{ row.id }}</code><br><small>{{ row.date }}</small></td><td>{{ row.items }}</td><td>{{ row.status }}</td><td>{{ row.net }}</td><td>{{ row.customer }}</td></tr>
+                {% endfor %}
+                </tbody>
+              </table>
+            {% else %}
+              <p class="form-text">{{ text_history_empty }}</p>
+            {% endif %}
+          {% endif %}
+
           <h5 class="mt-4">{{ text_delivery_title }}</h5>
           {% if shipping_preview %}
             <p>{{ text_delivery_preview }} {% for rate in shipping_preview %}{{ rate.country }} {{ (rate.costMinor / 100)|number_format(2) }}{% if not loop.last %}, {% endif %}{% endfor %}</p>

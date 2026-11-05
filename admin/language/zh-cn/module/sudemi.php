@@ -56,3 +56,22 @@ $_['entry_transit_days'] = '承运商运送所需天数（最多）';
 $_['button_delivery'] = '保存配送时间';
 $_['text_delivery_help'] = '买家看到的两者之和即为最晚预计送达时间。请设置您的真实时间；默认值特意设得较为保守。商品目录将在下次同步时重新发送。';
 $_['text_delivery_saved'] = '配送时间已保存。';
+
+// Order history on this page
+$_['text_history_title'] = '通过 sudemi 的订单';
+$_['text_history_error'] = '目前无法连接 sudemi 加载订单历史。订单本身没有问题，请稍后重试。';
+$_['text_history_empty'] = '尚无通过 sudemi 的订单。';
+$_['column_order'] = '订单';
+$_['column_items'] = '售出商品';
+$_['column_status'] = '状态';
+$_['column_net'] = '您的收入';
+$_['column_customer'] = '客户';
+$_['text_status_awaiting_seller'] = '等待您处理——买家未扣款';
+$_['text_status_accepted'] = '已接受——正在等待买家本次付款中的其他店铺；买家尚未扣款，请勿发货';
+$_['text_status_paid'] = '已确认并扣款';
+$_['text_status_declined'] = '已拒绝——未扣款';
+$_['text_status_shipped'] = '已发货';
+$_['text_status_delivered'] = '已送达';
+$_['text_status_cancelled'] = '已取消';
+$_['text_status_refunded'] = '已退款';
+$_['text_history_awaiting'] = '待确认订单：%d。这些买家尚未被扣款。';

@@ -56,3 +56,22 @@ $_['entry_transit_days'] = 'Jours de transport par le transporteur (au maximum)'
 $_['button_delivery'] = 'Enregistrer les délais de livraison';
 $_['text_delivery_help'] = 'Les acheteurs voient la somme comme date de livraison estimée au plus tard. Indiquez vos délais réels ; les valeurs par défaut sont volontairement prudentes. Le catalogue est renvoyé lors de la prochaine synchronisation.';
 $_['text_delivery_saved'] = 'Délais de livraison enregistrés.';
+
+// Order history on this page
+$_['text_history_title'] = 'Commandes via sudemi';
+$_['text_history_error'] = 'Impossible de joindre sudemi pour charger l’historique des commandes pour le moment. Les commandes elles-mêmes ne sont pas en cause ; réessayez dans quelques instants.';
+$_['text_history_empty'] = 'Aucune commande via sudemi pour l’instant.';
+$_['column_order'] = 'Commande';
+$_['column_items'] = 'Articles vendus';
+$_['column_status'] = 'État';
+$_['column_net'] = 'Vous recevez';
+$_['column_customer'] = 'Client';
+$_['text_status_awaiting_seller'] = 'En attente de votre réponse — acheteur non débité';
+$_['text_status_accepted'] = 'Acceptée — en attente des autres boutiques du paiement de l’acheteur ; acheteur pas encore débité, n’expédiez pas';
+$_['text_status_paid'] = 'Confirmée et débitée';
+$_['text_status_declined'] = 'Refusée — rien n’a été débité';
+$_['text_status_shipped'] = 'Expédiée';
+$_['text_status_delivered'] = 'Livrée';
+$_['text_status_cancelled'] = 'Annulée';
+$_['text_status_refunded'] = 'Remboursée';
+$_['text_history_awaiting'] = 'Commandes en attente de confirmation : %d. Ces acheteurs n’ont encore rien payé.';

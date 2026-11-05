@@ -56,3 +56,22 @@ $_['entry_transit_days'] = 'Dagen die de vervoerder nodig heeft (maximaal)';
 $_['button_delivery'] = 'Levertijden opslaan';
 $_['text_delivery_help'] = 'Kopers zien de som als de uiterste geschatte levertijd. Vul je echte tijden in; de standaardwaarden zijn bewust voorzichtig. De catalogus wordt bij de volgende synchronisatie opnieuw verstuurd.';
 $_['text_delivery_saved'] = 'Levertijden opgeslagen.';
+
+// Order history on this page
+$_['text_history_title'] = 'Bestellingen via sudemi';
+$_['text_history_error'] = 'De bestelgeschiedenis kon zojuist niet bij sudemi worden opgehaald. Met de bestellingen zelf is niets mis; probeer het zo opnieuw.';
+$_['text_history_empty'] = 'Nog geen bestellingen via sudemi.';
+$_['column_order'] = 'Bestelling';
+$_['column_items'] = 'Verkocht';
+$_['column_status'] = 'Status';
+$_['column_net'] = 'Jij ontvangt';
+$_['column_customer'] = 'Klant';
+$_['text_status_awaiting_seller'] = 'Wacht op jou — koper nog niet belast';
+$_['text_status_accepted'] = 'Geaccepteerd — wacht op de andere winkels in de betaling van de koper; koper nog niet belast, nog niet verzenden';
+$_['text_status_paid'] = 'Bevestigd en afgeschreven';
+$_['text_status_declined'] = 'Afgewezen — niets afgeschreven';
+$_['text_status_shipped'] = 'Verzonden';
+$_['text_status_delivered'] = 'Afgeleverd';
+$_['text_status_cancelled'] = 'Geannuleerd';
+$_['text_status_refunded'] = 'Terugbetaald';
+$_['text_history_awaiting'] = 'Bestellingen die op bevestiging wachten: %d. Die kopers zijn nog niet belast.';

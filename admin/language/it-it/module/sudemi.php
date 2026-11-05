@@ -56,3 +56,22 @@ $_['entry_transit_days'] = 'Giorni di trasporto del corriere (al massimo)';
 $_['button_delivery'] = 'Salva i tempi di consegna';
 $_['text_delivery_help'] = 'Gli acquirenti vedono la somma come data di consegna più tardiva prevista. Inserisci i tuoi tempi reali; i valori predefiniti sono volutamente prudenti. Il catalogo viene inviato di nuovo con la prossima sincronizzazione.';
 $_['text_delivery_saved'] = 'Tempi di consegna salvati.';
+
+// Order history on this page
+$_['text_history_title'] = 'Ordini tramite sudemi';
+$_['text_history_error'] = 'Al momento non è possibile raggiungere sudemi per caricare lo storico degli ordini. Gli ordini in sé non hanno alcun problema; riprova tra poco.';
+$_['text_history_empty'] = 'Ancora nessun ordine tramite sudemi.';
+$_['column_order'] = 'Ordine';
+$_['column_items'] = 'Articoli venduti';
+$_['column_status'] = 'Stato';
+$_['column_net'] = 'Ricevi';
+$_['column_customer'] = 'Cliente';
+$_['text_status_awaiting_seller'] = 'In attesa di tua risposta — nessun addebito all\'acquirente';
+$_['text_status_accepted'] = 'Accettato — in attesa degli altri negozi compresi nel pagamento dell\'acquirente; nessun addebito ancora, non spedire';
+$_['text_status_paid'] = 'Confermato e addebitato';
+$_['text_status_declined'] = 'Rifiutato — nessun addebito';
+$_['text_status_shipped'] = 'Spedito';
+$_['text_status_delivered'] = 'Consegnato';
+$_['text_status_cancelled'] = 'Annullato';
+$_['text_status_refunded'] = 'Rimborsato';
+$_['text_history_awaiting'] = 'Ordini in attesa di conferma: %d. A questi acquirenti non è ancora stato addebitato nulla.';

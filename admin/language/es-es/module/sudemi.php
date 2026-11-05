@@ -56,3 +56,22 @@ $_['entry_transit_days'] = 'Días que tarda el transportista (como máximo)';
 $_['button_delivery'] = 'Guardar plazos de entrega';
 $_['text_delivery_help'] = 'Los compradores ven la suma como la fecha de entrega estimada más tardía. Indique sus plazos reales; los valores predeterminados son deliberadamente prudentes. El catálogo se vuelve a enviar en la próxima sincronización.';
 $_['text_delivery_saved'] = 'Plazos de entrega guardados.';
+
+// Order history on this page
+$_['text_history_title'] = 'Pedidos a través de sudemi';
+$_['text_history_error'] = 'No se ha podido contactar con sudemi para cargar el historial de pedidos en este momento. Los pedidos en sí no tienen ningún problema; inténtelo de nuevo en breve.';
+$_['text_history_empty'] = 'Todavía no hay pedidos a través de sudemi.';
+$_['column_order'] = 'Pedido';
+$_['column_items'] = 'Artículos vendidos';
+$_['column_status'] = 'Estado';
+$_['column_net'] = 'Usted recibe';
+$_['column_customer'] = 'Cliente';
+$_['text_status_awaiting_seller'] = 'Pendiente de su respuesta — no se ha cobrado al comprador';
+$_['text_status_accepted'] = 'Aceptado — a la espera de las demás tiendas del pago del comprador; aún no se ha cobrado al comprador, no lo envíe';
+$_['text_status_paid'] = 'Confirmado y cobrado';
+$_['text_status_declined'] = 'Rechazado — no se ha cobrado nada';
+$_['text_status_shipped'] = 'Enviado';
+$_['text_status_delivered'] = 'Entregado';
+$_['text_status_cancelled'] = 'Cancelado';
+$_['text_status_refunded'] = 'Reembolsado';
+$_['text_history_awaiting'] = 'Pedidos pendientes de confirmar: %d. A esos compradores todavía no se les ha cobrado.';

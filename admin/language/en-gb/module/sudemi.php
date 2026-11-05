@@ -56,3 +56,22 @@ $_['entry_transit_days'] = 'Days the carrier takes (at most)';
 $_['button_delivery'] = 'Save delivery times';
 $_['text_delivery_help'] = 'Buyers see the sum as the latest delivery estimate. Set your real times; the defaults are deliberately cautious. The catalogue is sent again with the next sync.';
 $_['text_delivery_saved'] = 'Delivery times saved.';
+
+// Order history on this page
+$_['text_history_title'] = 'Orders through sudemi';
+$_['text_history_error'] = 'Could not reach sudemi to load the order history just now. Nothing is wrong with the orders themselves; try again shortly.';
+$_['text_history_empty'] = 'No orders through sudemi yet.';
+$_['column_order'] = 'Order';
+$_['column_items'] = 'What sold';
+$_['column_status'] = 'Status';
+$_['column_net'] = 'You receive';
+$_['column_customer'] = 'Customer';
+$_['text_status_awaiting_seller'] = 'Waiting for you — buyer not charged';
+$_['text_status_accepted'] = 'Accepted — waiting for the other shops in the buyer\'s payment; buyer not charged yet, do not ship';
+$_['text_status_paid'] = 'Confirmed and charged';
+$_['text_status_declined'] = 'Declined — nothing charged';
+$_['text_status_shipped'] = 'Shipped';
+$_['text_status_delivered'] = 'Delivered';
+$_['text_status_cancelled'] = 'Cancelled';
+$_['text_status_refunded'] = 'Refunded';
+$_['text_history_awaiting'] = 'Orders waiting to be confirmed: %d. Those buyers have not been charged yet.';
