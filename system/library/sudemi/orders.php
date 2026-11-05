@@ -597,4 +597,39 @@ class Orders
 
         return [(int) $row->row['country_id'], (string) ($row->row['name'] !== null ? $row->row['name'] : $iso)];
     }
+
+    /**
+     * A refund made in the shop (status Refunded), passed to sudemi, which holds the buyer's
+     * payment and pays it back; null amount = in full. The outcome is logged either way.
+     */
+    public function refund($sudemiId, $amountMinor, $reason)
+    {
+        $body = ['reason' => $reason];
+        if ($amountMinor !== null) {
+            $body['amountMinor'] = (int) $amountMinor;
+        }
+
+        return $this->moneyResult($sudemiId, $this->client->postSigned('/integration/v1/orders/' . rawurlencode($sudemiId) . '/refund', $body));
+    }
+
+    /** A paid order cancelled in the shop: refunded in full and cancelled on sudemi. */
+    public function cancel($sudemiId, $reason)
+    {
+        return $this->moneyResult($sudemiId, $this->client->postSigned('/integration/v1/orders/' . rawurlencode($sudemiId) . '/cancel', ['reason' => $reason]));
+    }
+
+    private function moneyResult($sudemiId, $response)
+    {
+        if (is_array($response) && (int) $response['status'] === 200) {
+            $this->logger->info('sudemi order ' . $sudemiId . ': refunded to the buyer through sudemi.');
+
+            return true;
+        }
+        $message = is_array($response) && isset($response['body']['message']) ? (string) $response['body']['message']
+            : (is_array($response) ? (string) $response['status'] : 'sudemi could not be reached');
+        $this->logger->error('sudemi order ' . $sudemiId . ': sudemi did not refund this (' . $message
+            . '). The buyer has NOT been paid back; contact sudemi support.');
+
+        return false;
+    }
 }

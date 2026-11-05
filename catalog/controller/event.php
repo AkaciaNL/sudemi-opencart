@@ -24,6 +24,9 @@ class Event extends \Opencart\System\Engine\Controller
 {
     /** OpenCart's built-in "Shipped" status. Fixed since 1.x and not renamed by configuration. */
     private const STATUS_SHIPPED = 3;
+    /** OpenCart's built-in Canceled and Refunded statuses. */
+    private const STATUS_CANCELED = 7;
+    private const STATUS_REFUNDED = 11;
 
     /** @param mixed $output the model's return value; product id for an add, ignored otherwise */
     public function productAdded(string &$route, array &$args, &$output): void
@@ -118,6 +121,19 @@ class Event extends \Opencart\System\Engine\Controller
 
         $complete = $this->config->get('config_complete_status');
         $complete = is_array($complete) ? array_map('intval', $complete) : [];
+
+        // sudemi holds the buyer's payment: a refund or cancellation made here has to reach it,
+        // or the shop records it and the buyer never gets the money back.
+        if (self::STATUS_REFUNDED === $statusId) {
+            $services['orders']->refund($sudemiId, null, 'Refunded by the shop');
+
+            return;
+        }
+        if (self::STATUS_CANCELED === $statusId) {
+            $services['orders']->cancel($sudemiId, 'Cancelled by the shop');
+
+            return;
+        }
 
         // Shipped first: OpenCart's default "complete" statuses include Shipped (3), and reading
         // complete as delivered made every dispatch a delivery -- starting the buyer's withdrawal
