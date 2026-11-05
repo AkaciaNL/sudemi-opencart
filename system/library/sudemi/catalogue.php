@@ -109,7 +109,7 @@ class Catalogue
                 'description' => strip_tags((string) $row['description']),
                 'url' => $this->productUrl($productId),
                 // OpenCart stores prices without tax; buyers are shown and charged the price with it.
-                'priceMinor' => $this->minor($this->shipping->withStoreTax($row['price'], $row['tax_class_id'])),
+                'priceMinor' => $this->minor($this->shipping->withStoreTax($this->effectivePrice($productId, $row['price']), $row['tax_class_id'])),
                 'currency' => $this->config->get('config_currency'),
                 'inStock' => ((int) $row['quantity']) > 0,
                 'quantity' => (int) $row['quantity'],
@@ -177,7 +177,7 @@ class Catalogue
 
         return [
             'externalId' => (string) $query->row['product_id'],
-            'priceMinor' => $this->minor($this->shipping->withStoreTax($query->row['price'], $query->row['tax_class_id'])),
+            'priceMinor' => $this->minor($this->shipping->withStoreTax($this->effectivePrice((int) $query->row['product_id'], $query->row['price']), $query->row['tax_class_id'])),
             'currency' => $this->config->get('config_currency'),
             'inStock' => ((int) $query->row['quantity']) > 0,
             'quantity' => (int) $query->row['quantity'],
@@ -345,5 +345,61 @@ class Catalogue
         );
 
         return empty($query->row) ? 0 : (int) $query->row['n'];
+    }
+
+    /**
+     * The price the storefront charges for one item today: an active special, else an active
+     * single-item discount, else the base price -- for the shop's default customer group, as
+     * OpenCart's own catalog model computes it. Sending the base price showed products on sudemi
+     * dearer than in the shop while a special ran.
+     */
+    private function effectivePrice($productId, $basePrice)
+    {
+        $group = (int) $this->config->get('config_customer_group_id');
+        $active = "((date_start = '0000-00-00' OR date_start < NOW()) AND (date_end = '0000-00-00' OR date_end > NOW()))";
+        if ($this->hasTable('product_special')) {
+            // OpenCart 4.0: specials have their own table, prices are absolute.
+            $special = $this->db->query('SELECT price FROM ' . $this->prefix . 'product_special
+                WHERE product_id = ' . (int) $productId . ' AND customer_group_id = ' . $group . ' AND ' . $active . '
+                ORDER BY priority ASC, price ASC LIMIT 1');
+
+            return empty($special->row) ? (float) $basePrice : (float) $special->row['price'];
+        }
+        if (!$this->hasTable('product_discount')) {
+            return (float) $basePrice;
+        }
+        // OpenCart 4.1: specials and discounts share product_discount; type F = fixed price,
+        // P = percentage off, S = amount off.
+        foreach ([1, 0] as $isSpecial) {
+            $row = $this->db->query('SELECT price, type FROM ' . $this->prefix . 'product_discount
+                WHERE product_id = ' . (int) $productId . ' AND customer_group_id = ' . $group . '
+                  AND quantity = 1 AND special = ' . $isSpecial . ' AND ' . $active . '
+                ORDER BY priority ASC, price ASC LIMIT 1');
+            if (!empty($row->row)) {
+                $value = (float) $row->row['price'];
+                $type = (string) $row->row['type'];
+                if ($type === 'P') {
+                    return (float) $basePrice - (float) $basePrice * $value / 100;
+                }
+                if ($type === 'S') {
+                    return (float) $basePrice - $value;
+                }
+
+                return $value;
+            }
+        }
+
+        return (float) $basePrice;
+    }
+
+    private $tables = [];
+
+    private function hasTable($name)
+    {
+        if (!array_key_exists($name, $this->tables)) {
+            $this->tables[$name] = $this->db->query("SHOW TABLES LIKE '" . $this->db->escape($this->prefix . $name) . "'")->num_rows > 0;
+        }
+
+        return $this->tables[$name];
     }
 }
