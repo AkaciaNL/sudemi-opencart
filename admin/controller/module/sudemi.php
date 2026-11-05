@@ -283,6 +283,7 @@ class Sudemi extends \Opencart\System\Engine\Controller
             'handling_days' => (new \Sudemi\Shipping($this->db, $this->config))->handlingDays(),
             'transit_days' => (new \Sudemi\Shipping($this->db, $this->config))->transitDays(),
             'shipping_preview' => $this->shippingPreview(),
+            'options_skipped' => (new \Sudemi\Catalogue($this->db, $this->config))->withRequiredOptions(),
             // Printed for the shop owner to paste into their crontab. The token is in it, so
             // the template must not put it anywhere a non-admin can read.
             'cron_url' => $this->shopUrl() . 'index.php?route=extension/sudemi/cron&token='

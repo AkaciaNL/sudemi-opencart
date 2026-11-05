@@ -75,3 +75,4 @@ $_['text_status_delivered'] = 'Zugestellt';
 $_['text_status_cancelled'] = 'Storniert';
 $_['text_status_refunded'] = 'Erstattet';
 $_['text_history_awaiting'] = 'Bestellungen, die auf Bestätigung warten: %d. Diesen Käufern wurde noch nichts berechnet.';
+$_['text_options_skipped'] = '%d Produkt(e) mit einer Pflichtoption (zum Beispiel einer zu wählenden Größe) werden auf sudemi nicht angeboten: Eine Bestellung über den KI-Assistenten eines Käufers enthält keine Option, Sie wüssten also nicht, welchen Artikel Sie versenden sollen. Bieten Sie sie stattdessen als OpenCart-Varianten an (jede Variante ist ein eigenes Produkt).';

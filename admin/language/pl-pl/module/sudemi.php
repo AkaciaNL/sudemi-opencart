@@ -75,3 +75,4 @@ $_['text_status_delivered'] = 'Dostarczone';
 $_['text_status_cancelled'] = 'Anulowane';
 $_['text_status_refunded'] = 'Zwrócone';
 $_['text_history_awaiting'] = 'Zamówienia czekające na potwierdzenie: %d. Tych kupujących jeszcze nie obciążono.';
+$_['text_options_skipped'] = 'Produkty z wymaganą opcją (np. rozmiarem do wyboru): %d. Nie są oferowane w sudemi: zamówienie od asystenta AI kupującego nie zawiera opcji, więc nie wiedziałbyś, który artykuł wysłać. Zamiast tego oferuj je jako warianty OpenCart (każdy wariant to osobny produkt).';

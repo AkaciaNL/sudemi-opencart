@@ -75,3 +75,4 @@ $_['text_status_delivered'] = 'Delivered';
 $_['text_status_cancelled'] = 'Cancelled';
 $_['text_status_refunded'] = 'Refunded';
 $_['text_history_awaiting'] = 'Orders waiting to be confirmed: %d. Those buyers have not been charged yet.';
+$_['text_options_skipped'] = '%d product(s) with a required option (for example a size to choose) are not offered on sudemi: an order from a buyer\'s AI assistant carries no option, so you could not tell which item to send. Offer them as OpenCart variants (each variant is its own product) instead.';

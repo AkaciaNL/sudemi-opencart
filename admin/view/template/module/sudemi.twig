@@ -89,6 +89,10 @@
             {% endif %}
           {% endif %}
 
+          {% if options_skipped %}
+            <div class="alert alert-info">{{ text_options_skipped|format(options_skipped) }}</div>
+          {% endif %}
+
           <h5 class="mt-4">{{ text_delivery_title }}</h5>
           {% if shipping_preview %}
             <p>{{ text_delivery_preview }} {% for rate in shipping_preview %}{{ rate.country }} {{ (rate.costMinor / 100)|number_format(2) }}{% if not loop.last %}, {% endif %}{% endfor %}</p>

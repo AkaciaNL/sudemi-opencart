@@ -85,6 +85,7 @@ class Catalogue
                LEFT JOIN ' . $this->prefix . 'product_description pd
                  ON (p.product_id = pd.product_id)
               WHERE pd.language_id = ' . $languageId . ' AND p.status = 1
+                AND p.product_id NOT IN (SELECT po.product_id FROM ' . $this->prefix . 'product_option po WHERE po.required = 1)
               ORDER BY p.product_id ASC
               LIMIT ' . $offset . ', ' . $limit
         );
@@ -167,7 +168,8 @@ class Catalogue
     {
         $query = $this->db->query(
             'SELECT product_id, price, tax_class_id, quantity FROM ' . $this->prefix . 'product
-              WHERE product_id = ' . (int) $productId
+              WHERE product_id = ' . (int) $productId . '
+                AND product_id NOT IN (SELECT po.product_id FROM ' . $this->prefix . 'product_option po WHERE po.required = 1)'
         );
         if (empty($query->row)) {
             return null;
@@ -327,5 +329,21 @@ class Catalogue
         }
 
         return rtrim($url, '/');
+    }
+
+    /**
+     * Enabled products with a required option (a size to pick, say). They are not offered on
+     * sudemi: an order from a buyer's AI assistant carries no option, so the shop could not tell
+     * which item to send. OpenCart variants (each a product of its own) are the way to offer them.
+     */
+    public function withRequiredOptions()
+    {
+        $query = $this->db->query(
+            'SELECT COUNT(DISTINCT p.product_id) AS n FROM ' . $this->prefix . 'product p
+               JOIN ' . $this->prefix . 'product_option po ON (po.product_id = p.product_id AND po.required = 1)
+              WHERE p.status = 1'
+        );
+
+        return empty($query->row) ? 0 : (int) $query->row['n'];
     }
 }

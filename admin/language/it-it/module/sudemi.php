@@ -75,3 +75,4 @@ $_['text_status_delivered'] = 'Consegnato';
 $_['text_status_cancelled'] = 'Annullato';
 $_['text_status_refunded'] = 'Rimborsato';
 $_['text_history_awaiting'] = 'Ordini in attesa di conferma: %d. A questi acquirenti non è ancora stato addebitato nulla.';
+$_['text_options_skipped'] = '%d prodotto/i con un\'opzione obbligatoria (ad esempio una taglia da scegliere) non sono offerti su sudemi: un ordine dall\'assistente IA di un acquirente non contiene alcuna opzione, quindi non sapresti quale articolo spedire. Offrili invece come varianti OpenCart (ogni variante è un prodotto a sé).';

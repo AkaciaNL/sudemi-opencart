@@ -75,3 +75,4 @@ $_['text_status_delivered'] = '已送达';
 $_['text_status_cancelled'] = '已取消';
 $_['text_status_refunded'] = '已退款';
 $_['text_history_awaiting'] = '待确认订单：%d。这些买家尚未被扣款。';
+$_['text_options_skipped'] = '有 %d 个带必选选项（例如需要选择尺码）的商品不会在 sudemi 上展示：来自买家 AI 助手的订单不包含任何选项，您将无法知道该发哪一件。请改用 OpenCart 变体（每个变体都是独立商品）来提供它们。';

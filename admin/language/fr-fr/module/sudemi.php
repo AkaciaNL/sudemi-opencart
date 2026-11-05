@@ -75,3 +75,4 @@ $_['text_status_delivered'] = 'Livrée';
 $_['text_status_cancelled'] = 'Annulée';
 $_['text_status_refunded'] = 'Remboursée';
 $_['text_history_awaiting'] = 'Commandes en attente de confirmation : %d. Ces acheteurs n’ont encore rien payé.';
+$_['text_options_skipped'] = '%d produit(s) avec une option obligatoire (par exemple une taille à choisir) ne sont pas proposés sur sudemi : une commande passée par l’assistant IA d’un acheteur ne contient aucune option, vous ne sauriez donc pas quel article envoyer. Proposez-les plutôt comme variantes OpenCart (chaque variante est un produit à part entière).';

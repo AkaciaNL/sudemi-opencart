@@ -75,3 +75,4 @@ $_['text_status_delivered'] = 'Teslim edildi';
 $_['text_status_cancelled'] = 'İptal edildi';
 $_['text_status_refunded'] = 'İade edildi';
 $_['text_history_awaiting'] = 'Onay bekleyen siparişler: %d. Bu alıcılardan henüz ücret alınmadı.';
+$_['text_options_skipped'] = 'Zorunlu seçeneği olan %d ürün (örneğin seçilmesi gereken bir beden) sudemi\'de sunulmaz: alıcının yapay zekâ asistanından gelen siparişte seçenek bulunmaz, bu yüzden hangi ürünü göndereceğinizi bilemezsiniz. Bunun yerine bunları OpenCart varyantları olarak sunun (her varyant ayrı bir üründür).';
