@@ -76,3 +76,15 @@ $_['text_status_cancelled'] = 'Geannuleerd';
 $_['text_status_refunded'] = 'Terugbetaald';
 $_['text_history_awaiting'] = 'Bestellingen die op bevestiging wachten: %d. Die kopers zijn nog niet belast.';
 $_['text_options_skipped'] = '%d product(en) met een verplichte optie (bijvoorbeeld een maat om te kiezen) worden niet aangeboden op sudemi: een bestelling via de AI-assistent van een koper bevat geen optie, dus je zou niet weten welk artikel je moet versturen. Bied ze in plaats daarvan aan als OpenCart-varianten (elke variant is een eigen product).';
+
+// Product form: right of withdrawal (Directive 2011/83/EU, art. 16)
+$_['entry_withdrawal'] = 'Herroepingsrecht';
+$_['text_withdrawal_none'] = 'Geen — het normale herroepingsrecht geldt';
+$_['help_withdrawal'] = 'Alleen voor producten die wettelijk onder een uitzondering vallen. Kopers zien dit vóór het betalen; misbruik is niet toegestaan.';
+$_['text_withdrawal_hygiene'] = 'Verzegeld om gezondheids- of hygiëneredenen (niet retour na verbreken van de verzegeling)';
+$_['text_withdrawal_custom'] = 'Volgens specificaties van de koper gemaakt of gepersonaliseerd';
+$_['text_withdrawal_perishable'] = 'Bederfelijk of snel verlopend';
+$_['text_withdrawal_media'] = 'Verzegelde audio, video of software (niet retour na verbreken van de verzegeling)';
+$_['text_withdrawal_press'] = 'Krant, tijdschrift of magazine';
+$_['text_withdrawal_mixed'] = 'Na levering onlosmakelijk vermengd met andere zaken';
+$_['text_withdrawal_alcohol'] = 'Alcohol met een marktafhankelijke prijs, geleverd na meer dan 30 dagen';

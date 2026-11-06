@@ -76,3 +76,15 @@ $_['text_status_cancelled'] = 'Cancelled';
 $_['text_status_refunded'] = 'Refunded';
 $_['text_history_awaiting'] = 'Orders waiting to be confirmed: %d. Those buyers have not been charged yet.';
 $_['text_options_skipped'] = '%d product(s) with a required option (for example a size to choose) are not offered on sudemi: an order from a buyer\'s AI assistant carries no option, so you could not tell which item to send. Offer them as OpenCart variants (each variant is its own product) instead.';
+
+// Product form: right of withdrawal (Directive 2011/83/EU, art. 16)
+$_['entry_withdrawal'] = 'Right of withdrawal';
+$_['text_withdrawal_none'] = 'None — normal right of withdrawal applies';
+$_['help_withdrawal'] = 'Only for products that legally fall under an exception. Buyers see it before paying; misuse is not allowed.';
+$_['text_withdrawal_hygiene'] = 'Sealed for health or hygiene reasons (not returnable once unsealed)';
+$_['text_withdrawal_custom'] = 'Made to the buyer’s specifications or personalised';
+$_['text_withdrawal_perishable'] = 'Perishable or quickly expiring';
+$_['text_withdrawal_media'] = 'Sealed audio, video or software (not returnable once unsealed)';
+$_['text_withdrawal_press'] = 'Newspaper, periodical or magazine';
+$_['text_withdrawal_mixed'] = 'Inseparably mixed with other items after delivery';
+$_['text_withdrawal_alcohol'] = 'Alcohol with a market-dependent price, delivered after 30+ days';

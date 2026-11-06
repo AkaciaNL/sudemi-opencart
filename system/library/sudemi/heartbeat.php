@@ -23,6 +23,8 @@
 
 namespace Sudemi;
 
+require_once __DIR__ . '/withdrawal.php';
+
 class Heartbeat
 {
     const SETTING_STATUS = 'sudemi_status';
@@ -148,6 +150,11 @@ class Heartbeat
         // arrive. A full sync is the only answer that does not involve guessing which product.
         if (!empty($body['full_sync_requested'])) {
             $this->logger->info('sudemi asked for a full sync.');
+            $this->store->delete(Withdrawal::SETTING_RESYNC_DUE);
+            $this->sync->runFull();
+        } elseif ($this->store->read(Withdrawal::SETTING_RESYNC_DUE)) {
+            // A product's right-of-withdrawal setting changed: price pushes do not carry it.
+            $this->store->delete(Withdrawal::SETTING_RESYNC_DUE);
             $this->sync->runFull();
         }
 

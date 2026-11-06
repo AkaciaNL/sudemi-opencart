@@ -29,12 +29,89 @@ class Event extends \Opencart\System\Engine\Controller
     /** @param mixed $output the model's return value; product id for an add, ignored otherwise */
     public function productAdded(string &$route, array &$args, &$output): void
     {
-        $this->push(is_numeric($output) ? (int) $output : 0);
+        $productId = is_numeric($output) ? (int) $output : 0;
+        $this->saveWithdrawal($productId, isset($args[0]) && is_array($args[0]) ? $args[0] : []);
+        $this->push($productId);
     }
 
     public function productEdited(string &$route, array &$args, &$output): void
     {
-        $this->push(isset($args[0]) ? (int) $args[0] : 0);
+        $productId = isset($args[0]) ? (int) $args[0] : 0;
+        $this->saveWithdrawal($productId, isset($args[1]) && is_array($args[1]) ? $args[1] : []);
+        $this->push($productId);
+    }
+
+    /**
+     * The right-of-withdrawal choice from the product form, stored after OpenCart saved the
+     * product (its own permission check has passed by then). Only when the form sent the field:
+     * a product saved any other way (copy, an import, another extension) keeps what it had.
+     * Variants carry their master's setting, so a variant's own save stores nothing. A change is
+     * sent with a full sync on the next heartbeat: the price push carries price and stock only.
+     *
+     * @param array $data the data the model was called with (the posted form)
+     */
+    private function saveWithdrawal(int $productId, array $data): void
+    {
+        try {
+            require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/withdrawal.php';
+            if ($productId <= 0 || !array_key_exists(\Sudemi\Withdrawal::FIELD, $data) || !empty($data['master_id'])) {
+                return;
+            }
+            $services = $this->services();
+            if ($services['withdrawal']->set($productId, $data[\Sudemi\Withdrawal::FIELD])) {
+                $services['store']->write(\Sudemi\Withdrawal::SETTING_RESYNC_DUE, 1);
+            }
+        } catch (\Throwable $e) {
+            $this->report('Right-of-withdrawal setting for product ' . $productId . ' could not be saved: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Adds the right-of-withdrawal select to the product form (Data tab, after Status and Sort
+     * order), by editing the rendered HTML so no OpenCart file is changed. Not shown on a variant,
+     * which carries its master product's setting.
+     */
+    public function productForm(string &$route, array &$data, string &$output): void
+    {
+        try {
+            if (!empty($data['master_id'])) {
+                return;
+            }
+            $productId = isset($data['product_id']) ? (int) $data['product_id'] : 0;
+            $services = $this->services();
+            $current = $productId > 0 ? $services['withdrawal']->get($productId) : null;
+            $text = $this->load->language('extension/sudemi/module/sudemi');
+            $label = function ($key) use ($text) {
+                return htmlspecialchars(isset($text[$key]) ? (string) $text[$key] : $key, ENT_QUOTES, 'UTF-8');
+            };
+
+            $options = '';
+            foreach (array_merge([''], \Sudemi\Withdrawal::REASONS) as $reason) {
+                $options .= '<option value="' . $reason . '"' . ($reason === (string) $current ? ' selected' : '') . '>'
+                    . $label('text_withdrawal_' . ($reason === '' ? 'none' : $reason)) . '</option>';
+            }
+            $field = '<div class="row mb-3" id="sudemi-withdrawal">'
+                . '<label for="input-sudemi-withdrawal" class="col-sm-2 col-form-label">' . $label('entry_withdrawal') . '</label>'
+                . '<div class="col-sm-10"><select name="' . \Sudemi\Withdrawal::FIELD . '" id="input-sudemi-withdrawal" class="form-select">'
+                . $options . '</select><div class="form-text">' . $label('help_withdrawal') . '</div></div></div>';
+
+            // The last fieldset of the Data tab, which ends right before the Links tab.
+            $links = strpos($output, 'id="tab-links"');
+            $at = $links !== false ? strrpos(substr($output, 0, $links), '</fieldset>') : false;
+            if ($at === false) {
+                // Another admin theme: anywhere inside the product form still posts with it.
+                $form = strpos($output, 'id="form-product"');
+                $at = $form !== false ? strpos($output, '</form>', $form) : false;
+                $field = '<fieldset><legend>sudemi</legend>' . $field . '</fieldset>';
+            }
+            if ($at === false) {
+                return;
+            }
+            $output = substr($output, 0, $at) . $field . substr($output, $at);
+        } catch (\Throwable $e) {
+            // A product form that cannot render because of us is worse than a missing field.
+            return;
+        }
     }
 
     /**
@@ -50,6 +127,7 @@ class Event extends \Opencart\System\Engine\Controller
         try {
             $services = $this->services();
             $services['heartbeat']->noteChange();
+            $services['withdrawal']->forget(isset($args[0]) ? (int) $args[0] : 0);
         } catch (\Throwable $e) {
             // Swallowed deliberately: see the class comment.
             return;
@@ -202,6 +280,7 @@ class Event extends \Opencart\System\Engine\Controller
         require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/queue.php';
         require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/orders.php';
         require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/heartbeat.php';
+        require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/withdrawal.php';
 
         $this->load->model('setting/setting');
         $store = new \Sudemi\SettingStore($this->db);
@@ -218,8 +297,12 @@ class Event extends \Opencart\System\Engine\Controller
             $store, $client, $logger, $queue, $catalogue, $pairing, $sync, $orders
         );
 
+        // An extension upgraded in place never runs install() again; this is where it catches up.
+        $withdrawal = new \Sudemi\Withdrawal($this->db);
+        $withdrawal->ensureSchema($store);
+
         return compact('store', 'logger', 'keys', 'client', 'pairing', 'catalogue', 'sync',
-            'queue', 'orders', 'heartbeat');
+            'queue', 'orders', 'heartbeat', 'withdrawal');
     }
 
     private function report(string $message): void

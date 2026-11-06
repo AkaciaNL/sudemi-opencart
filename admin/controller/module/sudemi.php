@@ -204,6 +204,11 @@ class Sudemi extends \Opencart\System\Engine\Controller
         }
 
         $this->addChallengeRoute();
+
+        // The right-of-withdrawal table and the product-form event (also run on upgrade, see
+        // \Sudemi\Withdrawal::ensureSchema()).
+        $sudemi = $this->services();
+        $sudemi['withdrawal']->ensureSchema($sudemi['store'], true);
     }
 
     /**
@@ -241,6 +246,11 @@ class Sudemi extends \Opencart\System\Engine\Controller
             $this->model_setting_event->deleteEventByCode($code);
         }
         $this->removeChallengeRoute();
+        // The exclusions themselves stay: OpenCart shops often uninstall and reinstall to upgrade,
+        // and that must not silently give every excluded product back its right of withdrawal.
+        $sudemi = $this->services();
+        $sudemi['withdrawal']->removeEvents();
+        $sudemi['store']->delete(\Sudemi\Withdrawal::SETTING_SCHEMA);
     }
 
     /**
@@ -397,6 +407,7 @@ class Sudemi extends \Opencart\System\Engine\Controller
         require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/queue.php';
         require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/orders.php';
         require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/heartbeat.php';
+        require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/withdrawal.php';
 
         $this->load->model('setting/setting');
         $store = new \Sudemi\SettingStore($this->db);
@@ -412,8 +423,11 @@ class Sudemi extends \Opencart\System\Engine\Controller
         $heartbeat = new \Sudemi\Heartbeat(
             $store, $client, $logger, $queue, $catalogue, $pairing, $sync, $orders
         );
+        // An extension upgraded in place never runs install() again; this is where it catches up.
+        $withdrawal = new \Sudemi\Withdrawal($this->db);
+        $withdrawal->ensureSchema($store);
 
         return compact('store', 'logger', 'keys', 'client', 'pairing', 'catalogue', 'sync',
-            'queue', 'heartbeat');
+            'queue', 'heartbeat', 'withdrawal');
     }
 }

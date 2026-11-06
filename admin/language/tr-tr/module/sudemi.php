@@ -76,3 +76,15 @@ $_['text_status_cancelled'] = 'İptal edildi';
 $_['text_status_refunded'] = 'İade edildi';
 $_['text_history_awaiting'] = 'Onay bekleyen siparişler: %d. Bu alıcılardan henüz ücret alınmadı.';
 $_['text_options_skipped'] = 'Zorunlu seçeneği olan %d ürün (örneğin seçilmesi gereken bir beden) sudemi\'de sunulmaz: alıcının yapay zekâ asistanından gelen siparişte seçenek bulunmaz, bu yüzden hangi ürünü göndereceğinizi bilemezsiniz. Bunun yerine bunları OpenCart varyantları olarak sunun (her varyant ayrı bir üründür).';
+
+// Product form: right of withdrawal (Directive 2011/83/EU, art. 16)
+$_['entry_withdrawal'] = 'Cayma hakkı';
+$_['text_withdrawal_none'] = 'Yok — normal cayma hakkı geçerlidir';
+$_['help_withdrawal'] = 'Yalnızca yasal olarak bir istisnaya giren ürünler için. Alıcılar bunu ödemeden önce görür; kötüye kullanılması yasaktır.';
+$_['text_withdrawal_hygiene'] = 'Sağlık veya hijyen nedeniyle mühürlü (ambalajı açıldıktan sonra iade edilemez)';
+$_['text_withdrawal_custom'] = 'Alıcının isteğine göre üretilmiş veya kişiselleştirilmiş';
+$_['text_withdrawal_perishable'] = 'Çabuk bozulabilen veya son kullanma tarihi yakın';
+$_['text_withdrawal_media'] = 'Ambalajı mühürlü ses, görüntü kaydı veya yazılım (ambalajı açıldıktan sonra iade edilemez)';
+$_['text_withdrawal_press'] = 'Gazete, süreli yayın veya dergi';
+$_['text_withdrawal_mixed'] = 'Teslimattan sonra başka ürünlerle ayrılmaz biçimde karışan';
+$_['text_withdrawal_alcohol'] = 'Fiyatı piyasaya bağlı olup 30 günden sonra teslim edilen alkollü içecekler';

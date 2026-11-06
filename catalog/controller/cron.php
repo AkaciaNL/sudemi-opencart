@@ -60,6 +60,10 @@ class Cron extends \Opencart\System\Engine\Controller
             return;
         }
 
+        // An extension upgraded in place never runs install() again; the beat catches it up.
+        require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/withdrawal.php';
+        (new \Sudemi\Withdrawal($this->db))->ensureSchema($store);
+
         $answered = $heartbeat->run();
 
         // A beat that could not reach sudemi is still a successful cron run: the shop's own

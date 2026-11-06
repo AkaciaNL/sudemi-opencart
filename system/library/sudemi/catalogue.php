@@ -11,6 +11,8 @@
 
 namespace Sudemi;
 
+require_once __DIR__ . '/withdrawal.php';
+
 class Catalogue
 {
     private $db;
@@ -79,9 +81,9 @@ class Catalogue
         $query = $this->db->query(
             'SELECT p.product_id, p.model, ' . $this->legacyCodeColumns() . ' p.price, p.quantity, p.weight,
                     p.weight_class_id, p.tax_class_id, p.shipping, p.image, pd.name, pd.description,
-                    m.name AS manufacturer
+                    m.name AS manufacturer' . $this->withdrawalColumn() . '
                FROM ' . $this->prefix . 'product p
-               LEFT JOIN ' . $this->prefix . 'manufacturer m ON (p.manufacturer_id = m.manufacturer_id)
+               LEFT JOIN ' . $this->prefix . 'manufacturer m ON (p.manufacturer_id = m.manufacturer_id)' . $this->withdrawalJoin() . '
                LEFT JOIN ' . $this->prefix . 'product_description pd
                  ON (p.product_id = pd.product_id)
               WHERE pd.language_id = ' . $languageId . ' AND p.status = 1
@@ -100,7 +102,7 @@ class Catalogue
                     $row[$field] = isset($codes[$productId][strtoupper($field)]) ? $codes[$productId][strtoupper($field)] : '';
                 }
             }
-            $products[] = [
+            $products[] = Withdrawal::apply([
                 'externalId' => (string) $productId,
                 'sku' => (string) $row['sku'],
                 'gtin' => ((string) $row['ean']) !== '' ? (string) $row['ean'] : (((string) $row['upc']) !== '' ? (string) $row['upc'] : null),
@@ -122,7 +124,9 @@ class Catalogue
                 'categoryExternalIds' => $this->categoryIds($productId),
                 'images' => $this->images($productId, (string) $row['image']),
                 'specs' => $this->specs($productId, $languageId),
-            ];
+            // Excluded from the right of withdrawal (EU 2011/83 art. 16), with the reason; omitted
+            // when the normal right applies. A variant carries its master product's setting.
+            ], isset($row['withdrawal_exclusion']) ? $row['withdrawal_exclusion'] : null);
         }
 
         return $products;
@@ -182,6 +186,23 @@ class Catalogue
             'inStock' => ((int) $query->row['quantity']) > 0,
             'quantity' => (int) $query->row['quantity'],
         ];
+    }
+
+    /** The right-of-withdrawal exclusion, from the master product for a variant (none before the table exists). */
+    private function withdrawalColumn()
+    {
+        return $this->hasTable('sudemi_product') ? ', sw.withdrawal_exclusion' : '';
+    }
+
+    private function withdrawalJoin()
+    {
+        if (!$this->hasTable('sudemi_product')) {
+            return '';
+        }
+        $master = $this->db->query("SHOW COLUMNS FROM `" . $this->prefix . "product` LIKE 'master_id'");
+        $owner = empty($master->row) ? 'p.product_id' : 'IF(p.master_id > 0, p.master_id, p.product_id)';
+
+        return ' LEFT JOIN ' . $this->prefix . 'sudemi_product sw ON (sw.product_id = ' . $owner . ')';
     }
 
     /** OpenCart 4.0 has sku/upc/ean/mpn columns on product; 4.1 has none (see codes()). */

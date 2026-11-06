@@ -76,3 +76,15 @@ $_['text_status_cancelled'] = '已取消';
 $_['text_status_refunded'] = '已退款';
 $_['text_history_awaiting'] = '待确认订单：%d。这些买家尚未被扣款。';
 $_['text_options_skipped'] = '有 %d 个带必选选项（例如需要选择尺码）的商品不会在 sudemi 上展示：来自买家 AI 助手的订单不包含任何选项，您将无法知道该发哪一件。请改用 OpenCart 变体（每个变体都是独立商品）来提供它们。';
+
+// Product form: right of withdrawal (Directive 2011/83/EU, art. 16)
+$_['entry_withdrawal'] = '撤回权';
+$_['text_withdrawal_none'] = '无 — 适用正常的撤回权';
+$_['help_withdrawal'] = '仅适用于依法属于例外情形的商品。买家在付款前即可看到；不得滥用。';
+$_['text_withdrawal_hygiene'] = '因健康或卫生原因密封（拆封后不可退货）';
+$_['text_withdrawal_custom'] = '按买家要求定制或个性化';
+$_['text_withdrawal_perishable'] = '易腐或保质期短';
+$_['text_withdrawal_media'] = '密封的音像制品或软件（拆封后不可退货）';
+$_['text_withdrawal_press'] = '报纸、期刊或杂志';
+$_['text_withdrawal_mixed'] = '交付后与其他物品不可分离地混合';
+$_['text_withdrawal_alcohol'] = '价格随市场波动、30 天后交付的酒精饮料';

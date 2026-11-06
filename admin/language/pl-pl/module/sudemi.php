@@ -76,3 +76,15 @@ $_['text_status_cancelled'] = 'Anulowane';
 $_['text_status_refunded'] = 'Zwrócone';
 $_['text_history_awaiting'] = 'Zamówienia czekające na potwierdzenie: %d. Tych kupujących jeszcze nie obciążono.';
 $_['text_options_skipped'] = 'Produkty z wymaganą opcją (np. rozmiarem do wyboru): %d. Nie są oferowane w sudemi: zamówienie od asystenta AI kupującego nie zawiera opcji, więc nie wiedziałbyś, który artykuł wysłać. Zamiast tego oferuj je jako warianty OpenCart (każdy wariant to osobny produkt).';
+
+// Product form: right of withdrawal (Directive 2011/83/EU, art. 16)
+$_['entry_withdrawal'] = 'Prawo odstąpienia od umowy';
+$_['text_withdrawal_none'] = 'Brak — obowiązuje zwykłe prawo odstąpienia od umowy';
+$_['help_withdrawal'] = 'Tylko dla produktów, które zgodnie z prawem są objęte wyjątkiem. Kupujący widzą to przed zapłatą; nadużycia są niedozwolone.';
+$_['text_withdrawal_hygiene'] = 'Zapieczętowany ze względu na ochronę zdrowia lub higienę (bez zwrotu po otwarciu)';
+$_['text_withdrawal_custom'] = 'Wyprodukowany według specyfikacji kupującego lub spersonalizowany';
+$_['text_withdrawal_perishable'] = 'Szybko psujący się lub o krótkim terminie przydatności';
+$_['text_withdrawal_media'] = 'Zapieczętowane nagrania audio, wideo lub oprogramowanie (bez zwrotu po otwarciu)';
+$_['text_withdrawal_press'] = 'Dziennik, periodyk lub czasopismo';
+$_['text_withdrawal_mixed'] = 'Po dostarczeniu nierozłącznie połączony z innymi rzeczami';
+$_['text_withdrawal_alcohol'] = 'Napoje alkoholowe o cenie zależnej od rynku, dostarczane po ponad 30 dniach';

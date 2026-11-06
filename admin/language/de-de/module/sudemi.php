@@ -76,3 +76,15 @@ $_['text_status_cancelled'] = 'Storniert';
 $_['text_status_refunded'] = 'Erstattet';
 $_['text_history_awaiting'] = 'Bestellungen, die auf Bestätigung warten: %d. Diesen Käufern wurde noch nichts berechnet.';
 $_['text_options_skipped'] = '%d Produkt(e) mit einer Pflichtoption (zum Beispiel einer zu wählenden Größe) werden auf sudemi nicht angeboten: Eine Bestellung über den KI-Assistenten eines Käufers enthält keine Option, Sie wüssten also nicht, welchen Artikel Sie versenden sollen. Bieten Sie sie stattdessen als OpenCart-Varianten an (jede Variante ist ein eigenes Produkt).';
+
+// Product form: right of withdrawal (Directive 2011/83/EU, art. 16)
+$_['entry_withdrawal'] = 'Widerrufsrecht';
+$_['text_withdrawal_none'] = 'Keine — es gilt das normale Widerrufsrecht';
+$_['help_withdrawal'] = 'Nur für Produkte, die gesetzlich unter eine Ausnahme fallen. Käufer sehen dies vor dem Bezahlen; Missbrauch ist nicht erlaubt.';
+$_['text_withdrawal_hygiene'] = 'Aus Gesundheits- oder Hygienegründen versiegelt (nach Entsiegelung keine Rückgabe)';
+$_['text_withdrawal_custom'] = 'Nach Kundenspezifikation angefertigt oder personalisiert';
+$_['text_withdrawal_perishable'] = 'Schnell verderblich oder mit kurzem Verfallsdatum';
+$_['text_withdrawal_media'] = 'Versiegelte Audio-, Video- oder Software-Datenträger (nach Entsiegelung keine Rückgabe)';
+$_['text_withdrawal_press'] = 'Zeitung, Zeitschrift oder Illustrierte';
+$_['text_withdrawal_mixed'] = 'Nach der Lieferung untrennbar mit anderen Gütern vermischt';
+$_['text_withdrawal_alcohol'] = 'Alkoholische Getränke mit marktabhängigem Preis, Lieferung nach mehr als 30 Tagen';
