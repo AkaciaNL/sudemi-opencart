@@ -4,14 +4,14 @@ namespace Sudemi;
 /**
  * Answering sudemi's question: can this shop actually fulfil the order?
  *
- * Nobody but this shop can answer it. sudemi holds no stock — it carries a figure this extension
+ * Nobody but this shop can answer it. sudemi holds no stock - it carries a figure this extension
  * pushed, which was true when it was pushed and may not be now, because the same units are on
  * sale in this storefront at the same time. So sudemi does not decide. It authorises the buyer's
  * card, holds the money without taking it, and asks.
  *
  * Until this extension answers, nothing has been charged. Yes captures the money and splits it;
  * no releases the hold; saying nothing releases it too once the window closes. Silence is never
- * taken as agreement — a shop that has stopped answering is usually a shop that is gone, and
+ * taken as agreement - a shop that has stopped answering is usually a shop that is gone, and
  * charging a buyer because nobody objected is the failure this mechanism exists to prevent.
  */
 class Orders
@@ -19,7 +19,7 @@ class Orders
     /** Written on the order so one sudemi order can never produce two local ones. */
     const COMMENT_PREFIX = 'sudemi:';
 
-    /** OpenCart order_status_id 0 means "missing" — an order not yet confirmed to anyone. */
+    /** OpenCart order_status_id 0 means "missing" - an order not yet confirmed to anyone. */
     const STATE_INCOMPLETE = 0;
 
     private $db;
@@ -159,7 +159,7 @@ class Orders
         }
 
         // Refused: the window closed, or the authorisation lapsed before this shop answered. No
-        // money was taken, so the local order must not survive — and the stock it reserved has to
+        // money was taken, so the local order must not survive - and the stock it reserved has to
         // go back, or this shop slowly loses inventory to orders that never happened.
         $reason = isset($body['message']) ? (string) $body['message'] : sprintf('HTTP %d', $status);
         $this->restock($pending);

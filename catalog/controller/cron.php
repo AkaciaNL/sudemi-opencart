@@ -3,7 +3,7 @@
  * The entry point this shop's own cron calls, every five minutes.
  *
  * OpenCart has no scheduler, so the beat has to come from somewhere: either the host's crontab
- * calling this URL, or — as a fallback for shops with no cron at all — an admin page load.
+ * calling this URL, or - as a fallback for shops with no cron at all - an admin page load.
  *
  * It is reachable without a session, which is why it carries a token. Without one a stranger
  * could trigger a full catalogue walk on this shop as often as they liked, and a cron endpoint

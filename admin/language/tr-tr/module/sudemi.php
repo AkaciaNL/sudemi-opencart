@@ -6,14 +6,14 @@ $_['heading_title'] = 'sudemi Bağlayıcı';
 $_['text_extension'] = 'Eklentiler';
 $_['text_success'] = 'Ayarlar kaydedildi.';
 $_['text_edit'] = 'Bu mağazayı sudemi\'ye bağlayın';
-$_['text_intro'] = 'Bu mağazayı bağladığınızda bir yapay zekâ asistanı ürünlerinizi bulabilir ve alıcıları size yönlendirebilir. Bağlantıyı, kendi hesabınızla oturum açarak sudemi\'de onaylarsınız — bu eklenti sudemi şifrenizi asla sormaz.';
+$_['text_intro'] = 'Bu mağazayı bağladığınızda bir yapay zekâ asistanı ürünlerinizi bulabilir ve alıcıları size yönlendirebilir. Bağlantıyı, kendi hesabınızla oturum açarak sudemi\'de onaylarsınız - bu eklenti sudemi şifrenizi asla sormaz.';
 $_['text_connected'] = 'sudemi\'ye bağlandı.';
 $_['text_not_confirmed'] = 'Henüz onaylanmadı. Bağlantıyı açın, mağazayı sudemi\'de onaylayın, ardından tekrar kontrol edin.';
 $_['text_disconnected'] = 'Bağlantı kesildi.';
 $_['text_synced'] = 'Katalog gönderildi.';
 $_['text_sync_failed'] = 'Katalog gönderilemedi. Hiçbir ürün listeden kaldırılmadı.';
 $_['text_locked'] = 'Yasal adınız, ülkeniz, tacir statünüz ve KDV numaranız, alıcının hangi haklara sahip olduğunu belirler; bu nedenle sudemi\'de bir kez onaylanır ve orada değiştirilir. Bu eklenti bunları düzenleyemez.';
-$_['text_shop_url_fixed'] = 'Sabittir. sudemi bu mağazanın bu adresten yanıt verdiğini doğruladı ve her ilan, alıcıya nereden geldiğini gösterir — bu yüzden adresi değiştirmek, yeni adresten yeniden bağlanmak anlamına gelir.';
+$_['text_shop_url_fixed'] = 'Sabittir. sudemi bu mağazanın bu adresten yanıt verdiğini doğruladı ve her ilan, alıcıya nereden geldiğini gösterir - bu yüzden adresi değiştirmek, yeni adresten yeniden bağlanmak anlamına gelir.';
 $_['text_key_held'] = 'İmzalama anahtarının özel kısmı bu sunucudan asla çıkmaz ve sudemi\'ye asla gönderilmez. Burada da gösterilemez.';
 
 // Entry
@@ -34,8 +34,8 @@ $_['error_token'] = 'Bu istek doğrulanamadı. Bu sayfadan tekrar deneyin.';
 $_['error_sodium'] = 'Bu sunucuda sodium eklentisi eksik. Bağlantı, istekleri imzalamak için buna ihtiyaç duyar ve onsuz çalışmaz. Barındırma sağlayıcınızdan bunu etkinleştirmesini isteyin.';
 
 // The listing-status panel. These describe a failure the shop owner cannot see from their own
-// admin — products stop being shown when the heartbeat stops arriving, and from this side
-// everything looks fine — so they say what happened and what to do about it.
+// admin - products stop being shown when the heartbeat stops arriving, and from this side
+// everything looks fine - so they say what happened and what to do about it.
 $_['text_listing_status'] = 'Listeleme durumu';
 $_['text_never_reported'] = 'Bu mağaza henüz sudemi\'ye durum bildirmedi. Aşağıdaki cron girdisini ekleyin; o çalışana kadar bildirimler yalnızca bu sayfa açıkken gönderilir.';
 $_['text_unreachable'] = 'Bu mağaza sudemi\'ye ulaşamadı. Ürünleri kısa bir süre daha listede kalır, ardından duraklatılır; çünkü sudemi doğrulayamadığı bir fiyatı sunmaz.';
@@ -66,10 +66,10 @@ $_['column_items'] = 'Satılanlar';
 $_['column_status'] = 'Durum';
 $_['column_net'] = 'Size kalan';
 $_['column_customer'] = 'Müşteri';
-$_['text_status_awaiting_seller'] = 'Sizi bekliyor — alıcıdan ücret alınmadı';
-$_['text_status_accepted'] = 'Kabul edildi — alıcının ödemesindeki diğer mağazalar bekleniyor; alıcıdan henüz ücret alınmadı, kargolamayın';
+$_['text_status_awaiting_seller'] = 'Sizi bekliyor - alıcıdan ücret alınmadı';
+$_['text_status_accepted'] = 'Kabul edildi - alıcının ödemesindeki diğer mağazalar bekleniyor; alıcıdan henüz ücret alınmadı, kargolamayın';
 $_['text_status_paid'] = 'Onaylandı ve tahsil edildi';
-$_['text_status_declined'] = 'Reddedildi — ücret alınmadı';
+$_['text_status_declined'] = 'Reddedildi - ücret alınmadı';
 $_['text_status_shipped'] = 'Kargolandı';
 $_['text_status_delivered'] = 'Teslim edildi';
 $_['text_status_cancelled'] = 'İptal edildi';
@@ -79,7 +79,7 @@ $_['text_options_skipped'] = 'Zorunlu seçeneği olan %d ürün (örneğin seçi
 
 // Product form: right of withdrawal (Directive 2011/83/EU, art. 16)
 $_['entry_withdrawal'] = 'Cayma hakkı';
-$_['text_withdrawal_none'] = 'Yok — normal cayma hakkı geçerlidir';
+$_['text_withdrawal_none'] = 'Yok - normal cayma hakkı geçerlidir';
 $_['help_withdrawal'] = 'Yalnızca yasal olarak bir istisnaya giren ürünler için. Alıcılar bunu ödemeden önce görür; kötüye kullanılması yasaktır.';
 $_['text_withdrawal_hygiene'] = 'Sağlık veya hijyen nedeniyle mühürlü (ambalajı açıldıktan sonra iade edilemez)';
 $_['text_withdrawal_custom'] = 'Alıcının isteğine göre üretilmiş veya kişiselleştirilmiş';

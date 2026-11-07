@@ -6,14 +6,14 @@ $_['heading_title'] = 'sudemi Connector';
 $_['text_extension'] = 'Erweiterungen';
 $_['text_success'] = 'Die Einstellungen wurden gespeichert.';
 $_['text_edit'] = 'Diesen Shop mit sudemi verbinden';
-$_['text_intro'] = 'Wenn Sie diesen Shop verbinden, kann ein KI-Assistent Ihre Produkte finden und Käufer an Sie weiterleiten. Sie bestätigen die Verbindung auf sudemi, angemeldet mit Ihrem eigenen Konto — diese Erweiterung fragt nie nach Ihrem sudemi-Passwort.';
+$_['text_intro'] = 'Wenn Sie diesen Shop verbinden, kann ein KI-Assistent Ihre Produkte finden und Käufer an Sie weiterleiten. Sie bestätigen die Verbindung auf sudemi, angemeldet mit Ihrem eigenen Konto - diese Erweiterung fragt nie nach Ihrem sudemi-Passwort.';
 $_['text_connected'] = 'Mit sudemi verbunden.';
 $_['text_not_confirmed'] = 'Noch nicht bestätigt. Öffnen Sie den Link, bestätigen Sie den Shop auf sudemi und prüfen Sie dann erneut.';
 $_['text_disconnected'] = 'Getrennt.';
 $_['text_synced'] = 'Der Katalog wurde gesendet.';
 $_['text_sync_failed'] = 'Der Katalog konnte nicht gesendet werden. Es wurde nichts aus der Listung genommen.';
 $_['text_locked'] = 'Ihr rechtlicher Name, Ihr Land, Ihr Unternehmerstatus und Ihre USt-IdNr. bestimmen, welche Rechte ein Käufer hat. Deshalb werden sie einmalig auf sudemi bestätigt und dort geändert. Diese Erweiterung kann sie nicht bearbeiten.';
-$_['text_shop_url_fixed'] = 'Unveränderlich. sudemi hat geprüft, dass dieser Shop unter dieser Adresse geantwortet hat, und ein Eintrag zeigt dem Käufer, woher er stammt — eine Änderung bedeutet daher, sich von der neuen Adresse aus erneut zu verbinden.';
+$_['text_shop_url_fixed'] = 'Unveränderlich. sudemi hat geprüft, dass dieser Shop unter dieser Adresse geantwortet hat, und ein Eintrag zeigt dem Käufer, woher er stammt - eine Änderung bedeutet daher, sich von der neuen Adresse aus erneut zu verbinden.';
 $_['text_key_held'] = 'Der private Teil des Signaturschlüssels verlässt diesen Server nie und wird nie an sudemi gesendet. Er kann auch hier nicht angezeigt werden.';
 
 // Entry
@@ -34,8 +34,8 @@ $_['error_token'] = 'Diese Anfrage konnte nicht verifiziert werden. Versuchen Si
 $_['error_sodium'] = 'Auf diesem Server fehlt die Sodium-Erweiterung. Die Verbindung benötigt sie zum Signieren von Anfragen und funktioniert ohne sie nicht. Bitten Sie Ihren Hoster, sie zu aktivieren.';
 
 // The listing-status panel. These describe a failure the shop owner cannot see from their own
-// admin — products stop being shown when the heartbeat stops arriving, and from this side
-// everything looks fine — so they say what happened and what to do about it.
+// admin - products stop being shown when the heartbeat stops arriving, and from this side
+// everything looks fine - so they say what happened and what to do about it.
 $_['text_listing_status'] = 'Listungsstatus';
 $_['text_never_reported'] = 'Dieser Shop hat sich noch nicht bei sudemi gemeldet. Fügen Sie den Cron-Eintrag unten hinzu; bis er läuft, werden Meldungen nur gesendet, solange diese Seite geöffnet ist.';
 $_['text_unreachable'] = 'Dieser Shop konnte sudemi nicht erreichen. Seine Produkte bleiben noch kurz gelistet und werden dann pausiert, weil sudemi keinen Preis nennt, den es nicht bestätigen kann.';
@@ -66,10 +66,10 @@ $_['column_items'] = 'Verkauft';
 $_['column_status'] = 'Status';
 $_['column_net'] = 'Sie erhalten';
 $_['column_customer'] = 'Kunde';
-$_['text_status_awaiting_seller'] = 'Wartet auf Sie — Käufer nicht belastet';
-$_['text_status_accepted'] = 'Angenommen — wartet auf die anderen Shops in der Zahlung des Käufers; Käufer noch nicht belastet, nicht versenden';
+$_['text_status_awaiting_seller'] = 'Wartet auf Sie - Käufer nicht belastet';
+$_['text_status_accepted'] = 'Angenommen - wartet auf die anderen Shops in der Zahlung des Käufers; Käufer noch nicht belastet, nicht versenden';
 $_['text_status_paid'] = 'Bestätigt und belastet';
-$_['text_status_declined'] = 'Abgelehnt — nichts belastet';
+$_['text_status_declined'] = 'Abgelehnt - nichts belastet';
 $_['text_status_shipped'] = 'Versandt';
 $_['text_status_delivered'] = 'Zugestellt';
 $_['text_status_cancelled'] = 'Storniert';
@@ -79,7 +79,7 @@ $_['text_options_skipped'] = '%d Produkt(e) mit einer Pflichtoption (zum Beispie
 
 // Product form: right of withdrawal (Directive 2011/83/EU, art. 16)
 $_['entry_withdrawal'] = 'Widerrufsrecht';
-$_['text_withdrawal_none'] = 'Keine — es gilt das normale Widerrufsrecht';
+$_['text_withdrawal_none'] = 'Keine - es gilt das normale Widerrufsrecht';
 $_['help_withdrawal'] = 'Nur für Produkte, die gesetzlich unter eine Ausnahme fallen. Käufer sehen dies vor dem Bezahlen; Missbrauch ist nicht erlaubt.';
 $_['text_withdrawal_hygiene'] = 'Aus Gesundheits- oder Hygienegründen versiegelt (nach Entsiegelung keine Rückgabe)';
 $_['text_withdrawal_custom'] = 'Nach Kundenspezifikation angefertigt oder personalisiert';

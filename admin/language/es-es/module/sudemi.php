@@ -6,14 +6,14 @@ $_['heading_title'] = 'Conector de sudemi';
 $_['text_extension'] = 'Extensiones';
 $_['text_success'] = 'Se han guardado los ajustes.';
 $_['text_edit'] = 'Conectar esta tienda a sudemi';
-$_['text_intro'] = 'Al conectar esta tienda, un asistente de IA puede encontrar sus productos y enviarle compradores. La conexión se confirma en sudemi, con la sesión iniciada en su propia cuenta — esta extensión nunca le pide su contraseña de sudemi.';
+$_['text_intro'] = 'Al conectar esta tienda, un asistente de IA puede encontrar sus productos y enviarle compradores. La conexión se confirma en sudemi, con la sesión iniciada en su propia cuenta - esta extensión nunca le pide su contraseña de sudemi.';
 $_['text_connected'] = 'Conectado a sudemi.';
 $_['text_not_confirmed'] = 'Aún no está confirmado. Abra el enlace, confirme la tienda en sudemi y vuelva a comprobarlo.';
 $_['text_disconnected'] = 'Desconectado.';
 $_['text_synced'] = 'Se ha enviado el catálogo.';
 $_['text_sync_failed'] = 'No se ha podido enviar el catálogo. No se ha retirado nada.';
 $_['text_locked'] = 'Su razón social, país, condición de empresario o profesional y número de IVA determinan lo que se le debe al comprador, por lo que se confirman una sola vez en sudemi y se modifican allí. Esta extensión no puede editarlos.';
-$_['text_shop_url_fixed'] = 'Fija. sudemi comprobó que esta tienda respondía desde esta dirección, y cada anuncio indica al comprador de dónde procede — por eso, cambiarla supone volver a conectar desde la nueva dirección.';
+$_['text_shop_url_fixed'] = 'Fija. sudemi comprobó que esta tienda respondía desde esta dirección, y cada anuncio indica al comprador de dónde procede - por eso, cambiarla supone volver a conectar desde la nueva dirección.';
 $_['text_key_held'] = 'La parte privada de la clave de firma nunca sale de este servidor y nunca se envía a sudemi. Tampoco puede mostrarse aquí.';
 
 // Entry
@@ -34,8 +34,8 @@ $_['error_token'] = 'No se ha podido verificar la solicitud. Inténtelo de nuevo
 $_['error_sodium'] = 'A este servidor le falta la extensión sodium. La conexión la necesita para firmar las solicitudes y no funcionará sin ella. Pida a su proveedor de alojamiento que la active.';
 
 // The listing-status panel. These describe a failure the shop owner cannot see from their own
-// admin — products stop being shown when the heartbeat stops arriving, and from this side
-// everything looks fine — so they say what happened and what to do about it.
+// admin - products stop being shown when the heartbeat stops arriving, and from this side
+// everything looks fine - so they say what happened and what to do about it.
 $_['text_listing_status'] = 'Estado de publicación';
 $_['text_never_reported'] = 'Esta tienda todavía no se ha comunicado con sudemi. Añada la tarea cron de abajo; mientras no se ejecute, las comunicaciones solo se envían cuando esta página está abierta.';
 $_['text_unreachable'] = 'Esta tienda no ha podido contactar con sudemi. Sus productos siguen publicados durante un breve tiempo y después se pausan, porque sudemi no ofrece un precio que no puede confirmar.';
@@ -66,10 +66,10 @@ $_['column_items'] = 'Artículos vendidos';
 $_['column_status'] = 'Estado';
 $_['column_net'] = 'Usted recibe';
 $_['column_customer'] = 'Cliente';
-$_['text_status_awaiting_seller'] = 'Pendiente de su respuesta — no se ha cobrado al comprador';
-$_['text_status_accepted'] = 'Aceptado — a la espera de las demás tiendas del pago del comprador; aún no se ha cobrado al comprador, no lo envíe';
+$_['text_status_awaiting_seller'] = 'Pendiente de su respuesta - no se ha cobrado al comprador';
+$_['text_status_accepted'] = 'Aceptado - a la espera de las demás tiendas del pago del comprador; aún no se ha cobrado al comprador, no lo envíe';
 $_['text_status_paid'] = 'Confirmado y cobrado';
-$_['text_status_declined'] = 'Rechazado — no se ha cobrado nada';
+$_['text_status_declined'] = 'Rechazado - no se ha cobrado nada';
 $_['text_status_shipped'] = 'Enviado';
 $_['text_status_delivered'] = 'Entregado';
 $_['text_status_cancelled'] = 'Cancelado';
@@ -79,7 +79,7 @@ $_['text_options_skipped'] = '%d producto(s) con una opción obligatoria (por ej
 
 // Product form: right of withdrawal (Directive 2011/83/EU, art. 16)
 $_['entry_withdrawal'] = 'Derecho de desistimiento';
-$_['text_withdrawal_none'] = 'Ninguna — se aplica el derecho de desistimiento normal';
+$_['text_withdrawal_none'] = 'Ninguna - se aplica el derecho de desistimiento normal';
 $_['help_withdrawal'] = 'Solo para productos que legalmente están sujetos a una excepción. Los compradores lo ven antes de pagar; no se permite el uso indebido.';
 $_['text_withdrawal_hygiene'] = 'Precintado por razones de salud o higiene (sin devolución una vez desprecintado)';
 $_['text_withdrawal_custom'] = 'Fabricado según las especificaciones del comprador o personalizado';

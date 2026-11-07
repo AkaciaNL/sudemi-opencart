@@ -6,14 +6,14 @@ $_['heading_title'] = 'Connecteur sudemi';
 $_['text_extension'] = 'Extensions';
 $_['text_success'] = 'Les paramètres ont été enregistrés.';
 $_['text_edit'] = 'Connecter cette boutique à sudemi';
-$_['text_intro'] = 'Connecter cette boutique permet à un assistant IA de trouver vos produits et de vous envoyer des acheteurs. Vous confirmez la connexion sur sudemi, connecté à votre propre compte — cette extension ne vous demande jamais votre mot de passe sudemi.';
+$_['text_intro'] = 'Connecter cette boutique permet à un assistant IA de trouver vos produits et de vous envoyer des acheteurs. Vous confirmez la connexion sur sudemi, connecté à votre propre compte - cette extension ne vous demande jamais votre mot de passe sudemi.';
 $_['text_connected'] = 'Connecté à sudemi.';
 $_['text_not_confirmed'] = 'Pas encore confirmé. Ouvrez le lien, confirmez la boutique sur sudemi, puis vérifiez à nouveau.';
 $_['text_disconnected'] = 'Déconnecté.';
 $_['text_synced'] = 'Le catalogue a été envoyé.';
 $_['text_sync_failed'] = 'Le catalogue n’a pas pu être envoyé. Aucun produit n’a été retiré.';
 $_['text_locked'] = 'Votre raison sociale, votre pays, votre statut de professionnel et votre numéro de TVA déterminent ce qui est dû à l’acheteur ; ils sont donc confirmés une seule fois sur sudemi et modifiés là-bas. Cette extension ne peut pas les modifier.';
-$_['text_shop_url_fixed'] = 'Fixe. sudemi a vérifié que cette boutique répondait à cette adresse, et chaque annonce indique à l’acheteur d’où elle provient — la modifier implique donc de vous reconnecter depuis la nouvelle adresse.';
+$_['text_shop_url_fixed'] = 'Fixe. sudemi a vérifié que cette boutique répondait à cette adresse, et chaque annonce indique à l’acheteur d’où elle provient - la modifier implique donc de vous reconnecter depuis la nouvelle adresse.';
 $_['text_key_held'] = 'La partie privée de la clé de signature ne quitte jamais ce serveur et n’est jamais envoyée à sudemi. Elle ne peut pas non plus être affichée ici.';
 
 // Entry
@@ -34,8 +34,8 @@ $_['error_token'] = 'Cette requête n’a pas pu être vérifiée. Réessayez de
 $_['error_sodium'] = 'L’extension PHP sodium est absente de ce serveur. La connexion en a besoin pour signer les requêtes et ne fonctionnera pas sans elle. Demandez à votre hébergeur de l’activer.';
 
 // The listing-status panel. These describe a failure the shop owner cannot see from their own
-// admin — products stop being shown when the heartbeat stops arriving, and from this side
-// everything looks fine — so they say what happened and what to do about it.
+// admin - products stop being shown when the heartbeat stops arriving, and from this side
+// everything looks fine - so they say what happened and what to do about it.
 $_['text_listing_status'] = 'État du référencement';
 $_['text_never_reported'] = 'Cette boutique ne s’est pas encore signalée auprès de sudemi. Ajoutez la tâche cron ci-dessous ; tant qu’elle ne tourne pas, les signalements ne sont envoyés que lorsque cette page est ouverte.';
 $_['text_unreachable'] = 'Cette boutique n’a pas pu joindre sudemi. Ses produits restent référencés pendant un court moment, puis sont suspendus, car sudemi n’annonce pas un prix qu’il ne peut pas confirmer.';
@@ -66,10 +66,10 @@ $_['column_items'] = 'Articles vendus';
 $_['column_status'] = 'État';
 $_['column_net'] = 'Vous recevez';
 $_['column_customer'] = 'Client';
-$_['text_status_awaiting_seller'] = 'En attente de votre réponse — acheteur non débité';
-$_['text_status_accepted'] = 'Acceptée — en attente des autres boutiques du paiement de l’acheteur ; acheteur pas encore débité, n’expédiez pas';
+$_['text_status_awaiting_seller'] = 'En attente de votre réponse - acheteur non débité';
+$_['text_status_accepted'] = 'Acceptée - en attente des autres boutiques du paiement de l’acheteur ; acheteur pas encore débité, n’expédiez pas';
 $_['text_status_paid'] = 'Confirmée et débitée';
-$_['text_status_declined'] = 'Refusée — rien n’a été débité';
+$_['text_status_declined'] = 'Refusée - rien n’a été débité';
 $_['text_status_shipped'] = 'Expédiée';
 $_['text_status_delivered'] = 'Livrée';
 $_['text_status_cancelled'] = 'Annulée';
@@ -79,7 +79,7 @@ $_['text_options_skipped'] = '%d produit(s) avec une option obligatoire (par exe
 
 // Product form: right of withdrawal (Directive 2011/83/EU, art. 16)
 $_['entry_withdrawal'] = 'Droit de rétractation';
-$_['text_withdrawal_none'] = 'Aucune — le droit de rétractation normal s’applique';
+$_['text_withdrawal_none'] = 'Aucune - le droit de rétractation normal s’applique';
 $_['help_withdrawal'] = 'Uniquement pour les produits qui relèvent légalement d’une exception. Les acheteurs le voient avant de payer ; tout abus est interdit.';
 $_['text_withdrawal_hygiene'] = 'Scellé pour des raisons de santé ou d’hygiène (non retournable une fois descellé)';
 $_['text_withdrawal_custom'] = 'Confectionné selon les spécifications de l’acheteur ou personnalisé';

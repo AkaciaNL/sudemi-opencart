@@ -6,14 +6,14 @@ $_['heading_title'] = 'sudemi Connector';
 $_['text_extension'] = 'Extensies';
 $_['text_success'] = 'De instellingen zijn opgeslagen.';
 $_['text_edit'] = 'Deze winkel koppelen aan sudemi';
-$_['text_intro'] = 'Als je deze winkel koppelt, kan een AI-assistent je producten vinden en kopers naar je doorsturen. Je bevestigt de koppeling op sudemi, ingelogd op je eigen account — deze extensie vraagt nooit om je sudemi-wachtwoord.';
+$_['text_intro'] = 'Als je deze winkel koppelt, kan een AI-assistent je producten vinden en kopers naar je doorsturen. Je bevestigt de koppeling op sudemi, ingelogd op je eigen account - deze extensie vraagt nooit om je sudemi-wachtwoord.';
 $_['text_connected'] = 'Gekoppeld aan sudemi.';
 $_['text_not_confirmed'] = 'Nog niet bevestigd. Open de link, bevestig de winkel op sudemi en controleer daarna opnieuw.';
 $_['text_disconnected'] = 'Ontkoppeld.';
 $_['text_synced'] = 'De catalogus is verstuurd.';
 $_['text_sync_failed'] = 'De catalogus kon niet worden verstuurd. Er is niets offline gehaald.';
 $_['text_locked'] = 'Je juridische naam, land, status als handelaar en btw-nummer bepalen waar een koper recht op heeft. Daarom worden ze één keer bevestigd op sudemi en daar gewijzigd. Deze extensie kan ze niet bewerken.';
-$_['text_shop_url_fixed'] = 'Vast. sudemi heeft gecontroleerd dat deze winkel vanaf dit adres antwoordde, en een vermelding laat een koper zien waar die vandaan komt — wijzigen betekent dus opnieuw koppelen vanaf het nieuwe adres.';
+$_['text_shop_url_fixed'] = 'Vast. sudemi heeft gecontroleerd dat deze winkel vanaf dit adres antwoordde, en een vermelding laat een koper zien waar die vandaan komt - wijzigen betekent dus opnieuw koppelen vanaf het nieuwe adres.';
 $_['text_key_held'] = 'Het privédeel van de ondertekeningssleutel verlaat deze server nooit en wordt nooit naar sudemi gestuurd. Het kan hier ook niet worden getoond.';
 
 // Entry
@@ -34,8 +34,8 @@ $_['error_token'] = 'Dat verzoek kon niet worden geverifieerd. Probeer het opnie
 $_['error_sodium'] = 'Op deze server ontbreekt de sodium-extensie. De koppeling heeft die nodig om verzoeken te ondertekenen en werkt niet zonder. Vraag je hostingprovider om hem in te schakelen.';
 
 // The listing-status panel. These describe a failure the shop owner cannot see from their own
-// admin — products stop being shown when the heartbeat stops arriving, and from this side
-// everything looks fine — so they say what happened and what to do about it.
+// admin - products stop being shown when the heartbeat stops arriving, and from this side
+// everything looks fine - so they say what happened and what to do about it.
 $_['text_listing_status'] = 'Vermeldingsstatus';
 $_['text_never_reported'] = 'Deze winkel heeft zich nog niet bij sudemi gemeld. Voeg de cron-regel hieronder toe; tot die draait, worden meldingen alleen verstuurd terwijl deze pagina openstaat.';
 $_['text_unreachable'] = 'Deze winkel kon sudemi niet bereiken. De producten blijven nog even zichtbaar en worden daarna gepauzeerd, omdat sudemi geen prijs noemt die het niet kan bevestigen.';
@@ -66,10 +66,10 @@ $_['column_items'] = 'Verkocht';
 $_['column_status'] = 'Status';
 $_['column_net'] = 'Jij ontvangt';
 $_['column_customer'] = 'Klant';
-$_['text_status_awaiting_seller'] = 'Wacht op jou — koper nog niet belast';
-$_['text_status_accepted'] = 'Geaccepteerd — wacht op de andere winkels in de betaling van de koper; koper nog niet belast, nog niet verzenden';
+$_['text_status_awaiting_seller'] = 'Wacht op jou - koper nog niet belast';
+$_['text_status_accepted'] = 'Geaccepteerd - wacht op de andere winkels in de betaling van de koper; koper nog niet belast, nog niet verzenden';
 $_['text_status_paid'] = 'Bevestigd en afgeschreven';
-$_['text_status_declined'] = 'Afgewezen — niets afgeschreven';
+$_['text_status_declined'] = 'Afgewezen - niets afgeschreven';
 $_['text_status_shipped'] = 'Verzonden';
 $_['text_status_delivered'] = 'Afgeleverd';
 $_['text_status_cancelled'] = 'Geannuleerd';
@@ -79,7 +79,7 @@ $_['text_options_skipped'] = '%d product(en) met een verplichte optie (bijvoorbe
 
 // Product form: right of withdrawal (Directive 2011/83/EU, art. 16)
 $_['entry_withdrawal'] = 'Herroepingsrecht';
-$_['text_withdrawal_none'] = 'Geen — het normale herroepingsrecht geldt';
+$_['text_withdrawal_none'] = 'Geen - het normale herroepingsrecht geldt';
 $_['help_withdrawal'] = 'Alleen voor producten die wettelijk onder een uitzondering vallen. Kopers zien dit vóór het betalen; misbruik is niet toegestaan.';
 $_['text_withdrawal_hygiene'] = 'Verzegeld om gezondheids- of hygiëneredenen (niet retour na verbreken van de verzegeling)';
 $_['text_withdrawal_custom'] = 'Volgens specificaties van de koper gemaakt of gepersonaliseerd';

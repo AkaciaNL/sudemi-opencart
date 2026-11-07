@@ -6,14 +6,14 @@ $_['heading_title'] = 'موصّل sudemi';
 $_['text_extension'] = 'الإضافات';
 $_['text_success'] = 'تم حفظ الإعدادات.';
 $_['text_edit'] = 'اربط هذا المتجر بـ sudemi';
-$_['text_intro'] = 'ربط هذا المتجر يتيح لمساعد ذكاء اصطناعي العثور على منتجاتك وإرسال المشترين إليك. تؤكد الاتصال على sudemi بعد تسجيل الدخول إلى حسابك الخاص — هذه الإضافة لا تطلب أبدًا كلمة مرور sudemi الخاصة بك.';
+$_['text_intro'] = 'ربط هذا المتجر يتيح لمساعد ذكاء اصطناعي العثور على منتجاتك وإرسال المشترين إليك. تؤكد الاتصال على sudemi بعد تسجيل الدخول إلى حسابك الخاص - هذه الإضافة لا تطلب أبدًا كلمة مرور sudemi الخاصة بك.';
 $_['text_connected'] = 'تم الاتصال بـ sudemi.';
 $_['text_not_confirmed'] = 'لم يتم التأكيد بعد. افتح الرابط، وأكّد المتجر على sudemi، ثم تحقق مرة أخرى.';
 $_['text_disconnected'] = 'تم قطع الاتصال.';
 $_['text_synced'] = 'تم إرسال الكتالوج.';
 $_['text_sync_failed'] = 'تعذّر إرسال الكتالوج. لم يُسحب أي منتج من العرض.';
 $_['text_locked'] = 'اسمك القانوني وبلدك وصفتك التجارية ورقم ضريبة القيمة المضافة تحدد ما يستحقه المشتري، لذلك تُؤكَّد مرة واحدة على sudemi وتُغيَّر هناك. لا تستطيع هذه الإضافة تعديلها.';
-$_['text_shop_url_fixed'] = 'ثابت. تحقق sudemi من أن هذا المتجر أجاب من هذا العنوان، والقائمة تُخبر المشتري بمصدرها — لذا فإن تغييره يعني الربط من جديد من العنوان الجديد.';
+$_['text_shop_url_fixed'] = 'ثابت. تحقق sudemi من أن هذا المتجر أجاب من هذا العنوان، والقائمة تُخبر المشتري بمصدرها - لذا فإن تغييره يعني الربط من جديد من العنوان الجديد.';
 $_['text_key_held'] = 'الجزء الخاص من مفتاح التوقيع لا يغادر هذا الخادم أبدًا ولا يُرسل إلى sudemi أبدًا. ولا يمكن عرضه هنا أيضًا.';
 
 // Entry
@@ -34,8 +34,8 @@ $_['error_token'] = 'تعذّر التحقق من هذا الطلب. حاول م
 $_['error_sodium'] = 'إضافة sodium غير موجودة على هذا الخادم. يحتاجها الاتصال لتوقيع الطلبات ولن يعمل بدونها. اطلب من مزوّد الاستضافة تفعيلها.';
 
 // The listing-status panel. These describe a failure the shop owner cannot see from their own
-// admin — products stop being shown when the heartbeat stops arriving, and from this side
-// everything looks fine — so they say what happened and what to do about it.
+// admin - products stop being shown when the heartbeat stops arriving, and from this side
+// everything looks fine - so they say what happened and what to do about it.
 $_['text_listing_status'] = 'حالة العرض';
 $_['text_never_reported'] = 'لم يُرسل هذا المتجر أي تقرير إلى sudemi بعد. أضف مدخل cron أدناه؛ وإلى أن يعمل، لا تُرسل التقارير إلا ما دامت هذه الصفحة مفتوحة.';
 $_['text_unreachable'] = 'تعذّر على هذا المتجر الوصول إلى sudemi. تبقى منتجاته معروضة لفترة قصيرة ثم تُعلَّق، لأن sudemi لا يعرض سعرًا لا يستطيع تأكيده.';
@@ -66,10 +66,10 @@ $_['column_items'] = 'ما بيع';
 $_['column_status'] = 'الحالة';
 $_['column_net'] = 'ما تستلمه';
 $_['column_customer'] = 'العميل';
-$_['text_status_awaiting_seller'] = 'بانتظارك — لم يُخصم من المشتري';
-$_['text_status_accepted'] = 'مقبول — بانتظار المتاجر الأخرى في دفعة المشتري؛ لم يُخصم من المشتري بعد، لا تشحن';
+$_['text_status_awaiting_seller'] = 'بانتظارك - لم يُخصم من المشتري';
+$_['text_status_accepted'] = 'مقبول - بانتظار المتاجر الأخرى في دفعة المشتري؛ لم يُخصم من المشتري بعد، لا تشحن';
 $_['text_status_paid'] = 'مؤكَّد ومحصَّل';
-$_['text_status_declined'] = 'مرفوض — لم يُخصم شيء';
+$_['text_status_declined'] = 'مرفوض - لم يُخصم شيء';
 $_['text_status_shipped'] = 'تم الشحن';
 $_['text_status_delivered'] = 'تم التسليم';
 $_['text_status_cancelled'] = 'ملغى';
@@ -79,7 +79,7 @@ $_['text_options_skipped'] = 'المنتجات التي لها خيار إلزا
 
 // Product form: right of withdrawal (Directive 2011/83/EU, art. 16)
 $_['entry_withdrawal'] = 'حق الانسحاب';
-$_['text_withdrawal_none'] = 'لا يوجد — ينطبق حق الانسحاب العادي';
+$_['text_withdrawal_none'] = 'لا يوجد - ينطبق حق الانسحاب العادي';
 $_['help_withdrawal'] = 'فقط للمنتجات التي تندرج قانونيًا ضمن استثناء. يرى المشترون ذلك قبل الدفع؛ ويُمنع سوء الاستخدام.';
 $_['text_withdrawal_hygiene'] = 'مختوم لأسباب صحية أو تتعلق بالنظافة (لا يُرَدّ بعد فتح الختم)';
 $_['text_withdrawal_custom'] = 'مصنوع وفق مواصفات المشتري أو مخصّص له';

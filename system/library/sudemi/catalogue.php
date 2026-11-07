@@ -136,7 +136,7 @@ class Catalogue
      * A cheap statement of what this catalogue is.
      *
      * Product count, newest modification date and the extension's own change counter, hashed.
-     * It does not have to describe the catalogue — only to change whenever the catalogue does,
+     * It does not have to describe the catalogue - only to change whenever the catalogue does,
      * so that sudemi's copy of it can disagree. All three are needed: the count alone misses an
      * edited price, the date alone misses a deletion, and neither reliably moves for a stock
      * change, which is why the counter is passed in.

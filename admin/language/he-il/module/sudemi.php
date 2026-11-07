@@ -6,14 +6,14 @@ $_['heading_title'] = 'מחבר sudemi';
 $_['text_extension'] = 'הרחבות';
 $_['text_success'] = 'ההגדרות נשמרו.';
 $_['text_edit'] = 'חיבור החנות הזו ל-sudemi';
-$_['text_intro'] = 'חיבור החנות הזו מאפשר לעוזר בינה מלאכותית למצוא את המוצרים שלך ולשלוח אליך קונים. את החיבור מאשרים ב-sudemi, כשמחוברים לחשבון שלך — ההרחבה הזו לעולם לא מבקשת את הסיסמה שלך ב-sudemi.';
+$_['text_intro'] = 'חיבור החנות הזו מאפשר לעוזר בינה מלאכותית למצוא את המוצרים שלך ולשלוח אליך קונים. את החיבור מאשרים ב-sudemi, כשמחוברים לחשבון שלך - ההרחבה הזו לעולם לא מבקשת את הסיסמה שלך ב-sudemi.';
 $_['text_connected'] = 'מחובר ל-sudemi.';
 $_['text_not_confirmed'] = 'עדיין לא אושר. יש לפתוח את הקישור, לאשר את החנות ב-sudemi ואז לבדוק שוב.';
 $_['text_disconnected'] = 'נותק.';
 $_['text_synced'] = 'הקטלוג נשלח.';
 $_['text_sync_failed'] = 'לא ניתן היה לשלוח את הקטלוג. אף מוצר לא הוסר מהרישום.';
 $_['text_locked'] = 'השם המשפטי, המדינה, מעמד העוסק ומספר המע״מ שלך קובעים מה מגיע לקונה, ולכן הם מאושרים פעם אחת ב-sudemi ומשתנים שם. ההרחבה הזו לא יכולה לערוך אותם.';
-$_['text_shop_url_fixed'] = 'קבועה. sudemi בדק שהחנות הזו ענתה מהכתובת הזו, ורישום מוצר מציין לקונה מאיפה הוא הגיע — לכן שינוי הכתובת פירושו חיבור מחדש מהכתובת החדשה.';
+$_['text_shop_url_fixed'] = 'קבועה. sudemi בדק שהחנות הזו ענתה מהכתובת הזו, ורישום מוצר מציין לקונה מאיפה הוא הגיע - לכן שינוי הכתובת פירושו חיבור מחדש מהכתובת החדשה.';
 $_['text_key_held'] = 'החלק הפרטי של מפתח החתימה לעולם לא יוצא מהשרת הזה ולעולם לא נשלח ל-sudemi. גם אי אפשר להציג אותו כאן.';
 
 // Entry
@@ -34,8 +34,8 @@ $_['error_token'] = 'לא ניתן היה לאמת את הבקשה. יש לנס�
 $_['error_sodium'] = 'בשרת הזה חסרה ההרחבה sodium. החיבור זקוק לה כדי לחתום על בקשות ולא יעבוד בלעדיה. יש לבקש מספק האחסון להפעיל אותה.';
 
 // The listing-status panel. These describe a failure the shop owner cannot see from their own
-// admin — products stop being shown when the heartbeat stops arriving, and from this side
-// everything looks fine — so they say what happened and what to do about it.
+// admin - products stop being shown when the heartbeat stops arriving, and from this side
+// everything looks fine - so they say what happened and what to do about it.
 $_['text_listing_status'] = 'סטטוס הרישום';
 $_['text_never_reported'] = 'החנות הזו עדיין לא דיווחה ל-sudemi. יש להוסיף את רשומת ה-cron שלמטה; עד שהיא תפעל, דיווחים נשלחים רק כשהדף הזה פתוח.';
 $_['text_unreachable'] = 'החנות הזו לא הצליחה להגיע ל-sudemi. המוצרים שלה נשארים רשומים לזמן קצר ואז מושהים, כי sudemi לא יציע מחיר שאינו יכול לאשר.';
@@ -66,10 +66,10 @@ $_['column_items'] = 'מה נמכר';
 $_['column_status'] = 'סטטוס';
 $_['column_net'] = 'הסכום שתקבל';
 $_['column_customer'] = 'לקוח';
-$_['text_status_awaiting_seller'] = 'ממתין לך — הקונה לא חויב';
-$_['text_status_accepted'] = 'התקבלה — ממתינה לחנויות האחרות בתשלום של הקונה; הקונה עדיין לא חויב, אין לשלוח';
+$_['text_status_awaiting_seller'] = 'ממתין לך - הקונה לא חויב';
+$_['text_status_accepted'] = 'התקבלה - ממתינה לחנויות האחרות בתשלום של הקונה; הקונה עדיין לא חויב, אין לשלוח';
 $_['text_status_paid'] = 'אושרה וחויבה';
-$_['text_status_declined'] = 'נדחתה — לא בוצע חיוב';
+$_['text_status_declined'] = 'נדחתה - לא בוצע חיוב';
 $_['text_status_shipped'] = 'נשלחה';
 $_['text_status_delivered'] = 'נמסרה';
 $_['text_status_cancelled'] = 'בוטל';
@@ -79,7 +79,7 @@ $_['text_options_skipped'] = 'מוצרים עם אפשרות חובה (למשל 
 
 // Product form: right of withdrawal (Directive 2011/83/EU, art. 16)
 $_['entry_withdrawal'] = 'זכות ביטול';
-$_['text_withdrawal_none'] = 'אין — חלה זכות הביטול הרגילה';
+$_['text_withdrawal_none'] = 'אין - חלה זכות הביטול הרגילה';
 $_['help_withdrawal'] = 'רק עבור מוצרים שחל עליהם חריג על פי חוק. הקונים רואים זאת לפני התשלום; שימוש לרעה אסור.';
 $_['text_withdrawal_hygiene'] = 'אטום מטעמי בריאות או היגיינה (לא ניתן להחזיר לאחר פתיחת האריזה)';
 $_['text_withdrawal_custom'] = 'מיוצר לפי מפרט הקונה או מותאם אישית';

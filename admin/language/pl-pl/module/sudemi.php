@@ -6,14 +6,14 @@ $_['heading_title'] = 'sudemi Connector';
 $_['text_extension'] = 'Rozszerzenia';
 $_['text_success'] = 'Ustawienia zostały zapisane.';
 $_['text_edit'] = 'Połącz ten sklep z sudemi';
-$_['text_intro'] = 'Połączenie tego sklepu pozwala asystentowi AI znajdować Twoje produkty i kierować do Ciebie kupujących. Połączenie potwierdzasz w sudemi, zalogowany na własne konto — to rozszerzenie nigdy nie prosi o Twoje hasło do sudemi.';
+$_['text_intro'] = 'Połączenie tego sklepu pozwala asystentowi AI znajdować Twoje produkty i kierować do Ciebie kupujących. Połączenie potwierdzasz w sudemi, zalogowany na własne konto - to rozszerzenie nigdy nie prosi o Twoje hasło do sudemi.';
 $_['text_connected'] = 'Połączono z sudemi.';
 $_['text_not_confirmed'] = 'Jeszcze niepotwierdzone. Otwórz link, potwierdź sklep w sudemi, a następnie sprawdź ponownie.';
 $_['text_disconnected'] = 'Rozłączono.';
 $_['text_synced'] = 'Katalog został wysłany.';
 $_['text_sync_failed'] = 'Nie udało się wysłać katalogu. Żadna oferta nie została wycofana.';
 $_['text_locked'] = 'Twoja nazwa prawna, kraj, status przedsiębiorcy i numer VAT decydują o tym, co przysługuje kupującemu, dlatego są potwierdzane jednorazowo w sudemi i tam się je zmienia. To rozszerzenie nie może ich edytować.';
-$_['text_shop_url_fixed'] = 'Stały. sudemi sprawdziło, że ten sklep odpowiadał spod tego adresu, a oferta informuje kupującego, skąd pochodzi — dlatego zmiana adresu oznacza ponowne połączenie z nowego adresu.';
+$_['text_shop_url_fixed'] = 'Stały. sudemi sprawdziło, że ten sklep odpowiadał spod tego adresu, a oferta informuje kupującego, skąd pochodzi - dlatego zmiana adresu oznacza ponowne połączenie z nowego adresu.';
 $_['text_key_held'] = 'Prywatna część klucza podpisu nigdy nie opuszcza tego serwera i nigdy nie jest wysyłana do sudemi. Nie można jej też wyświetlić w tym miejscu.';
 
 // Entry
@@ -34,8 +34,8 @@ $_['error_token'] = 'Nie udało się zweryfikować tego żądania. Spróbuj pono
 $_['error_sodium'] = 'Na tym serwerze brakuje rozszerzenia sodium. Połączenie potrzebuje go do podpisywania żądań i bez niego nie zadziała. Poproś dostawcę hostingu o jego włączenie.';
 
 // The listing-status panel. These describe a failure the shop owner cannot see from their own
-// admin — products stop being shown when the heartbeat stops arriving, and from this side
-// everything looks fine — so they say what happened and what to do about it.
+// admin - products stop being shown when the heartbeat stops arriving, and from this side
+// everything looks fine - so they say what happened and what to do about it.
 $_['text_listing_status'] = 'Status ofert';
 $_['text_never_reported'] = 'Ten sklep nie zgłosił się jeszcze do sudemi. Dodaj poniższy wpis cron; dopóki nie zacznie działać, zgłoszenia są wysyłane tylko wtedy, gdy ta strona jest otwarta.';
 $_['text_unreachable'] = 'Ten sklep nie mógł połączyć się z sudemi. Jego produkty pozostają widoczne jeszcze przez krótki czas, a potem zostają wstrzymane, ponieważ sudemi nie podaje ceny, której nie może potwierdzić.';
@@ -66,10 +66,10 @@ $_['column_items'] = 'Co sprzedano';
 $_['column_status'] = 'Status';
 $_['column_net'] = 'Otrzymujesz';
 $_['column_customer'] = 'Klient';
-$_['text_status_awaiting_seller'] = 'Czeka na Ciebie — kupujący nie został obciążony';
-$_['text_status_accepted'] = 'Przyjęte — oczekiwanie na pozostałe sklepy objęte płatnością kupującego; kupujący nie został jeszcze obciążony, nie wysyłaj';
+$_['text_status_awaiting_seller'] = 'Czeka na Ciebie - kupujący nie został obciążony';
+$_['text_status_accepted'] = 'Przyjęte - oczekiwanie na pozostałe sklepy objęte płatnością kupującego; kupujący nie został jeszcze obciążony, nie wysyłaj';
 $_['text_status_paid'] = 'Potwierdzone i opłacone';
-$_['text_status_declined'] = 'Odrzucone — nic nie pobrano';
+$_['text_status_declined'] = 'Odrzucone - nic nie pobrano';
 $_['text_status_shipped'] = 'Wysłane';
 $_['text_status_delivered'] = 'Dostarczone';
 $_['text_status_cancelled'] = 'Anulowane';
@@ -79,7 +79,7 @@ $_['text_options_skipped'] = 'Produkty z wymaganą opcją (np. rozmiarem do wybo
 
 // Product form: right of withdrawal (Directive 2011/83/EU, art. 16)
 $_['entry_withdrawal'] = 'Prawo odstąpienia od umowy';
-$_['text_withdrawal_none'] = 'Brak — obowiązuje zwykłe prawo odstąpienia od umowy';
+$_['text_withdrawal_none'] = 'Brak - obowiązuje zwykłe prawo odstąpienia od umowy';
 $_['help_withdrawal'] = 'Tylko dla produktów, które zgodnie z prawem są objęte wyjątkiem. Kupujący widzą to przed zapłatą; nadużycia są niedozwolone.';
 $_['text_withdrawal_hygiene'] = 'Zapieczętowany ze względu na ochronę zdrowia lub higienę (bez zwrotu po otwarciu)';
 $_['text_withdrawal_custom'] = 'Wyprodukowany według specyfikacji kupującego lub spersonalizowany';

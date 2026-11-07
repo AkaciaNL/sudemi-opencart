@@ -6,14 +6,14 @@ $_['heading_title'] = 'sudemi 连接器';
 $_['text_extension'] = '扩展';
 $_['text_success'] = '设置已保存。';
 $_['text_edit'] = '将此店铺连接到 sudemi';
-$_['text_intro'] = '连接此店铺后，AI 助手即可找到您的商品并为您带来买家。您需要登录自己的账户，在 sudemi 上确认连接——本扩展绝不会索要您的 sudemi 密码。';
+$_['text_intro'] = '连接此店铺后，AI 助手即可找到您的商品并为您带来买家。您需要登录自己的账户，在 sudemi 上确认连接，本扩展绝不会索要您的 sudemi 密码。';
 $_['text_connected'] = '已连接到 sudemi。';
 $_['text_not_confirmed'] = '尚未确认。请打开链接，在 sudemi 上确认店铺，然后再次检查。';
 $_['text_disconnected'] = '已断开连接。';
 $_['text_synced'] = '商品目录已发送。';
 $_['text_sync_failed'] = '无法发送商品目录。没有任何商品被下架。';
 $_['text_locked'] = '您的法定名称、国家/地区、经营者身份和增值税号决定了买家享有哪些权益，因此它们只在 sudemi 上确认一次，并在那里修改。本扩展无法编辑这些信息。';
-$_['text_shop_url_fixed'] = '已固定。sudemi 已核实此店铺从该地址作出响应，且商品信息会告诉买家其来源——因此更改地址意味着需要从新地址重新连接。';
+$_['text_shop_url_fixed'] = '已固定。sudemi 已核实此店铺从该地址作出响应，且商品信息会告诉买家其来源，因此更改地址意味着需要从新地址重新连接。';
 $_['text_key_held'] = '签名密钥的私钥部分绝不会离开此服务器，也绝不会发送给 sudemi。它也无法在此显示。';
 
 // Entry
@@ -34,8 +34,8 @@ $_['error_token'] = '无法验证该请求。请从本页面重试。';
 $_['error_sodium'] = '此服务器缺少 sodium 扩展。连接需要它来签名请求，没有它将无法工作。请联系您的主机服务商启用它。';
 
 // The listing-status panel. These describe a failure the shop owner cannot see from their own
-// admin — products stop being shown when the heartbeat stops arriving, and from this side
-// everything looks fine — so they say what happened and what to do about it.
+// admin - products stop being shown when the heartbeat stops arriving, and from this side
+// everything looks fine - so they say what happened and what to do about it.
 $_['text_listing_status'] = '上架状态';
 $_['text_never_reported'] = '此店铺尚未向 sudemi 报告。请添加下方的 cron 条目；在其运行之前，只有在此页面打开时才会发送报告。';
 $_['text_unreachable'] = '此店铺无法连接到 sudemi。其商品会继续上架一小段时间，然后被暂停，因为 sudemi 不会报出无法确认的价格。';
@@ -66,10 +66,10 @@ $_['column_items'] = '售出商品';
 $_['column_status'] = '状态';
 $_['column_net'] = '您的收入';
 $_['column_customer'] = '客户';
-$_['text_status_awaiting_seller'] = '等待您处理——买家未扣款';
-$_['text_status_accepted'] = '已接受——正在等待买家本次付款中的其他店铺；买家尚未扣款，请勿发货';
+$_['text_status_awaiting_seller'] = '等待您处理，买家未扣款';
+$_['text_status_accepted'] = '已接受，正在等待买家本次付款中的其他店铺；买家尚未扣款，请勿发货';
 $_['text_status_paid'] = '已确认并扣款';
-$_['text_status_declined'] = '已拒绝——未扣款';
+$_['text_status_declined'] = '已拒绝，未扣款';
 $_['text_status_shipped'] = '已发货';
 $_['text_status_delivered'] = '已送达';
 $_['text_status_cancelled'] = '已取消';
@@ -79,7 +79,7 @@ $_['text_options_skipped'] = '有 %d 个带必选选项（例如需要选择尺�
 
 // Product form: right of withdrawal (Directive 2011/83/EU, art. 16)
 $_['entry_withdrawal'] = '撤回权';
-$_['text_withdrawal_none'] = '无 — 适用正常的撤回权';
+$_['text_withdrawal_none'] = '无 - 适用正常的撤回权';
 $_['help_withdrawal'] = '仅适用于依法属于例外情形的商品。买家在付款前即可看到；不得滥用。';
 $_['text_withdrawal_hygiene'] = '因健康或卫生原因密封（拆封后不可退货）';
 $_['text_withdrawal_custom'] = '按买家要求定制或个性化';

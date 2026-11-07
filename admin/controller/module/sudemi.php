@@ -463,8 +463,8 @@ class Sudemi extends \Opencart\System\Engine\Controller
     /**
      * The fallback beat, for a shop whose host has no cron entry for us.
      *
-     * Not the supported path — a shop nobody logs into would go quiet and have its listings
-     * paused, correctly — but it means the common case of "installed the extension, never set
+     * Not the supported path - a shop nobody logs into would go quiet and have its listings
+     * paused, correctly - but it means the common case of "installed the extension, never set
      * up cron" keeps working rather than failing silently a week later. Guarded by the interval,
      * and only on this settings page, so no storefront request ever waits on our network.
      */
@@ -539,7 +539,7 @@ class Sudemi extends \Opencart\System\Engine\Controller
                 'net' => number_format((isset($order['your_net_minor']) ? (int) $order['your_net_minor'] : 0) / 100, 2)
                     . ' ' . (isset($order['currency_code']) ? (string) $order['currency_code'] : 'EUR'),
                 // Only present once sudemi has released it, which is only after this shop confirmed.
-                'customer' => isset($order['customer_name']) ? (string) $order['customer_name'] : '—',
+                'customer' => isset($order['customer_name']) ? (string) $order['customer_name'] : ' - ',
             ];
         }
         $awaiting = isset($body['counts']['AWAITING_SELLER']) ? (int) $body['counts']['AWAITING_SELLER'] : 0;

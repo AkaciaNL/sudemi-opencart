@@ -6,14 +6,14 @@ $_['heading_title'] = 'sudemi Connector';
 $_['text_extension'] = 'Extensions';
 $_['text_success'] = 'The settings were saved.';
 $_['text_edit'] = 'Connect this shop to sudemi';
-$_['text_intro'] = 'Connecting this shop lets an AI assistant find your products and send buyers to you. You confirm the connection on sudemi, signed in to your own account — this extension never asks for your sudemi password.';
+$_['text_intro'] = 'Connecting this shop lets an AI assistant find your products and send buyers to you. You confirm the connection on sudemi, signed in to your own account - this extension never asks for your sudemi password.';
 $_['text_connected'] = 'Connected to sudemi.';
 $_['text_not_confirmed'] = 'Not confirmed yet. Open the link, confirm the shop on sudemi, then check again.';
 $_['text_disconnected'] = 'Disconnected.';
 $_['text_synced'] = 'The catalogue was sent.';
 $_['text_sync_failed'] = 'The catalogue could not be sent. Nothing was delisted.';
 $_['text_locked'] = 'Your legal name, country, trader status and VAT number decide what a buyer is owed, so they are confirmed once on sudemi and changed there. This extension cannot edit them.';
-$_['text_shop_url_fixed'] = 'Fixed. sudemi checked that this shop answered from this address, and a listing tells a buyer where it came from — so changing it means connecting again from the new address.';
+$_['text_shop_url_fixed'] = 'Fixed. sudemi checked that this shop answered from this address, and a listing tells a buyer where it came from - so changing it means connecting again from the new address.';
 $_['text_key_held'] = 'The private half of the signing key never leaves this server and is never sent to sudemi. It cannot be shown here either.';
 
 // Entry
@@ -34,8 +34,8 @@ $_['error_token'] = 'That request could not be verified. Try again from this pag
 $_['error_sodium'] = 'This server is missing the sodium extension. The connection needs it to sign requests and will not work without it. Ask your host to enable it.';
 
 // The listing-status panel. These describe a failure the shop owner cannot see from their own
-// admin — products stop being shown when the heartbeat stops arriving, and from this side
-// everything looks fine — so they say what happened and what to do about it.
+// admin - products stop being shown when the heartbeat stops arriving, and from this side
+// everything looks fine - so they say what happened and what to do about it.
 $_['text_listing_status'] = 'Listing status';
 $_['text_never_reported'] = 'This shop has not reported in to sudemi yet. Add the cron entry below; until it runs, reports are only sent while this page is open.';
 $_['text_unreachable'] = 'This shop could not reach sudemi. Its products stay listed for a short while and are then paused, because sudemi will not quote a price it cannot confirm.';
@@ -66,10 +66,10 @@ $_['column_items'] = 'What sold';
 $_['column_status'] = 'Status';
 $_['column_net'] = 'You receive';
 $_['column_customer'] = 'Customer';
-$_['text_status_awaiting_seller'] = 'Waiting for you — buyer not charged';
-$_['text_status_accepted'] = 'Accepted — waiting for the other shops in the buyer\'s payment; buyer not charged yet, do not ship';
+$_['text_status_awaiting_seller'] = 'Waiting for you - buyer not charged';
+$_['text_status_accepted'] = 'Accepted - waiting for the other shops in the buyer\'s payment; buyer not charged yet, do not ship';
 $_['text_status_paid'] = 'Confirmed and charged';
-$_['text_status_declined'] = 'Declined — nothing charged';
+$_['text_status_declined'] = 'Declined - nothing charged';
 $_['text_status_shipped'] = 'Shipped';
 $_['text_status_delivered'] = 'Delivered';
 $_['text_status_cancelled'] = 'Cancelled';
@@ -79,7 +79,7 @@ $_['text_options_skipped'] = '%d product(s) with a required option (for example 
 
 // Product form: right of withdrawal (Directive 2011/83/EU, art. 16)
 $_['entry_withdrawal'] = 'Right of withdrawal';
-$_['text_withdrawal_none'] = 'None — normal right of withdrawal applies';
+$_['text_withdrawal_none'] = 'None - normal right of withdrawal applies';
 $_['help_withdrawal'] = 'Only for products that legally fall under an exception. Buyers see it before paying; misuse is not allowed.';
 $_['text_withdrawal_hygiene'] = 'Sealed for health or hygiene reasons (not returnable once unsealed)';
 $_['text_withdrawal_custom'] = 'Made to the buyer’s specifications or personalised';
