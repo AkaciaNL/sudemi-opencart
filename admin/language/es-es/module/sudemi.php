@@ -12,6 +12,7 @@ $_['text_not_confirmed'] = 'Aún no está confirmado. Abra el enlace, confirme l
 $_['text_disconnected'] = 'Desconectado.';
 $_['text_synced'] = 'Se ha enviado el catálogo.';
 $_['text_sync_failed'] = 'No se ha podido enviar el catálogo. No se ha retirado nada.';
+$_['text_sync_held'] = 'La sincronización del catálogo está en espera: retiraría de sudemi muchos productos publicados, así que no se ha cambiado nada. Si esos productos se han eliminado de verdad de esta tienda, contacta con el soporte de sudemi (support@sudemi.com).';
 $_['text_locked'] = 'Su razón social, país, condición de empresario o profesional y número de IVA determinan lo que se le debe al comprador, por lo que se confirman una sola vez en sudemi y se modifican allí. Esta extensión no puede editarlos.';
 $_['text_shop_url_fixed'] = 'Fija. sudemi comprobó que esta tienda respondía desde esta dirección, y cada anuncio indica al comprador de dónde procede - por eso, cambiarla supone volver a conectar desde la nueva dirección.';
 $_['text_key_held'] = 'La parte privada de la clave de firma nunca sale de este servidor y nunca se envía a sudemi. Tampoco puede mostrarse aquí.';

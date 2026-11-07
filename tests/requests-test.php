@@ -335,7 +335,7 @@ foreach ( array( 'admin/controller/event.php', 'catalog/controller/event.php' ) 
 	$source = (string) file_get_contents( __DIR__ . '/../' . $file );
 	$guard  = strpos( $source, 'isCancelledOnSudemi($orderId)' );
 	check( "$file: the guard runs before refund()/cancel() are sent", false !== $guard
-		&& $guard < strpos( $source, "->refund(\$sudemiId" ) && $guard < strpos( $source, "->cancel(\$sudemiId" ) );
+		&& $guard < strpos( $source, "->refund(\$sudemiId" ) && $guard < strpos( $source, "->cancelFromShop(\$sudemiId" ) );
 }
 
 echo $failures ? "\n$failures check(s) failed\n" : "\nall checks passed\n";

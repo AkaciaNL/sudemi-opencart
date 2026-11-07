@@ -168,16 +168,35 @@ class Heartbeat
             $this->orders->handleSettled($body['settled_orders']);
         }
 
+        if ($this->orders !== null) {
+            // Local orders still unconfirmed that this beat did not mention: an accept whose
+            // answer was lost or not given (5xx, 429) is asked again, so a paid order is never
+            // left unconfirmed and a released one gets its stock back. Then the shipped and
+            // delivered reports (and shop cancellations) that did not get through before.
+            $skip = array();
+            foreach (array('pending_orders', 'settled_orders') as $list) {
+                if (!empty($body[$list]) && is_array($body[$list])) {
+                    foreach ($body[$list] as $entry) {
+                        if (is_array($entry) && !empty($entry['order_id'])) {
+                            $skip[] = (string) $entry['order_id'];
+                        }
+                    }
+                }
+            }
+            $this->orders->reconcile($skip);
+            $this->orders->drainCalls();
+        }
+
         // sudemi and this shop disagree about what the catalogue is, so something did not
         // arrive. A full sync is the only answer that does not involve guessing which product.
         if (!empty($body['full_sync_requested'])) {
             $this->logger->info('sudemi asked for a full sync.');
             $this->store->delete(Withdrawal::SETTING_RESYNC_DUE);
-            $this->sync->runFull();
+            $this->syncAnchored();
         } elseif ($this->store->read(Withdrawal::SETTING_RESYNC_DUE)) {
             // A product's right-of-withdrawal setting changed: price pushes do not carry it.
             $this->store->delete(Withdrawal::SETTING_RESYNC_DUE);
-            $this->sync->runFull();
+            $this->syncAnchored();
         }
 
         return true;
@@ -216,6 +235,34 @@ class Heartbeat
      * Monotonic and never reset: the value is meaningless, only its movement matters. Reset it
      * and an old revision could be reproduced, which is exactly the agreement we must not fake.
      */
+    /**
+     * A full sync, followed at once by a heartbeat carrying the revision taken before the sync
+     * read the catalogue.
+     *
+     * After a commit sudemi forgets the revision it held and adopts the next one it is told. If
+     * that were the next regular beat, a product disabled in the minutes between the sync and
+     * that beat would be adopted as already synced and stay listed. Sending the revision the
+     * sync started from means anything changed since makes the next beat disagree, and sudemi
+     * asks for another sync.
+     *
+     * @return bool|string what Sync::runFull returned
+     */
+    public function syncAnchored()
+    {
+        $anchor = $this->catalogue->revision($this->changes());
+        $result = $this->sync->runFull();
+        if ($result === true && $anchor !== null) {
+            $this->client->postSigned('/integration/v1/heartbeat', [
+                'catalogueRevision' => $anchor,
+                'productCount' => $this->catalogue->productCount(),
+                'intervalSeconds' => self::DEFAULT_INTERVAL,
+                'pluginVersion' => Client::VERSION,
+            ]);
+        }
+
+        return $result;
+    }
+
     public function changes()
     {
         return (int) $this->store->read(self::SETTING_CHANGES);

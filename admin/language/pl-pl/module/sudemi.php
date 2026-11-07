@@ -12,6 +12,7 @@ $_['text_not_confirmed'] = 'Jeszcze niepotwierdzone. Otwórz link, potwierdź sk
 $_['text_disconnected'] = 'Rozłączono.';
 $_['text_synced'] = 'Katalog został wysłany.';
 $_['text_sync_failed'] = 'Nie udało się wysłać katalogu. Żadna oferta nie została wycofana.';
+$_['text_sync_held'] = 'Synchronizacja katalogu jest wstrzymana: usunęłaby z sudemi wiele wystawionych produktów, więc nic nie zostało zmienione. Jeśli te produkty naprawdę zostały usunięte z tego sklepu, skontaktuj się z pomocą sudemi (support@sudemi.com).';
 $_['text_locked'] = 'Twoja nazwa prawna, kraj, status przedsiębiorcy i numer VAT decydują o tym, co przysługuje kupującemu, dlatego są potwierdzane jednorazowo w sudemi i tam się je zmienia. To rozszerzenie nie może ich edytować.';
 $_['text_shop_url_fixed'] = 'Stały. sudemi sprawdziło, że ten sklep odpowiadał spod tego adresu, a oferta informuje kupującego, skąd pochodzi - dlatego zmiana adresu oznacza ponowne połączenie z nowego adresu.';
 $_['text_key_held'] = 'Prywatna część klucza podpisu nigdy nie opuszcza tego serwera i nigdy nie jest wysyłana do sudemi. Nie można jej też wyświetlić w tym miejscu.';

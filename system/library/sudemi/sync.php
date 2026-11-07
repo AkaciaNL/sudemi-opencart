@@ -30,6 +30,7 @@ class Sync
         $this->catalogue = $catalogue;
     }
 
+    /** @return bool|string true, false, or 'held' (sent; sudemi held the commit and changed nothing) */
     public function runFull()
     {
         if (!$this->client->isConnected()) {
@@ -77,6 +78,18 @@ class Sync
             $this->logger->warn('The catalogue was sent but the sync could not be committed.');
 
             return false;
+        }
+
+        if (isset($committed['body']['status']) && $committed['body']['status'] === 'held') {
+            // Sent, but the commit would have delisted a large share of the live catalogue, so
+            // sudemi held it and changed nothing. Not a success to log as one.
+            $this->logger->warn('The catalogue sync is on hold: it would remove '
+                . (isset($committed['body']['would_delist']) ? (int) $committed['body']['would_delist'] : 0)
+                . ' of ' . (isset($committed['body']['live_products']) ? (int) $committed['body']['live_products'] : 0)
+                . ' listed products from sudemi, so nothing was changed. If those products really were '
+                . 'removed from this shop, contact sudemi support (support@sudemi.com).');
+
+            return 'held';
         }
 
         $this->logger->info('Synced ' . $sent . ' products.');

@@ -23,13 +23,18 @@ class Queue
     /** A cap, because an unbounded setting row is a way to make an admin page unloadable. */
     const MAX_ENTRIES = 2000;
 
+    /** Heartbeat::SETTING_CHANGES, named here so the queue does not need the heartbeat loaded. */
+    const SETTING_CHANGES = 'sudemi_change_counter';
+
     private $store;
     private $client;
+    private $logger;
 
-    public function __construct($store, Client $client)
+    public function __construct($store, Client $client, $logger = null)
     {
         $this->store = $store;
         $this->client = $client;
+        $this->logger = $logger;
     }
 
     public function enqueue(array $update)
@@ -84,21 +89,49 @@ class Queue
             ['updates' => array_values($batch)]
         );
 
-        if ($response === null || $response['status'] !== 200) {
-            // Still unreachable. Nothing is dropped and the next beat tries again.
+        $status = is_array($response) ? (int) $response['status'] : 0;
+        if (in_array($status, [400, 403, 413, 422], true)) {
+            // A definitive refusal of the whole batch (malformed, a suspended shop, too large).
+            // Sending the same batch again on every beat can never succeed, so it is dropped, and
+            // the change counter moves so the revision disagrees and sudemi asks for a full sync,
+            // which sends every price afresh once sudemi accepts catalogue data again.
+            $this->removeSent($batch);
+            $this->store->write(self::SETTING_CHANGES, (int) $this->store->read(self::SETTING_CHANGES) + 1);
+            if ($this->logger !== null) {
+                $this->logger->error('sudemi refused ' . count($batch) . ' queued price update(s) (HTTP '
+                    . $status . '). They were dropped; a full sync will send the prices again.');
+            }
+
+            return 0;
+        }
+        if ($status !== 200) {
+            // Still unreachable, or not answered (5xx, 429). Nothing is dropped and the next beat
+            // tries again.
             return 0;
         }
 
-        // Only what was sent is cleared: anything a save added while this request was in flight
-        // stays queued rather than being discarded unsent.
-        $remaining = array_diff_key($this->all(), $batch);
+        $this->removeSent($batch);
+
+        return isset($response['body']['applied']) ? (int) $response['body']['applied'] : 0;
+    }
+
+    /**
+     * Clears what was sent, but only entries still holding the value that was sent: a save that
+     * queued a newer price for the same product while the request was in flight keeps it queued.
+     */
+    private function removeSent(array $batch)
+    {
+        $remaining = $this->all();
+        foreach ($batch as $key => $sent) {
+            if (array_key_exists($key, $remaining) && $remaining[$key] == $sent) {
+                unset($remaining[$key]);
+            }
+        }
         if (empty($remaining)) {
             $this->store->delete(self::SETTING);
         } else {
             $this->store->write(self::SETTING, json_encode($remaining));
         }
-
-        return isset($response['body']['applied']) ? (int) $response['body']['applied'] : 0;
     }
 
     public function forget()

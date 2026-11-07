@@ -30,19 +30,126 @@ class Orders
     /** The history note on a local order cancelled because the buyer cancelled it on sudemi. */
     const NOTE_CANCELLED_BY_BUYER = 'Cancelled by the buyer on sudemi before shipping; the buyer has been refunded in full';
 
+    /** Shipped/delivered (and shop cancellations) that did not get through, retried each beat. */
+    const SETTING_CALLS = 'sudemi_order_calls';
+    const CALLS_MAX = 500;
+    const CALLS_PER_BEAT = 25;
+    const CALLS_MAX_AGE = 1209600; // 14 days
+
+    /** Unconfirmed local orders re-asked per beat, and when to stop accepting and ask with reject. */
+    const RECONCILE_PER_BEAT = 25;
+    const RECONCILE_REJECT_AFTER = 259200; // 3 days: sudemi's answer window is about two
+    const RECONCILE_MAX_AGE_DAYS = 14;
+
+    const UUID = '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}';
+
     private $db;
     private $config;
     private $client;
     private $logger;
     private $prefix;
+    private $store;
 
-    public function __construct($db, $config, Client $client, Logger $logger)
+    public function __construct($db, $config, Client $client, Logger $logger, $store = null)
     {
         $this->db = $db;
         $this->config = $config;
         $this->client = $client;
         $this->logger = $logger;
         $this->prefix = DB_PREFIX;
+        $this->store = $store;
+    }
+
+    /**
+     * What an answer to /accept means for the local order.
+     *
+     * Only a definitive answer decides. 'paid' (captured now, or an earlier accept landed),
+     * 'waiting' (accepted, the money is taken once the other shops in the payment answer),
+     * 'declined' (released, nothing charged), 'cancelled' (cancelled on sudemi, any payment
+     * refunded), or 'retry': unreachable, 5xx, 429, 401, 403, any 409 (site_mismatch,
+     * authorisation_lapsed) or an answer without a known order_status. A retry never cancels or
+     * restocks anything: the buyer may already have been charged.
+     *
+     * @param array|null $response as Client returns it
+     *
+     * @return string paid|waiting|declined|cancelled|retry
+     */
+    public static function acceptOutcome($response)
+    {
+        $body = self::bodyOf($response);
+        if ($body === null) {
+            return 'retry';
+        }
+        if ((int) $response['status'] === 200 && isset($body['status']) && $body['status'] === 'ok') {
+            return isset($body['payment']) && $body['payment'] === 'waiting_for_other_shops' ? 'waiting' : 'paid';
+        }
+
+        return self::resolvedOutcome($response, $body);
+    }
+
+    /** The same for an answer to /reject: ok means released, nothing charged. */
+    public static function rejectOutcome($response)
+    {
+        $body = self::bodyOf($response);
+        if ($body === null) {
+            return 'retry';
+        }
+        if ((int) $response['status'] === 200 && isset($body['status']) && $body['status'] === 'ok') {
+            return 'declined';
+        }
+
+        return self::resolvedOutcome($response, $body);
+    }
+
+    private static function bodyOf($response)
+    {
+        if (!is_array($response) || !isset($response['status'])) {
+            return null;
+        }
+
+        return isset($response['body']) && is_array($response['body']) ? $response['body'] : array();
+    }
+
+    private static function resolvedOutcome($response, array $body)
+    {
+        $status = (int) $response['status'];
+        if ($status === 404 && isset($body['error']) && $body['error'] === 'no_such_order') {
+            // No such order for this shop at all: nothing was ever charged for it here.
+            return 'declined';
+        }
+        if ($status !== 200 || !isset($body['status']) || $body['status'] !== 'already_resolved') {
+            return 'retry';
+        }
+        $orderStatus = isset($body['order_status']) ? (string) $body['order_status'] : '';
+        if (in_array($orderStatus, array('PAID', 'SHIPPED', 'DELIVERED'), true)) {
+            return 'paid';
+        }
+        if ($orderStatus === 'ACCEPTED') {
+            return 'waiting';
+        }
+        if ($orderStatus === 'DECLINED') {
+            return 'declined';
+        }
+        if ($orderStatus === 'CANCELLED' || $orderStatus === 'REFUNDED') {
+            return 'cancelled';
+        }
+
+        return 'retry';
+    }
+
+    /** "HTTP 503 (message)" or "unreachable", for log lines. */
+    private static function describe($response)
+    {
+        if (!is_array($response) || !isset($response['status'])) {
+            return 'sudemi could not be reached';
+        }
+        $body = isset($response['body']) && is_array($response['body']) ? $response['body'] : array();
+        $what = isset($body['error']) ? (string) $body['error'] : (isset($body['status']) ? (string) $body['status'] : '');
+        if (isset($body['order_status'])) {
+            $what .= ' ' . (string) $body['order_status'];
+        }
+
+        return 'HTTP ' . (int) $response['status'] . ($what !== '' ? ' ' . trim($what) : '');
     }
 
     /**
@@ -85,11 +192,19 @@ class Orders
     {
         $sudemiId = (string) $pending['order_id'];
 
-        $existing = $this->findLocalOrder($sudemiId);
-        if ($existing) {
+        $local = $this->localRow($sudemiId);
+        if ($local !== null) {
+            if ($local['released'] || in_array($local['status'], array(self::STATUS_CANCELED, self::STATUS_REFUNDED), true)) {
+                // Voided here (released, or cancelled by the merchant). Accepting it now would
+                // charge the buyer for goods whose stock was already put back: answer no instead.
+                $this->rejectLocal($sudemiId, $local, 'cancelled in the shop');
+
+                return;
+            }
             // A previous run got this far and the answer was lost in transit. Re-sending is safe:
-            // sudemi answers already_resolved if it landed the first time.
-            $this->accept($sudemiId, $existing, $pending);
+            // sudemi answers already_resolved with how the order ended if it landed the first time.
+            $this->accept($sudemiId, $local['id']);
+
             return;
         }
 
@@ -116,68 +231,210 @@ class Orders
             );
             return;
         }
-        $this->accept($sudemiId, $orderId, $pending);
+        $this->accept($sudemiId, $orderId);
     }
 
-    /** Sends the acceptance, and undoes the local order if it is refused. */
-    private function accept($sudemiId, $orderId, array $pending)
+    /** Sends the acceptance and applies only a definitive answer; anything else is retried. */
+    private function accept($sudemiId, $orderId)
     {
         $response = $this->client->postSigned(
             '/integration/v1/orders/' . rawurlencode($sudemiId) . '/accept',
             array()
         );
+        $this->applyOutcome(self::acceptOutcome($response), $sudemiId, $orderId, $response);
+    }
 
-        $status = isset($response['status']) ? (int) $response['status'] : 0;
-        $body = isset($response['body']) ? $response['body'] : array();
+    /**
+     * Answers no for a local order this shop voided or that never got an answer in time, and
+     * applies how sudemi says the order ended.
+     */
+    private function rejectLocal($sudemiId, array $local, $reason)
+    {
+        $response = $this->client->postSigned(
+            '/integration/v1/orders/' . rawurlencode($sudemiId) . '/reject',
+            array('reason' => $reason)
+        );
+        $outcome = self::rejectOutcome($response);
+        if ($outcome === 'paid' && ($local['status'] !== self::STATE_INCOMPLETE || $local['released'])) {
+            // The buyer was charged (an earlier accept landed) but the order is voided here.
+            $this->logger->error(sprintf(
+                'sudemi order %s is paid, but local order %d is cancelled here. Ship it, or set it to Canceled to refund the buyer through sudemi.',
+                $sudemiId,
+                $local['id']
+            ));
 
-        if ($status === 200 && isset($body['status']) && $body['status'] === 'ok'
-            && isset($body['payment']) && $body['payment'] === 'waiting_for_other_shops') {
-            // Accepted, but not paid. The buyer paid several shops in one payment and a card
-            // authorisation can be captured only once, so sudemi takes the money when the last of
-            // them has answered and says so in settled_orders on a later heartbeat. Until then
-            // the order stays unconfirmed and has no address: shipping it now could mean shipping
-            // goods nobody ever pays for.
+            return $outcome;
+        }
+        $this->applyOutcome($outcome, $sudemiId, $local['id'], $response);
+
+        return $outcome;
+    }
+
+    /**
+     * Applies a definitive outcome to the local order; 'retry' leaves order and stock untouched.
+     */
+    private function applyOutcome($outcome, $sudemiId, $orderId, $response)
+    {
+        $local = $this->rowById($orderId);
+        if ($local === null) {
+            return;
+        }
+        $open = $local['status'] === self::STATE_INCOMPLETE && !$local['released'];
+
+        if ($outcome === 'paid') {
+            if (!$open) {
+                return;
+            }
+            // The address arrives only now. sudemi withholds it while the order is still being
+            // decided, because answering "do I have stock" needs nobody's address.
+            $this->fillCustomer($orderId, $sudemiId);
+            $this->setStatus($orderId, (int) $this->config->get('config_order_status_id'));
+            $this->logger->info(sprintf('Confirmed sudemi order %s as order %d.', $sudemiId, $orderId));
+
+            return;
+        }
+        if ($outcome === 'waiting') {
+            // Accepted, but not paid: the buyer paid several shops in one payment, and sudemi takes
+            // the money once every shop has answered (settled_orders says so). Until then the order
+            // stays unconfirmed and has no address.
             $this->logger->info(sprintf(
                 'Accepted sudemi order %s (order %d). Not paid yet: waiting for the other shops in the '
                 . 'same payment. Do NOT ship until it is confirmed.',
                 $sudemiId,
                 $orderId
             ));
+
             return;
         }
-
-        if ($status === 200 && isset($body['status']) && $body['status'] === 'ok') {
-            // The address arrives only now. sudemi withholds it while the order is still being
-            // decided, because answering "do I have stock" needs nobody's address -- so this is
-            // the first moment there is a customer to put on the order at all.
-            $this->fillCustomer($orderId, $sudemiId);
-            $this->setStatus($orderId, (int) $this->config->get('config_order_status_id'));
-            $this->logger->info(sprintf('Confirmed sudemi order %s as order %d.', $sudemiId, $orderId));
-            return;
-        }
-
-        if ($status === 0) {
-            // Unreachable rather than refused. The local order stays and the next heartbeat
-            // carries the same pending order, at which point the branch above re-sends.
+        if ($outcome === 'declined' || ($outcome === 'cancelled' && $local['status'] === self::STATE_INCOMPLETE)) {
+            if ($local['released']) {
+                return;
+            }
+            // Never charged (or refunded in full): the order must not survive, and the stock it
+            // reserved goes back.
+            $this->release($orderId);
             $this->logger->warn(sprintf(
-                'Could not reach sudemi to confirm order %s. Will try again on the next heartbeat.',
-                $sudemiId
+                'sudemi order %s ended as %s (%s). Nothing is owed for it: stock restored, do not ship it.',
+                $sudemiId,
+                $outcome,
+                self::describe($response)
             ));
+
+            return;
+        }
+        if ($outcome === 'cancelled') {
+            $this->cancelledOnSudemi($orderId, $sudemiId, $local['status']);
+
             return;
         }
 
-        // Refused: the window closed, or the authorisation lapsed before this shop answered. No
-        // money was taken, so the local order must not survive - and the stock it reserved has to
-        // go back, or this shop slowly loses inventory to orders that never happened.
-        $reason = isset($body['message']) ? (string) $body['message'] : sprintf('HTTP %d', $status);
-        $this->restock($pending);
-        $this->setStatus($orderId, 0);
+        // Not answered (unreachable, 5xx, 429, 401, 403, 409...). The buyer may already be
+        // charged, so the order and its stock stay exactly as they are; the next heartbeat asks again.
         $this->logger->warn(sprintf(
-            'sudemi refused the confirmation of order %s: %s. The local order was voided and '
-            . 'stock restored.',
+            'sudemi order %s (order %d): no definitive answer (%s). The order stays as it is; will try again on the next heartbeat.',
             $sudemiId,
-            $reason
+            $orderId,
+            self::describe($response)
         ));
+    }
+
+    /** Stock back and the order marked released, once (a released order is never restocked again). */
+    private function release($orderId)
+    {
+        $this->restockOrder($orderId);
+        $this->db->query(
+            "UPDATE " . $this->prefix . "order
+                SET comment = CONCAT(comment, ' (released)'), date_modified = NOW()
+              WHERE order_id = '" . (int) $orderId . "'"
+        );
+    }
+
+    /**
+     * Re-asks sudemi about local orders still unconfirmed here that this beat did not mention.
+     *
+     * An accept whose answer was lost, or that got a 5xx/429, is otherwise only retried while
+     * the order is still in pending_orders; once sudemi's window closes (or the money was
+     * captured) it never comes back, and the order would sit here unconfirmed with its stock
+     * reserved forever. Re-sending accept is safe: sudemi answers how the order ended. After
+     * three days (past the answer window) it asks with reject, which a suspended shop may
+     * still send and which also returns the final order_status.
+     *
+     * @param string[] $skip sudemi order ids this beat already handled
+     */
+    public function reconcile(array $skip = array())
+    {
+        $rows = $this->db->query(
+            "SELECT order_id, comment, TIMESTAMPDIFF(SECOND, date_added, NOW()) AS age
+               FROM " . $this->prefix . "order
+              WHERE order_status_id = '0' AND comment LIKE 'sudemi:%'
+                AND date_added > DATE_SUB(NOW(), INTERVAL " . (int) self::RECONCILE_MAX_AGE_DAYS . " DAY)
+              ORDER BY order_id LIMIT 200"
+        );
+        $done = 0;
+        foreach ($rows->rows as $row) {
+            if ($done >= self::RECONCILE_PER_BEAT) {
+                break;
+            }
+            if (!preg_match('/^' . preg_quote(self::COMMENT_PREFIX, '/') . '(' . self::UUID . ')$/', (string) $row['comment'], $m)
+                || in_array($m[1], $skip, true)) {
+                continue;
+            }
+            ++$done;
+            $sudemiId = $m[1];
+            $orderId = (int) $row['order_id'];
+            try {
+                if ((int) $row['age'] > self::RECONCILE_REJECT_AFTER) {
+                    $this->rejectLocal($sudemiId, array('id' => $orderId, 'status' => self::STATE_INCOMPLETE, 'released' => false),
+                        'no confirmation from sudemi in time');
+                } else {
+                    $this->accept($sudemiId, $orderId);
+                }
+            } catch (\Exception $e) {
+                $this->logger->error('Could not re-check sudemi order ' . $sudemiId . ': ' . $e->getMessage());
+            }
+        }
+    }
+
+    /**
+     * A sudemi order cancelled in the shop: /reject while it is not paid yet (accepted and
+     * waiting for other shops, or never answered), /cancel with a full refund once it is.
+     * sudemi decides which applies: a reject on a paid order answers already_resolved PAID and
+     * changes nothing, and only then is /cancel sent.
+     *
+     * @return bool whether sudemi gave a definitive answer (false: queued for the next beat)
+     */
+    public function cancelFromShop($sudemiId, $orderId, $reason, $queue = true)
+    {
+        $response = $this->client->postSigned(
+            '/integration/v1/orders/' . rawurlencode($sudemiId) . '/reject',
+            array('reason' => $reason)
+        );
+        $outcome = self::rejectOutcome($response);
+        if ($outcome === 'paid') {
+            $this->cancel($sudemiId, $reason);
+
+            return true;
+        }
+        if ($outcome === 'retry') {
+            $this->logger->warn('sudemi order ' . $sudemiId . ': the cancellation could not be sent ('
+                . self::describe($response) . '). Will try again on the next heartbeat.');
+            if ($queue) {
+                $this->enqueueCall($sudemiId, 'cancel_shop', array('reason' => $reason, 'order' => (int) $orderId));
+            }
+
+            return false;
+        }
+        if ($outcome === 'declined') {
+            // Never charged. OpenCart does not restock an order that never reached a processing
+            // status, so the reservation this extension took is put back here, once.
+            $local = $this->rowById($orderId);
+            if ($local !== null && !$local['released']) {
+                $this->release($orderId);
+            }
+            $this->logger->info('sudemi order ' . $sudemiId . ' was released: the buyer is not charged.');
+        }
+
+        return true;
     }
 
     /**
@@ -298,7 +555,7 @@ class Orders
                     reward = '0'"
             );
             // Taken now, with the order, so this storefront cannot sell the same unit while the
-            // confirmation is in flight. Put back by accept() if sudemi refuses. Guarded by
+            // confirmation is in flight. Put back only when sudemi says the order ended unpaid. Guarded by
             // subtract so a product the merchant does not track is left alone.
             $this->db->query(
                 "UPDATE " . $this->prefix . "product
@@ -372,22 +629,6 @@ class Orders
         );
     }
 
-    private function restock(array $pending)
-    {
-        $lines = isset($pending['lines']) && is_array($pending['lines']) ? $pending['lines'] : array();
-        foreach ($lines as $line) {
-            $productId = isset($line['external_id']) ? (int) $line['external_id'] : 0;
-            $quantity = isset($line['quantity']) ? (int) $line['quantity'] : 1;
-            if ($productId > 0) {
-                $this->db->query(
-                    "UPDATE " . $this->prefix . "product
-                        SET quantity = quantity + '" . $quantity . "'
-                      WHERE product_id = '" . $productId . "' AND subtract = '1'"
-                );
-            }
-        }
-    }
-
     /**
      * Works through the settled_orders block of a heartbeat.
      *
@@ -454,13 +695,8 @@ class Orders
             // stock the order reserved goes back, the order stays voided, and it is never shipped.
             $reason = !empty($settled['declined_reason']) ? (string) $settled['declined_reason']
                 : ($state === 'DECLINED' ? 'reason not given' : 'cancelled on sudemi; any payment was refunded');
-            $this->restockOrder($orderId);
-            // Marked so a second beat does not restock again: the comment no longer matches.
-            $this->db->query(
-                "UPDATE " . $this->prefix . "order
-                    SET comment = CONCAT(comment, ' (released)'), date_modified = NOW()
-                  WHERE order_id = '" . (int) $orderId . "'"
-            );
+            // Marked released, so a second beat does not restock again.
+            $this->release($orderId);
             $this->logger->warn(sprintf(
                 'sudemi order %s was released after all: %s. Stock restored; do not ship it.',
                 $sudemiId,
@@ -619,13 +855,20 @@ class Orders
         if (!$query->num_rows) {
             return null;
         }
-        $comment = (string) $query->row['comment'];
-        if (strpos($comment, self::COMMENT_PREFIX) !== 0) {
+        return self::idFromComment((string) $query->row['comment']);
+    }
+
+    /**
+     * The sudemi order id in an order comment ('sudemi:<uuid>', possibly followed by
+     * ' (released)'), or null. Only the uuid: the suffix once ended up in API paths.
+     */
+    public static function idFromComment($comment)
+    {
+        if (!preg_match('/^' . preg_quote(self::COMMENT_PREFIX, '/') . '\s*(' . self::UUID . ')/', (string) $comment, $m)) {
             return null;
         }
-        $id = trim(substr($comment, strlen(self::COMMENT_PREFIX)));
 
-        return $id === '' ? null : $id;
+        return $m[1];
     }
 
     /**
@@ -640,30 +883,215 @@ class Orders
         $body = array();
         if ('shipped' === $event) {
             // OpenCart core keeps no tracking field. Shipping extensions add their own, and the
-            // shipping_method is the only thing core records -- so that is sent as the carrier
+            // shipping_method is the only thing core records -- so its name is sent as the carrier
             // and the code is left out rather than invented. sudemi says "not given" rather than
             // withholding the dispatch notice over a missing field.
             $query = $this->db->query(
                 "SELECT shipping_method FROM " . $this->prefix . "order
                   WHERE order_id = '" . (int) $orderId . "' LIMIT 1"
             );
-            $carrier = $query->num_rows ? (string) $query->row['shipping_method'] : '';
-            $body = array('carrier' => $carrier === '' ? null : $carrier, 'trackingCode' => null);
+            $carrier = $query->num_rows ? self::carrierName((string) $query->row['shipping_method']) : null;
+            $body = array('carrier' => $carrier, 'trackingCode' => null);
         }
 
+        $this->sendReport($sudemiId, $event, $body, true);
+    }
+
+    /**
+     * OpenCart 4 stores shipping_method as JSON ({"name": ..., "code": ...}); the buyer should see
+     * the name, not the JSON. A plain string (OpenCart 3 style) is sent as it is.
+     *
+     * @return string|null
+     */
+    public static function carrierName($raw)
+    {
+        $raw = trim((string) $raw);
+        if ($raw === '') {
+            return null;
+        }
+        $decoded = json_decode($raw, true);
+        if (is_array($decoded)) {
+            $name = isset($decoded['name']) && is_string($decoded['name']) ? trim($decoded['name']) : '';
+
+            return $name === '' ? null : $name;
+        }
+
+        return $raw;
+    }
+
+    /**
+     * Whether a fulfilment call should be tried again: not answered (unreachable, 5xx, 429), not
+     * accepted for now (401, 403, 409 site_mismatch) or 409 not_paid (an accepted order that is
+     * still waiting for the other shops in its payment).
+     */
+    public static function shouldRetry($response)
+    {
+        if (!is_array($response) || !isset($response['status'])) {
+            return true;
+        }
+        $status = (int) $response['status'];
+        if ($status >= 500 || in_array($status, array(401, 403, 429), true)) {
+            return true;
+        }
+        $error = isset($response['body']['error']) ? (string) $response['body']['error'] : '';
+
+        return $status === 409 && in_array($error, array('site_mismatch', 'not_paid'), true);
+    }
+
+    /** @return string 'ok', 'retry' or 'failed' */
+    private function sendReport($sudemiId, $event, array $body, $queue)
+    {
         $response = $this->client->postSigned(
             '/integration/v1/orders/' . rawurlencode($sudemiId) . '/' . $event,
             $body
         );
-        if ($response === null) {
-            $this->logger->warn('Could not reach sudemi to report ' . $event . ' for ' . $sudemiId . '.');
+        if (is_array($response) && (int) $response['status'] === 200) {
+            $this->logger->info('Reported ' . $event . ' for sudemi order ' . $sudemiId . '.');
 
-            return;
+            return 'ok';
         }
-        $this->logger->info('Reported ' . $event . ' for sudemi order ' . $sudemiId . '.');
+        if (self::shouldRetry($response)) {
+            $this->logger->warn('Could not report ' . $event . ' for sudemi order ' . $sudemiId . ' ('
+                . self::describe($response) . '). Will try again on the next heartbeat.');
+            if ($queue) {
+                $this->enqueueCall($sudemiId, $event, $body);
+            }
+
+            return 'retry';
+        }
+        $this->logger->error('sudemi refused ' . $event . ' for order ' . $sudemiId . ' ('
+            . self::describe($response) . ').');
+
+        return 'failed';
     }
 
-    /** @return int|null The order_id already built for this sudemi order, if there is one. */
+    private function calls()
+    {
+        if ($this->store === null) {
+            return array();
+        }
+        $raw = $this->store->read(self::SETTING_CALLS);
+        $decoded = is_string($raw) ? json_decode($raw, true) : $raw;
+
+        return is_array($decoded) ? $decoded : array();
+    }
+
+    private function saveCalls(array $calls)
+    {
+        if ($this->store === null) {
+            return;
+        }
+        if (empty($calls)) {
+            $this->store->delete(self::SETTING_CALLS);
+        } else {
+            $this->store->write(self::SETTING_CALLS, json_encode($calls));
+        }
+    }
+
+    /** Writes down an order call that did not get through, newest per order and call. */
+    private function enqueueCall($sudemiId, $call, array $body)
+    {
+        if ($this->store === null) {
+            return;
+        }
+        $calls = $this->calls();
+        $key = $sudemiId . '|' . $call;
+        $since = isset($calls[$key]['since']) ? (int) $calls[$key]['since'] : time();
+        unset($calls[$key]);
+        $calls[$key] = array('order_id' => (string) $sudemiId, 'call' => (string) $call, 'body' => $body, 'since' => $since);
+        if (count($calls) > self::CALLS_MAX) {
+            $calls = array_slice($calls, -self::CALLS_MAX, null, true);
+        }
+        $this->saveCalls($calls);
+    }
+
+    /** @return array the order calls waiting for a retry (for the admin page and tests) */
+    public function pendingCalls()
+    {
+        return $this->calls();
+    }
+
+    /** Sends the order calls that did not get through before; run on every heartbeat. */
+    public function drainCalls()
+    {
+        $calls = $this->calls();
+        if (empty($calls)) {
+            return;
+        }
+        $done = 0;
+        foreach ($calls as $key => $entry) {
+            if ($done >= self::CALLS_PER_BEAT) {
+                break;
+            }
+            $sudemiId = isset($entry['order_id']) ? (string) $entry['order_id'] : '';
+            $call = isset($entry['call']) ? (string) $entry['call'] : '';
+            $body = isset($entry['body']) && is_array($entry['body']) ? $entry['body'] : array();
+            if (!preg_match('/^' . self::UUID . '$/', $sudemiId)) {
+                unset($calls[$key]);
+                continue;
+            }
+            if (time() - (isset($entry['since']) ? (int) $entry['since'] : 0) > self::CALLS_MAX_AGE) {
+                $this->logger->error('Gave up reporting ' . $call . ' for sudemi order ' . $sudemiId
+                    . ' after 14 days. Report it in the sudemi portal.');
+                unset($calls[$key]);
+                continue;
+            }
+            ++$done;
+            if ($call === 'cancel_shop') {
+                $orderId = isset($body['order']) ? (int) $body['order'] : 0;
+                $reason = isset($body['reason']) ? (string) $body['reason'] : 'Cancelled by the shop';
+                if ($this->cancelFromShop($sudemiId, $orderId, $reason, false)) {
+                    unset($calls[$key]);
+                }
+                continue;
+            }
+            if ($call !== 'shipped' && $call !== 'delivered') {
+                unset($calls[$key]);
+                continue;
+            }
+            if ($this->sendReport($sudemiId, $call, $body, false) !== 'retry') {
+                unset($calls[$key]);
+            }
+        }
+        $this->saveCalls($calls);
+    }
+
+    /**
+     * The local order for a sudemi order including a released (voided) one:
+     * ['id' => int, 'status' => int, 'released' => bool], or null.
+     */
+    private function localRow($sudemiId)
+    {
+        $query = $this->db->query(
+            "SELECT order_id, order_status_id, comment FROM " . $this->prefix . "order
+              WHERE comment IN ('" . $this->db->escape(self::COMMENT_PREFIX . $sudemiId) . "', '"
+                . $this->db->escape(self::COMMENT_PREFIX . $sudemiId . ' (released)') . "')
+              ORDER BY order_id LIMIT 1"
+        );
+
+        return $query->num_rows ? self::row($query->row) : null;
+    }
+
+    private function rowById($orderId)
+    {
+        $query = $this->db->query(
+            "SELECT order_id, order_status_id, comment FROM " . $this->prefix . "order
+              WHERE order_id = '" . (int) $orderId . "' LIMIT 1"
+        );
+
+        return $query->num_rows ? self::row($query->row) : null;
+    }
+
+    private static function row(array $row)
+    {
+        return array(
+            'id' => (int) $row['order_id'],
+            'status' => (int) $row['order_status_id'],
+            'released' => substr((string) $row['comment'], -strlen(' (released)')) === ' (released)',
+        );
+    }
+
+    /** @return int|null The order_id already built for this sudemi order, if there is one (not released). */
     private function findLocalOrder($sudemiId)
     {
         $query = $this->db->query(

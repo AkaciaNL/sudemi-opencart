@@ -12,6 +12,7 @@ $_['text_not_confirmed'] = 'Pas encore confirmé. Ouvrez le lien, confirmez la b
 $_['text_disconnected'] = 'Déconnecté.';
 $_['text_synced'] = 'Le catalogue a été envoyé.';
 $_['text_sync_failed'] = 'Le catalogue n’a pas pu être envoyé. Aucun produit n’a été retiré.';
+$_['text_sync_held'] = 'La synchronisation du catalogue est en attente : elle retirerait de sudemi de nombreux produits listés, donc rien n’a été modifié. Si ces produits ont vraiment été retirés de cette boutique, contactez le support sudemi (support@sudemi.com).';
 $_['text_locked'] = 'Votre raison sociale, votre pays, votre statut de professionnel et votre numéro de TVA déterminent ce qui est dû à l’acheteur ; ils sont donc confirmés une seule fois sur sudemi et modifiés là-bas. Cette extension ne peut pas les modifier.';
 $_['text_shop_url_fixed'] = 'Fixe. sudemi a vérifié que cette boutique répondait à cette adresse, et chaque annonce indique à l’acheteur d’où elle provient - la modifier implique donc de vous reconnecter depuis la nouvelle adresse.';
 $_['text_key_held'] = 'La partie privée de la clé de signature ne quitte jamais ce serveur et n’est jamais envoyée à sudemi. Elle ne peut pas non plus être affichée ici.';

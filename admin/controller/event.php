@@ -214,7 +214,8 @@ class Event extends \Opencart\System\Engine\Controller
             return;
         }
         if (self::STATUS_CANCELED === $statusId) {
-            $services['orders']->cancel($sudemiId, 'Cancelled by the shop');
+            // /reject while it is not paid yet, /cancel with a full refund once it is.
+            $services['orders']->cancelFromShop($sudemiId, $orderId, 'Cancelled by the shop');
 
             return;
         }
@@ -299,8 +300,8 @@ class Event extends \Opencart\System\Engine\Controller
         $pairing = new \Sudemi\Pairing($client, $keys, $store, $logger);
         $catalogue = new \Sudemi\Catalogue($this->db, $this->config);
         $sync = new \Sudemi\Sync($client, $logger, $catalogue);
-        $queue = new \Sudemi\Queue($store, $client);
-        $orders = new \Sudemi\Orders($this->db, $this->config, $client, $logger);
+        $queue = new \Sudemi\Queue($store, $client, $logger);
+        $orders = new \Sudemi\Orders($this->db, $this->config, $client, $logger, $store);
         $heartbeat = new \Sudemi\Heartbeat(
             $store, $client, $logger, $queue, $catalogue, $pairing, $sync, $orders
         );

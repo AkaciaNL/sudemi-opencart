@@ -12,6 +12,7 @@ $_['text_not_confirmed'] = 'Non ancora confermato. Apri il link, conferma il neg
 $_['text_disconnected'] = 'Scollegato.';
 $_['text_synced'] = 'Il catalogo è stato inviato.';
 $_['text_sync_failed'] = 'Non è stato possibile inviare il catalogo. Nessuna inserzione è stata rimossa.';
+$_['text_sync_held'] = 'La sincronizzazione del catalogo è in sospeso: rimuoverebbe da sudemi molti prodotti in vendita, quindi non è stato modificato nulla. Se quei prodotti sono stati davvero rimossi da questo negozio, contatta l’assistenza sudemi (support@sudemi.com).';
 $_['text_locked'] = 'Ragione sociale, paese, qualifica di professionista e partita IVA determinano i diritti dell\'acquirente, per questo vengono confermati una sola volta su sudemi e si modificano lì. Questa estensione non può modificarli.';
 $_['text_shop_url_fixed'] = 'Fisso. sudemi ha verificato che questo negozio rispondesse da questo indirizzo e ogni inserzione indica all\'acquirente da dove proviene - per cambiarlo, quindi, devi ricollegare il negozio dal nuovo indirizzo.';
 $_['text_key_held'] = 'La parte privata della chiave di firma non lascia mai questo server e non viene mai inviata a sudemi. Non può nemmeno essere mostrata qui.';

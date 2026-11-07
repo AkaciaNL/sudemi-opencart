@@ -12,6 +12,7 @@ $_['text_not_confirmed'] = 'Nog niet bevestigd. Open de link, bevestig de winkel
 $_['text_disconnected'] = 'Ontkoppeld.';
 $_['text_synced'] = 'De catalogus is verstuurd.';
 $_['text_sync_failed'] = 'De catalogus kon niet worden verstuurd. Er is niets offline gehaald.';
+$_['text_sync_held'] = 'De catalogussynchronisatie staat in de wacht: die zou veel vermelde producten van sudemi verwijderen, dus er is niets gewijzigd. Zijn die producten echt uit deze winkel verwijderd, neem dan contact op met sudemi-support (support@sudemi.com).';
 $_['text_locked'] = 'Je juridische naam, land, status als handelaar en btw-nummer bepalen waar een koper recht op heeft. Daarom worden ze één keer bevestigd op sudemi en daar gewijzigd. Deze extensie kan ze niet bewerken.';
 $_['text_shop_url_fixed'] = 'Vast. sudemi heeft gecontroleerd dat deze winkel vanaf dit adres antwoordde, en een vermelding laat een koper zien waar die vandaan komt - wijzigen betekent dus opnieuw koppelen vanaf het nieuwe adres.';
 $_['text_key_held'] = 'Het privédeel van de ondertekeningssleutel verlaat deze server nooit en wordt nooit naar sudemi gestuurd. Het kan hier ook niet worden getoond.';

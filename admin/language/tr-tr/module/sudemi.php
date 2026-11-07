@@ -12,6 +12,7 @@ $_['text_not_confirmed'] = 'Henüz onaylanmadı. Bağlantıyı açın, mağazay�
 $_['text_disconnected'] = 'Bağlantı kesildi.';
 $_['text_synced'] = 'Katalog gönderildi.';
 $_['text_sync_failed'] = 'Katalog gönderilemedi. Hiçbir ürün listeden kaldırılmadı.';
+$_['text_sync_held'] = 'Katalog eşitlemesi beklemede: sudemi\'deki birçok listelenmiş ürünü kaldıracaktı, bu yüzden hiçbir şey değiştirilmedi. Bu ürünler gerçekten bu mağazadan kaldırıldıysa sudemi destek ekibiyle iletişime geçin (support@sudemi.com).';
 $_['text_locked'] = 'Yasal adınız, ülkeniz, tacir statünüz ve KDV numaranız, alıcının hangi haklara sahip olduğunu belirler; bu nedenle sudemi\'de bir kez onaylanır ve orada değiştirilir. Bu eklenti bunları düzenleyemez.';
 $_['text_shop_url_fixed'] = 'Sabittir. sudemi bu mağazanın bu adresten yanıt verdiğini doğruladı ve her ilan, alıcıya nereden geldiğini gösterir - bu yüzden adresi değiştirmek, yeni adresten yeniden bağlanmak anlamına gelir.';
 $_['text_key_held'] = 'İmzalama anahtarının özel kısmı bu sunucudan asla çıkmaz ve sudemi\'ye asla gönderilmez. Burada da gösterilemez.';

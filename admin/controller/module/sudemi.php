@@ -86,10 +86,14 @@ class Sudemi extends \Opencart\System\Engine\Controller
 
         $sudemi = $this->services();
         // Called once and held: evaluating it twice would send the whole catalogue twice.
-        $ok = $sudemi['sync']->runFull();
-        $json[$ok ? 'success' : 'error'] = $ok
-            ? $this->language->get('text_synced')
-            : $this->language->get('text_sync_failed');
+        $ok = $sudemi['heartbeat']->syncAnchored();
+        if ($ok === 'held') {
+            $json['error'] = $this->language->get('text_sync_held');
+        } else {
+            $json[$ok ? 'success' : 'error'] = $ok
+                ? $this->language->get('text_synced')
+                : $this->language->get('text_sync_failed');
+        }
 
         $this->respond($json);
     }
@@ -751,8 +755,8 @@ class Sudemi extends \Opencart\System\Engine\Controller
         $pairing = new \Sudemi\Pairing($client, $keys, $store, $logger);
         $catalogue = new \Sudemi\Catalogue($this->db, $this->config);
         $sync = new \Sudemi\Sync($client, $logger, $catalogue);
-        $queue = new \Sudemi\Queue($store, $client);
-        $orders = new \Sudemi\Orders($this->db, $this->config, $client, $logger);
+        $queue = new \Sudemi\Queue($store, $client, $logger);
+        $orders = new \Sudemi\Orders($this->db, $this->config, $client, $logger, $store);
         $heartbeat = new \Sudemi\Heartbeat(
             $store, $client, $logger, $queue, $catalogue, $pairing, $sync, $orders
         );

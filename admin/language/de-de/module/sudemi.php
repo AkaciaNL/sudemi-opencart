@@ -12,6 +12,7 @@ $_['text_not_confirmed'] = 'Noch nicht bestätigt. Öffnen Sie den Link, bestät
 $_['text_disconnected'] = 'Getrennt.';
 $_['text_synced'] = 'Der Katalog wurde gesendet.';
 $_['text_sync_failed'] = 'Der Katalog konnte nicht gesendet werden. Es wurde nichts aus der Listung genommen.';
+$_['text_sync_held'] = 'Der Katalogabgleich ist angehalten: Er würde viele gelistete Produkte von sudemi entfernen, daher wurde nichts geändert. Wenn diese Produkte wirklich aus diesem Shop entfernt wurden, wenden Sie sich an den sudemi-Support (support@sudemi.com).';
 $_['text_locked'] = 'Ihr rechtlicher Name, Ihr Land, Ihr Unternehmerstatus und Ihre USt-IdNr. bestimmen, welche Rechte ein Käufer hat. Deshalb werden sie einmalig auf sudemi bestätigt und dort geändert. Diese Erweiterung kann sie nicht bearbeiten.';
 $_['text_shop_url_fixed'] = 'Unveränderlich. sudemi hat geprüft, dass dieser Shop unter dieser Adresse geantwortet hat, und ein Eintrag zeigt dem Käufer, woher er stammt - eine Änderung bedeutet daher, sich von der neuen Adresse aus erneut zu verbinden.';
 $_['text_key_held'] = 'Der private Teil des Signaturschlüssels verlässt diesen Server nie und wird nie an sudemi gesendet. Er kann auch hier nicht angezeigt werden.';

@@ -12,6 +12,7 @@ $_['text_not_confirmed'] = 'Not confirmed yet. Open the link, confirm the shop o
 $_['text_disconnected'] = 'Disconnected.';
 $_['text_synced'] = 'The catalogue was sent.';
 $_['text_sync_failed'] = 'The catalogue could not be sent. Nothing was delisted.';
+$_['text_sync_held'] = 'The catalogue sync is on hold: it would remove many listed products from sudemi, so nothing was changed. If those products really were removed from this shop, contact sudemi support (support@sudemi.com).';
 $_['text_locked'] = 'Your legal name, country, trader status and VAT number decide what a buyer is owed, so they are confirmed once on sudemi and changed there. This extension cannot edit them.';
 $_['text_shop_url_fixed'] = 'Fixed. sudemi checked that this shop answered from this address, and a listing tells a buyer where it came from - so changing it means connecting again from the new address.';
 $_['text_key_held'] = 'The private half of the signing key never leaves this server and is never sent to sudemi. It cannot be shown here either.';

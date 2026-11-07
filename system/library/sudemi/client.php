@@ -24,7 +24,17 @@ class Client
 
     /** A cap, so a strange Retry-After cannot park a cron run for an hour. */
     const RATE_LIMIT_MAX_WAIT = 90;
-    const VERSION = '1.2.5';
+    const VERSION = '1.2.6';
+
+    /**
+     * Test seam, null in production. When set (only by PHP code running in this same process,
+     * as the shop e2e does), every call goes through it as fn($method, $path, $body, $send) and its
+     * return value is used as the response (null = unreachable); $send() makes the real call.
+     * It lets a test fake a 5xx, a 429 or a lost answer for one endpoint.
+     *
+     * @var callable|null
+     */
+    public static $interceptor = null;
 
     private $keys;
     private $store;
@@ -213,9 +223,23 @@ class Client
 
     private function request($path, array $body, $signed, $method = 'POST')
     {
+        if (self::$interceptor !== null) {
+            $send = function () use ($path, $body, $signed, $method) {
+                return $this->send($path, $body, $signed, $method);
+            };
+
+            return call_user_func(self::$interceptor, $method, $path, $body, $send);
+        }
+
+        return $this->send($path, $body, $signed, $method);
+    }
+
+    private function send($path, array $body, $signed, $method)
+    {
         // A GET carries no body, and the signature covers the hash of the body actually sent --
-        // so it has to be the hash of nothing, not the hash of "{}".
-        $json = $method === 'GET' ? '' : json_encode($body);
+        // so it has to be the hash of nothing, not the hash of "{}". Invalid UTF-8 in shop text
+        // (an old import, a copy-paste) is replaced rather than failing the whole call.
+        $json = $method === 'GET' ? '' : json_encode($body, JSON_INVALID_UTF8_SUBSTITUTE);
         if ($json === false) {
             $this->logger->warn('A payload could not be encoded.');
 
