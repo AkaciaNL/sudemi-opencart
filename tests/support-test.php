@@ -101,6 +101,12 @@ foreach ( array(
 	check( "open: $status is not retried", 1 === count( $fake->calls ) );
 }
 $fake            = new FakeClient();
+$fake->answers[] = array( 'status' => 409, 'body' => array( 'error' => 'site_mismatch', 'message' => 'This shop is connected to sudemi as https://shop.example.com, but ...' ) );
+check( 'open: 409 site_mismatch becomes site_mismatch', 'site_mismatch' === ( new \Sudemi\Support( $fake ) )->open( 'ORDER', 'Hello there', 'Hi' )['error'] );
+$fake            = new FakeClient();
+$fake->answers[] = array( 'status' => 409, 'body' => array( 'error' => 'conflict' ) );
+check( 'open: another 409 stays unavailable', 'unavailable' === ( new \Sudemi\Support( $fake ) )->open( 'ORDER', 'Hello there', 'Hi' )['error'] );
+$fake            = new FakeClient();
 $fake->answers[] = null;
 $result          = ( new \Sudemi\Support( $fake ) )->tickets();
 check( 'not connected / unreachable (null) becomes unavailable', ! $result['ok'] && 'unavailable' === $result['error'] );

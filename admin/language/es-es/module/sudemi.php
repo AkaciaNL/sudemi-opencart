@@ -130,3 +130,8 @@ $_['error_support_invalid'] = 'Revise el formulario: el asunto debe tener entre 
 $_['error_support_not_found'] = 'No se ha encontrado ese ticket para esta tienda.';
 $_['error_support_too_many'] = 'Demasiados tickets a la vez: como máximo 20 tickets abiertos y 10 nuevos por hora. Responda a un ticket existente o inténtelo más tarde.';
 $_['error_support_unavailable'] = 'No se ha podido contactar con el soporte de sudemi en este momento. No se ha enviado nada; inténtelo de nuevo en breve.';
+
+// sudemi refused this site as not being the connected shop (409 site_mismatch): a staging copy,
+// a restored backup, or the shop moved. %s is the address the shop is connected under.
+$_['text_site_mismatch_at'] = 'sudemi rechazó las solicitudes de este sitio: esta tienda está conectada a sudemi con otra dirección (%s). Si este sitio es una copia de pruebas (staging) o una copia de seguridad restaurada, desconecte sudemi aquí. Si la tienda se ha trasladado a esta dirección, vuelva a conectarla.';
+$_['text_site_mismatch'] = 'sudemi rechazó las solicitudes de este sitio: esta tienda está conectada a sudemi con otra dirección. Si este sitio es una copia de pruebas (staging) o una copia de seguridad restaurada, desconecte sudemi aquí. Si la tienda se ha trasladado a esta dirección, vuelva a conectarla.';

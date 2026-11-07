@@ -130,3 +130,8 @@ $_['error_support_invalid'] = 'يرجى مراجعة النموذج: يجب أن
 $_['error_support_not_found'] = 'لم يتم العثور على هذه التذكرة لهذا المتجر.';
 $_['error_support_too_many'] = 'عدد كبير جدًا من التذاكر: 20 تذكرة مفتوحة كحد أقصى و10 تذاكر جديدة في الساعة كحد أقصى. رد على تذكرة قائمة أو حاول لاحقًا.';
 $_['error_support_unavailable'] = 'تعذّر الوصول إلى دعم sudemi الآن. لم يُرسل أي شيء؛ يرجى المحاولة بعد قليل.';
+
+// sudemi refused this site as not being the connected shop (409 site_mismatch): a staging copy,
+// a restored backup, or the shop moved. %s is the address the shop is connected under.
+$_['text_site_mismatch_at'] = 'رفض sudemi الطلبات القادمة من هذا الموقع: هذا المتجر مربوط بـ sudemi بعنوان آخر (%s). إذا كان هذا الموقع نسخة تجريبية (staging) أو نسخة احتياطية مستعادة، فافصل sudemi هنا. وإذا انتقل المتجر إلى هذا العنوان، فاربطه من جديد.';
+$_['text_site_mismatch'] = 'رفض sudemi الطلبات القادمة من هذا الموقع: هذا المتجر مربوط بـ sudemi بعنوان آخر. إذا كان هذا الموقع نسخة تجريبية (staging) أو نسخة احتياطية مستعادة، فافصل sudemi هنا. وإذا انتقل المتجر إلى هذا العنوان، فاربطه من جديد.';

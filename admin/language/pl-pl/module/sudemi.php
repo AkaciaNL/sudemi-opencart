@@ -130,3 +130,8 @@ $_['error_support_invalid'] = 'Sprawdź formularz: temat musi mieć od 3 do 200 
 $_['error_support_not_found'] = 'Nie znaleziono tego zgłoszenia dla tego sklepu.';
 $_['error_support_too_many'] = 'Za dużo zgłoszeń naraz: najwyżej 20 otwartych zgłoszeń i najwyżej 10 nowych na godzinę. Odpowiedz w istniejącym zgłoszeniu lub spróbuj później.';
 $_['error_support_unavailable'] = 'Pomoc techniczna sudemi jest w tej chwili nieosiągalna. Nic nie zostało wysłane; spróbuj ponownie za chwilę.';
+
+// sudemi refused this site as not being the connected shop (409 site_mismatch): a staging copy,
+// a restored backup, or the shop moved. %s is the address the shop is connected under.
+$_['text_site_mismatch_at'] = 'sudemi odrzuciło żądania z tej witryny: ten sklep jest połączony z sudemi pod innym adresem (%s). Jeśli ta witryna jest kopią testową (staging) lub przywróconą kopią zapasową, rozłącz tutaj sudemi. Jeśli sklep przeniósł się pod ten adres, połącz go ponownie.';
+$_['text_site_mismatch'] = 'sudemi odrzuciło żądania z tej witryny: ten sklep jest połączony z sudemi pod innym adresem. Jeśli ta witryna jest kopią testową (staging) lub przywróconą kopią zapasową, rozłącz tutaj sudemi. Jeśli sklep przeniósł się pod ten adres, połącz go ponownie.';

@@ -130,3 +130,8 @@ $_['error_support_invalid'] = 'נא לבדוק את הטופס: הנושא צר�
 $_['error_support_not_found'] = 'הפנייה לא נמצאה עבור החנות הזו.';
 $_['error_support_too_many'] = 'יותר מדי פניות בבת אחת: עד 20 פניות פתוחות ועד 10 פניות חדשות בשעה. השיבו בפנייה קיימת או נסו שוב מאוחר יותר.';
 $_['error_support_unavailable'] = 'לא ניתן להתחבר כרגע לתמיכה של sudemi. דבר לא נשלח; נסו שוב בעוד רגע.';
+
+// sudemi refused this site as not being the connected shop (409 site_mismatch): a staging copy,
+// a restored backup, or the shop moved. %s is the address the shop is connected under.
+$_['text_site_mismatch_at'] = 'sudemi דחה בקשות מהאתר הזה: החנות הזו מחוברת ל-sudemi בכתובת אחרת (%s). אם האתר הזה הוא עותק בדיקות (staging) או גיבוי משוחזר, יש לנתק את sudemi כאן. אם החנות עברה לכתובת הזו, יש לחבר אותה מחדש.';
+$_['text_site_mismatch'] = 'sudemi דחה בקשות מהאתר הזה: החנות הזו מחוברת ל-sudemi בכתובת אחרת. אם האתר הזה הוא עותק בדיקות (staging) או גיבוי משוחזר, יש לנתק את sudemi כאן. אם החנות עברה לכתובת הזו, יש לחבר אותה מחדש.';

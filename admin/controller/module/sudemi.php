@@ -309,6 +309,22 @@ class Sudemi extends \Opencart\System\Engine\Controller
         return $m[1] . ' ' . $m[2] . ' UTC';
     }
 
+    /**
+     * The last beat's outcome, with sudemi's site_mismatch refusal worded in the admin's language:
+     * this site is not the connected shop (a staging copy, a restored backup, or the shop moved).
+     */
+    private function listingStatus(array $status): array
+    {
+        if (isset($status['problem']) && $status['problem'] === 'site_mismatch') {
+            $paired = isset($status['paired']) ? (string) $status['paired'] : '';
+            $status['message'] = $paired !== ''
+                ? sprintf($this->language->get('text_site_mismatch_at'), $paired)
+                : $this->language->get('text_site_mismatch');
+        }
+
+        return $status;
+    }
+
     private function supportError(?string $code): string
     {
         switch ($code) {
@@ -318,6 +334,8 @@ class Sudemi extends \Opencart\System\Engine\Controller
                 return $this->language->get('error_support_not_found');
             case \Sudemi\Support::ERROR_TOO_MANY:
                 return $this->language->get('error_support_too_many');
+            case \Sudemi\Support::ERROR_SITE:
+                return $this->language->get('text_site_mismatch');
             default:
                 return $this->language->get('error_support_unavailable');
         }
@@ -495,7 +513,7 @@ class Sudemi extends \Opencart\System\Engine\Controller
             'install_id' => $sudemi['client']->installId(),
             'history' => $sudemi['client']->isConnected() ? $this->orderHistory($sudemi['client']) : null,
             'log' => $sudemi['logger']->entries(),
-            'status' => $sudemi['heartbeat']->status(),
+            'status' => $this->listingStatus($sudemi['heartbeat']->status()),
             'pending' => $sudemi['queue']->count(),
             'handling_days' => (new \Sudemi\Shipping($this->db, $this->config))->handlingDays(),
             'transit_days' => (new \Sudemi\Shipping($this->db, $this->config))->transitDays(),
@@ -623,6 +641,8 @@ class Sudemi extends \Opencart\System\Engine\Controller
         $logger = new \Sudemi\Logger($store);
         $keys = new \Sudemi\Keys($this->config, $store);
         $client = new \Sudemi\Client($keys, $store, $logger);
+        // The address pairing announced, so Sudemi-Site names this shop the same way.
+        $client->setSiteUrl($this->shopUrl());
         $pairing = new \Sudemi\Pairing($client, $keys, $store, $logger);
         $catalogue = new \Sudemi\Catalogue($this->db, $this->config);
         $sync = new \Sudemi\Sync($client, $logger, $catalogue);

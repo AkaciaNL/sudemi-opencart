@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.4 - 2026-11-07
+- Every signed call now says which site it comes from: the `Sudemi-Site` header, the storefront's base URL (the shop address pairing announced in the admin, `HTTP_CATALOG`/`HTTP_SERVER` elsewhere). It is not part of the signature. A staging copy or a restored backup of the shop holds the same install id and key, and sudemi now refuses its calls (409 `site_mismatch`), so a copy can no longer push its catalogue or answer orders as the live shop.
+- When sudemi refuses this site because the shop is connected under another address, the extension page shows it as not connected and says what to do: if this site is a staging copy or a restored backup, disconnect sudemi there; if the shop moved, connect it again. The support section says the same instead of a generic error. All 12 languages, escaped like the rest of the page.
+
 ## 1.2.3 - 2026-11-07
 - Security: the extension page is HTML-escaped explicitly (OpenCart 4 turns Twig's autoescaping off). Before, a support message or ticket subject containing HTML was rendered as HTML in the shop's back office.
 

@@ -130,3 +130,8 @@ $_['error_support_invalid'] = 'Lütfen formu kontrol edin: konu 3 ile 200 karakt
 $_['error_support_not_found'] = 'Bu talep bu mağaza için bulunamadı.';
 $_['error_support_too_many'] = 'Aynı anda çok fazla talep: en fazla 20 açık talep ve saatte en fazla 10 yeni talep. Mevcut bir talebe yanıt verin veya daha sonra tekrar deneyin.';
 $_['error_support_unavailable'] = 'sudemi destek ekibine şu anda ulaşılamıyor. Hiçbir şey gönderilmedi; lütfen biraz sonra tekrar deneyin.';
+
+// sudemi refused this site as not being the connected shop (409 site_mismatch): a staging copy,
+// a restored backup, or the shop moved. %s is the address the shop is connected under.
+$_['text_site_mismatch_at'] = 'sudemi bu siteden gelen istekleri reddetti: bu mağaza sudemi\'ye farklı bir adresle bağlı (%s). Bu site bir test (staging) kopyası veya geri yüklenmiş bir yedekse, sudemi bağlantısını burada kesin. Mağaza bu adrese taşındıysa yeniden bağlayın.';
+$_['text_site_mismatch'] = 'sudemi bu siteden gelen istekleri reddetti: bu mağaza sudemi\'ye farklı bir adresle bağlı. Bu site bir test (staging) kopyası veya geri yüklenmiş bir yedekse, sudemi bağlantısını burada kesin. Mağaza bu adrese taşındıysa yeniden bağlayın.';

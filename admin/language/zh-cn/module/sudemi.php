@@ -130,3 +130,8 @@ $_['error_support_invalid'] = '请检查表单：主题需 3 到 200 个字符�
 $_['error_support_not_found'] = '未找到本店铺的该工单。';
 $_['error_support_too_many'] = '工单过多：最多同时有 20 个未关闭的工单，每小时最多新建 10 个。请在现有工单中回复，或稍后再试。';
 $_['error_support_unavailable'] = '暂时无法连接 sudemi 客服，未发送任何内容，请稍后再试。';
+
+// sudemi refused this site as not being the connected shop (409 site_mismatch): a staging copy,
+// a restored backup, or the shop moved. %s is the address the shop is connected under.
+$_['text_site_mismatch_at'] = 'sudemi 拒绝了来自此网站的请求：此店铺以另一个地址（%s）连接到 sudemi。如果此网站是测试副本（staging）或恢复的备份，请在此断开 sudemi 连接。如果店铺已迁移到此地址，请重新连接。';
+$_['text_site_mismatch'] = 'sudemi 拒绝了来自此网站的请求：此店铺以另一个地址连接到 sudemi。如果此网站是测试副本（staging）或恢复的备份，请在此断开 sudemi 连接。如果店铺已迁移到此地址，请重新连接。';

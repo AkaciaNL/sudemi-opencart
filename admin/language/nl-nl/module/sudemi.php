@@ -130,3 +130,8 @@ $_['error_support_invalid'] = 'Controleer het formulier: het onderwerp moet 3 to
 $_['error_support_not_found'] = 'Dat ticket is niet gevonden voor deze winkel.';
 $_['error_support_too_many'] = 'Te veel tickets tegelijk: maximaal 20 open tickets en maximaal 10 nieuwe per uur. Reageer op een bestaand ticket of probeer het later opnieuw.';
 $_['error_support_unavailable'] = 'sudemi-support is op dit moment niet bereikbaar. Er is niets verstuurd; probeer het zo nog eens.';
+
+// sudemi refused this site as not being the connected shop (409 site_mismatch): a staging copy,
+// a restored backup, or the shop moved. %s is the address the shop is connected under.
+$_['text_site_mismatch_at'] = 'sudemi weigert verzoeken van deze site: deze winkel is onder een ander adres aan sudemi gekoppeld (%s). Is deze site een testkopie (staging) of een teruggezette back-up, ontkoppel sudemi dan hier. Is de winkel naar dit adres verhuisd, koppel hem dan opnieuw.';
+$_['text_site_mismatch'] = 'sudemi weigert verzoeken van deze site: deze winkel is onder een ander adres aan sudemi gekoppeld. Is deze site een testkopie (staging) of een teruggezette back-up, ontkoppel sudemi dan hier. Is de winkel naar dit adres verhuisd, koppel hem dan opnieuw.';

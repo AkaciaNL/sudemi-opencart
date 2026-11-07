@@ -130,3 +130,8 @@ $_['error_support_invalid'] = 'Please check the form: the subject needs 3 to 200
 $_['error_support_not_found'] = 'That ticket was not found for this shop.';
 $_['error_support_too_many'] = 'Too many tickets at once: at most 20 open tickets, and at most 10 new ones per hour. Reply to an existing ticket or try again later.';
 $_['error_support_unavailable'] = 'sudemi support could not be reached just now. Nothing was sent; please try again shortly.';
+
+// sudemi refused this site as not being the connected shop (409 site_mismatch): a staging copy,
+// a restored backup, or the shop moved. %s is the address the shop is connected under.
+$_['text_site_mismatch_at'] = 'sudemi refused requests from this site: this shop is connected to sudemi under a different address (%s). If this site is a staging copy or a restored backup, disconnect sudemi here. If the shop has moved to this address, connect it again.';
+$_['text_site_mismatch'] = 'sudemi refused requests from this site: this shop is connected to sudemi under a different address. If this site is a staging copy or a restored backup, disconnect sudemi here. If the shop has moved to this address, connect it again.';

@@ -130,3 +130,8 @@ $_['error_support_invalid'] = 'Veuillez vérifier le formulaire : l’objet doit
 $_['error_support_not_found'] = 'Ce ticket est introuvable pour cette boutique.';
 $_['error_support_too_many'] = 'Trop de tickets à la fois : 20 tickets ouverts au maximum et 10 nouveaux par heure au maximum. Répondez à un ticket existant ou réessayez plus tard.';
 $_['error_support_unavailable'] = 'L’assistance sudemi est injoignable pour le moment. Rien n’a été envoyé ; veuillez réessayer dans un instant.';
+
+// sudemi refused this site as not being the connected shop (409 site_mismatch): a staging copy,
+// a restored backup, or the shop moved. %s is the address the shop is connected under.
+$_['text_site_mismatch_at'] = 'sudemi a refusé les requêtes de ce site : cette boutique est connectée à sudemi sous une autre adresse (%s). Si ce site est une copie de préproduction (staging) ou une sauvegarde restaurée, déconnectez sudemi ici. Si la boutique a été déplacée vers cette adresse, connectez-la à nouveau.';
+$_['text_site_mismatch'] = 'sudemi a refusé les requêtes de ce site : cette boutique est connectée à sudemi sous une autre adresse. Si ce site est une copie de préproduction (staging) ou une sauvegarde restaurée, déconnectez sudemi ici. Si la boutique a été déplacée vers cette adresse, connectez-la à nouveau.';

@@ -24,11 +24,12 @@ class Client
 
     /** A cap, so a strange Retry-After cannot park a cron run for an hour. */
     const RATE_LIMIT_MAX_WAIT = 90;
-    const VERSION = '1.2.3';
+    const VERSION = '1.2.4';
 
     private $keys;
     private $store;
     private $logger;
+    private $siteUrl = null;
 
     public function __construct(Keys $keys, $store, Logger $logger)
     {
@@ -49,6 +50,92 @@ class Client
         $id = $this->store->read(self::SETTING_INSTALL_ID);
 
         return (is_string($id) && $id !== '') ? $id : null;
+    }
+
+    /**
+     * This shop's own base URL, sent as Sudemi-Site on every signed call: the storefront address,
+     * HTTP_CATALOG in the admin and HTTP_SERVER in the storefront (OpenCart 4 has no config_url
+     * for the default store). '' when it cannot be told.
+     */
+    public function siteUrl()
+    {
+        if ($this->siteUrl !== null) {
+            $url = $this->siteUrl;
+        } elseif (defined('HTTP_CATALOG')) {
+            $url = (string) HTTP_CATALOG;
+        } elseif (defined('HTTP_SERVER')) {
+            $url = (string) HTTP_SERVER;
+        } else {
+            $url = '';
+        }
+
+        // A header value: no line breaks, whatever the configuration holds.
+        return trim(preg_replace('/[\r\n]+/', '', $url));
+    }
+
+    /** Overrides the address above, where the caller knows it better (and in tests). */
+    public function setSiteUrl($url)
+    {
+        $this->siteUrl = $url === null ? null : (string) $url;
+    }
+
+    /**
+     * The headers that make a call signed, or null when this shop cannot sign (not connected).
+     *
+     * The signature covers the method, the path, the timestamp, a nonce and the body hash.
+     * Sudemi-Site is sent beside it, unsigned: the address this shop believes it lives at. A
+     * staging copy or a restored backup holds this shop's install id and key, and this is how
+     * sudemi tells it apart from the live shop and refuses it (409 site_mismatch).
+     *
+     * @return string[]|null
+     */
+    public function signedHeaders($method, $path, $json)
+    {
+        $installId = $this->installId();
+        if ($installId === null) {
+            return null;
+        }
+        $timestamp = (string) time();
+        $nonce = bin2hex(random_bytes(16));
+        $canonical = implode("\n", [$method, $path, $timestamp, $nonce, hash('sha256', $json)]);
+        $signature = $this->keys->sign($canonical);
+        if ($signature === null) {
+            return null;
+        }
+        $headers = [
+            'Sudemi-Install: ' . $installId,
+            'Sudemi-Timestamp: ' . $timestamp,
+            'Sudemi-Nonce: ' . $nonce,
+            'Sudemi-Signature: ' . $signature,
+        ];
+        $site = $this->siteUrl();
+        if ($site !== '') {
+            $headers[] = 'Sudemi-Site: ' . $site;
+        }
+
+        return $headers;
+    }
+
+    /**
+     * Whether sudemi refused a call because it came from another site than the connected shop.
+     *
+     * @param array|null $response as request() returns it
+     *
+     * @return string|null null when it did not; otherwise the address the shop is connected
+     *                     under, as sudemi named it, or '' when it could not be read
+     */
+    public static function siteMismatch($response)
+    {
+        if (!is_array($response) || !isset($response['status']) || (int) $response['status'] !== 409
+            || !isset($response['body']['error']) || $response['body']['error'] !== 'site_mismatch') {
+            return null;
+        }
+        $message = isset($response['body']['message']) ? (string) $response['body']['message'] : '';
+        if (preg_match('#connected to sudemi as (https?://[A-Za-z0-9.:\[\]-]+)#', $message, $match)) {
+            return rtrim($match[1], '.:');
+        }
+
+        return '';
     }
 
     public function isConnected()
@@ -138,21 +225,11 @@ class Client
         $headers = ['Content-Type: application/json'];
 
         if ($signed) {
-            $installId = $this->installId();
-            if ($installId === null) {
+            $signedHeaders = $this->signedHeaders($method, $path, $json);
+            if ($signedHeaders === null) {
                 return null;
             }
-            $timestamp = (string) time();
-            $nonce = bin2hex(random_bytes(16));
-            $canonical = implode("\n", [$method, $path, $timestamp, $nonce, hash('sha256', $json)]);
-            $signature = $this->keys->sign($canonical);
-            if ($signature === null) {
-                return null;
-            }
-            $headers[] = 'Sudemi-Install: ' . $installId;
-            $headers[] = 'Sudemi-Timestamp: ' . $timestamp;
-            $headers[] = 'Sudemi-Nonce: ' . $nonce;
-            $headers[] = 'Sudemi-Signature: ' . $signature;
+            $headers = array_merge($headers, $signedHeaders);
         }
 
         $curl = curl_init($this->apiBase() . $path);

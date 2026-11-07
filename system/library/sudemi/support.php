@@ -36,6 +36,8 @@ class Support
     const ERROR_TOO_MANY = 'too_many';
     /** Not paired, sudemi unreachable, or an answer that made no sense. */
     const ERROR_UNAVAILABLE = 'unavailable';
+    /** This site is not the connected shop: a staging copy, a restored backup, or it moved (409). */
+    const ERROR_SITE = 'site_mismatch';
 
     /** @var object anything with sendSigned($method, $path, array $body) -- \Sudemi\Client in the shop */
     private $client;
@@ -178,6 +180,9 @@ class Support
         }
         if ($status === 429) {
             return self::failure(self::ERROR_TOO_MANY);
+        }
+        if ($status === 409 && isset($response['body']['error']) && $response['body']['error'] === 'site_mismatch') {
+            return self::failure(self::ERROR_SITE);
         }
 
         return self::failure(self::ERROR_UNAVAILABLE);
