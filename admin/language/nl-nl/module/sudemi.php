@@ -135,3 +135,29 @@ $_['error_support_unavailable'] = 'sudemi-support is op dit moment niet bereikba
 // a restored backup, or the shop moved. %s is the address the shop is connected under.
 $_['text_site_mismatch_at'] = 'sudemi weigert verzoeken van deze site: deze winkel is onder een ander adres aan sudemi gekoppeld (%s). Is deze site een testkopie (staging) of een teruggezette back-up, ontkoppel sudemi dan hier. Is de winkel naar dit adres verhuisd, koppel hem dan opnieuw.';
 $_['text_site_mismatch'] = 'sudemi weigert verzoeken van deze site: deze winkel is onder een ander adres aan sudemi gekoppeld. Is deze site een testkopie (staging) of een teruggezette back-up, ontkoppel sudemi dan hier. Is de winkel naar dit adres verhuisd, koppel hem dan opnieuw.';
+
+// Return requests from buyers (answered within 7 days: accept, or reject with a reason the buyer
+// sees). The notes go into the order history; %s is the reason given.
+$_['text_requests_title'] = 'Retourverzoeken';
+$_['text_requests_intro'] = 'Kopers willen deze geleverde bestellingen retourneren. Beantwoord elk verzoek vóór de getoonde datum: accepteer het, of wijs het af met een reden (de koper ziet die). Een onbeantwoord verzoek gaat na 7 dagen naar sudemi. De lijst wordt bijgewerkt bij elke melding aan sudemi.';
+$_['text_requests_empty'] = 'Geen openstaande retourverzoeken.';
+$_['column_request_order'] = 'Bestelling';
+$_['column_request_reason'] = 'Reden van de koper';
+$_['column_request_requested'] = 'Aangevraagd';
+$_['column_request_respond_by'] = 'Antwoorden vóór';
+$_['column_request_answer'] = 'Uw antwoord';
+$_['text_request_no_local'] = 'Niet gevonden in deze winkel';
+$_['text_request_no_reason'] = 'Geen reden opgegeven';
+$_['text_request_overdue'] = 'Te laat';
+$_['entry_request_reject_reason'] = 'Reden van afwijzing (verplicht, de koper ziet deze)';
+$_['button_request_accept'] = 'Retour accepteren';
+$_['button_request_reject'] = 'Retour afwijzen';
+$_['text_request_accepted'] = 'Retour geaccepteerd. De koper stuurt het artikel nu terug. Is het binnen, betaal de bestelling dan terug door de status op Terugbetaald te zetten: de terugbetaling gaat via sudemi naar de koper en sluit het verzoek af.';
+$_['text_request_rejected'] = 'Retour afgewezen. De koper ziet uw reden.';
+$_['text_request_already'] = 'Dit verzoek was al beantwoord. De lijst is bijgewerkt.';
+$_['error_request_not_found'] = 'Er staat geen retourverzoek meer open op deze bestelling. De lijst is bijgewerkt.';
+$_['error_request_reason'] = 'Voor het afwijzen van een retour is een reden nodig; de koper ziet die.';
+$_['error_request_unavailable'] = 'sudemi is op dit moment niet bereikbaar. Er is niets beantwoord; probeer het zo opnieuw.';
+$_['text_request_note_accepted'] = 'sudemi: retourverzoek geaccepteerd. Betaal de bestelling terug (status Terugbetaald) zodra het artikel terug is.';
+$_['text_request_note_rejected'] = 'sudemi: retourverzoek afgewezen. Reden getoond aan de koper: %s';
+$_['text_history_return_requested'] = 'Retour aangevraagd';

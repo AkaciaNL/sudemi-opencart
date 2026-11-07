@@ -135,3 +135,29 @@ $_['error_support_unavailable'] = '暂时无法连接 sudemi 客服，未发送�
 // a restored backup, or the shop moved. %s is the address the shop is connected under.
 $_['text_site_mismatch_at'] = 'sudemi 拒绝了来自此网站的请求：此店铺以另一个地址（%s）连接到 sudemi。如果此网站是测试副本（staging）或恢复的备份，请在此断开 sudemi 连接。如果店铺已迁移到此地址，请重新连接。';
 $_['text_site_mismatch'] = 'sudemi 拒绝了来自此网站的请求：此店铺以另一个地址连接到 sudemi。如果此网站是测试副本（staging）或恢复的备份，请在此断开 sudemi 连接。如果店铺已迁移到此地址，请重新连接。';
+
+// Return requests from buyers (answered within 7 days: accept, or reject with a reason the buyer
+// sees). The notes go into the order history; %s is the reason given.
+$_['text_requests_title'] = '退货申请';
+$_['text_requests_intro'] = '买家希望退回这些已送达的订单。请在显示的日期前答复每个申请：接受，或填写理由后拒绝（买家会看到理由）。7 天内未答复的申请将转交 sudemi 处理。每次向 sudemi 报告时，此列表都会更新。';
+$_['text_requests_empty'] = '没有待处理的退货申请。';
+$_['column_request_order'] = '订单';
+$_['column_request_reason'] = '买家理由';
+$_['column_request_requested'] = '申请时间';
+$_['column_request_respond_by'] = '答复截止';
+$_['column_request_answer'] = '您的答复';
+$_['text_request_no_local'] = '在本店中未找到';
+$_['text_request_no_reason'] = '未填写理由';
+$_['text_request_overdue'] = '已逾期';
+$_['entry_request_reject_reason'] = '拒绝理由（必填，买家可见）';
+$_['button_request_accept'] = '接受退货';
+$_['button_request_reject'] = '拒绝退货';
+$_['text_request_accepted'] = '已接受退货。买家现在会寄回商品。商品寄到后，请将订单状态设为“已退款”来为订单退款：退款经 sudemi 退还给买家，并关闭此申请。';
+$_['text_request_rejected'] = '已拒绝退货。买家会看到您的理由。';
+$_['text_request_already'] = '此申请已答复过。列表已更新。';
+$_['error_request_not_found'] = '此订单已没有待处理的退货申请。列表已更新。';
+$_['error_request_reason'] = '拒绝退货需要填写理由；买家会看到该理由。';
+$_['error_request_unavailable'] = '暂时无法连接 sudemi。未发送任何答复；请稍后重试。';
+$_['text_request_note_accepted'] = 'sudemi：已接受退货申请。商品退回后请为订单退款（状态“已退款”）。';
+$_['text_request_note_rejected'] = 'sudemi：已拒绝退货申请。向买家显示的理由：%s';
+$_['text_history_return_requested'] = '已申请退货';

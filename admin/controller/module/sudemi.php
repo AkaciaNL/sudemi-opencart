@@ -213,6 +213,107 @@ class Sudemi extends \Opencart\System\Engine\Controller
         $this->respond($json);
     }
 
+    /** Accepts a buyer's return request (signed call to sudemi). */
+    public function requestAccept(): void
+    {
+        $this->answerRequest(true);
+    }
+
+    /** Rejects a buyer's return request; the reason is required and shown to the buyer. */
+    public function requestReject(): void
+    {
+        $this->answerRequest(false);
+    }
+
+    /**
+     * Answers one open return request: permission and token first, like every action. On success
+     * the request leaves the stored list (Requests does that) and the local order gets a note in
+     * its history; after an accept the merchant is told to refund once the item is back, through
+     * the usual path (order status Refunded, which reaches sudemi).
+     */
+    private function answerRequest(bool $accept): void
+    {
+        $this->load->language('extension/sudemi/module/sudemi');
+        $json = [];
+
+        if (!$this->guard($json)) {
+            $this->respond($json);
+
+            return;
+        }
+
+        $sudemi = $this->services();
+        if (!$sudemi['client']->isConnected()) {
+            $json['error'] = $this->language->get('error_request_unavailable');
+            $this->respond($json);
+
+            return;
+        }
+        $orderId = strtolower(trim($this->posted('order_id')));
+        $reason = $this->posted('reason');
+        $result = $accept ? $sudemi['requests']->accept($orderId) : $sudemi['requests']->reject($orderId, $reason);
+        $json['outcome'] = $result['outcome'];
+
+        switch ($result['outcome']) {
+            case \Sudemi\Requests::OUTCOME_OK:
+                $json['success'] = $this->language->get($accept ? 'text_request_accepted' : 'text_request_rejected');
+                $local = $sudemi['orders']->localOrderOf($orderId);
+                if ($local) {
+                    // Stored HTML-escaped, the way OpenCart stores every history comment typed in
+                    // its admin: its order page prints history comments without escaping.
+                    $sudemi['orders']->note($local, htmlspecialchars($accept
+                        ? $this->language->get('text_request_note_accepted')
+                        : sprintf($this->language->get('text_request_note_rejected'), trim($reason)), ENT_QUOTES, 'UTF-8'));
+                }
+                $sudemi['logger']->info('Return request on sudemi order ' . $orderId . ' '
+                    . ($accept ? 'accepted.' : 'rejected.'));
+                break;
+            case \Sudemi\Requests::OUTCOME_ALREADY:
+                $json['success'] = $this->language->get('text_request_already');
+                break;
+            case \Sudemi\Requests::OUTCOME_NOT_FOUND:
+                $json['error'] = $this->language->get('error_request_not_found');
+                break;
+            case \Sudemi\Requests::OUTCOME_REASON_REQUIRED:
+            case \Sudemi\Requests::OUTCOME_INVALID:
+                $json['error'] = $this->language->get('error_request_reason');
+                break;
+            case \Sudemi\Requests::OUTCOME_SITE:
+                $json['error'] = $this->language->get('text_site_mismatch');
+                break;
+            default:
+                $json['error'] = $this->language->get('error_request_unavailable');
+        }
+
+        $this->respond($json);
+    }
+
+    /**
+     * The open return requests as the last heartbeat reported them, with the local order each
+     * belongs to (a link to OpenCart's order page) and the deadline.
+     */
+    private function returnRequests(array $sudemi): array
+    {
+        $rows = [];
+        $now = gmdate('Y-m-d\TH:i');
+        foreach ($sudemi['requests']->all() as $request) {
+            $local = $sudemi['orders']->localOrderOf($request['order_id']);
+            $rows[] = [
+                'order_id' => $request['order_id'],
+                'short' => substr($request['order_id'], 0, 8),
+                'local' => $local ? (int) $local : 0,
+                'href' => $local ? 'index.php?route=sale/order.info&order_id=' . (int) $local . '&user_token='
+                    . rawurlencode((string) $this->session->data['user_token']) : '',
+                'reason' => $request['reason'],
+                'requested_at' => $this->supportDate($request['requested_at']),
+                'respond_by' => $this->supportDate($request['respond_by']),
+                'overdue' => $request['respond_by'] !== '' && substr($request['respond_by'], 0, 16) < $now,
+            ];
+        }
+
+        return $rows;
+    }
+
     /**
      * The Support section: this shop's tickets, and the thread of the one asked for in
      * ?sudemi_ticket=<uuid>. Read-only; opening and replying go through the guarded actions.
@@ -512,6 +613,7 @@ class Sudemi extends \Opencart\System\Engine\Controller
             'shop_url' => $this->shopUrl(),
             'install_id' => $sudemi['client']->installId(),
             'history' => $sudemi['client']->isConnected() ? $this->orderHistory($sudemi['client']) : null,
+            'requests' => $sudemi['client']->isConnected() ? $this->returnRequests($sudemi) : [],
             'log' => $sudemi['logger']->entries(),
             'status' => $this->listingStatus($sudemi['heartbeat']->status()),
             'pending' => $sudemi['queue']->count(),
@@ -558,6 +660,8 @@ class Sudemi extends \Opencart\System\Engine\Controller
                     . ' ' . (isset($order['currency_code']) ? (string) $order['currency_code'] : 'EUR'),
                 // Only present once sudemi has released it, which is only after this shop confirmed.
                 'customer' => isset($order['customer_name']) ? (string) $order['customer_name'] : ' - ',
+                // An open return request on this order (answered in the list above).
+                'return_requested' => !empty($order['customer_request']) && is_array($order['customer_request']),
             ];
         }
         $awaiting = isset($body['counts']['AWAITING_SELLER']) ? (int) $body['counts']['AWAITING_SELLER'] : 0;
@@ -634,6 +738,7 @@ class Sudemi extends \Opencart\System\Engine\Controller
         require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/heartbeat.php';
         require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/withdrawal.php';
         require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/support.php';
+        require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/requests.php';
 
         $this->load->model('setting/setting');
         $store = new \Sudemi\SettingStore($this->db);
@@ -655,8 +760,9 @@ class Sudemi extends \Opencart\System\Engine\Controller
         $withdrawal = new \Sudemi\Withdrawal($this->db);
         $withdrawal->ensureSchema($store);
         $support = new \Sudemi\Support($client);
+        $requests = new \Sudemi\Requests($store, $client);
 
         return compact('store', 'logger', 'keys', 'client', 'pairing', 'catalogue', 'sync',
-            'queue', 'heartbeat', 'withdrawal', 'support');
+            'queue', 'orders', 'heartbeat', 'withdrawal', 'support', 'requests');
     }
 }

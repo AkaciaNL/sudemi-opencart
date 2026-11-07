@@ -135,3 +135,29 @@ $_['error_support_unavailable'] = 'Der sudemi-Support ist gerade nicht erreichba
 // a restored backup, or the shop moved. %s is the address the shop is connected under.
 $_['text_site_mismatch_at'] = 'sudemi hat Anfragen von dieser Website abgelehnt: Dieser Shop ist unter einer anderen Adresse mit sudemi verbunden (%s). Ist diese Website eine Staging-Kopie oder ein wiederhergestelltes Backup, trennen Sie sudemi hier. Ist der Shop an diese Adresse umgezogen, verbinden Sie ihn erneut.';
 $_['text_site_mismatch'] = 'sudemi hat Anfragen von dieser Website abgelehnt: Dieser Shop ist unter einer anderen Adresse mit sudemi verbunden. Ist diese Website eine Staging-Kopie oder ein wiederhergestelltes Backup, trennen Sie sudemi hier. Ist der Shop an diese Adresse umgezogen, verbinden Sie ihn erneut.';
+
+// Return requests from buyers (answered within 7 days: accept, or reject with a reason the buyer
+// sees). The notes go into the order history; %s is the reason given.
+$_['text_requests_title'] = 'Rücksendeanfragen';
+$_['text_requests_intro'] = 'Käufer möchten diese zugestellten Bestellungen zurücksenden. Beantworten Sie jede Anfrage bis zum angezeigten Datum: annehmen oder mit einer Begründung ablehnen (der Käufer sieht sie). Eine unbeantwortete Anfrage geht nach 7 Tagen an sudemi. Die Liste wird bei jeder Meldung an sudemi aktualisiert.';
+$_['text_requests_empty'] = 'Keine offenen Rücksendeanfragen.';
+$_['column_request_order'] = 'Bestellung';
+$_['column_request_reason'] = 'Grund des Käufers';
+$_['column_request_requested'] = 'Angefragt am';
+$_['column_request_respond_by'] = 'Antwort bis';
+$_['column_request_answer'] = 'Ihre Antwort';
+$_['text_request_no_local'] = 'In diesem Shop nicht gefunden';
+$_['text_request_no_reason'] = 'Kein Grund angegeben';
+$_['text_request_overdue'] = 'Überfällig';
+$_['entry_request_reject_reason'] = 'Ablehnungsgrund (Pflichtfeld, wird dem Käufer angezeigt)';
+$_['button_request_accept'] = 'Rücksendung annehmen';
+$_['button_request_reject'] = 'Rücksendung ablehnen';
+$_['text_request_accepted'] = 'Rücksendung angenommen. Der Käufer schickt den Artikel jetzt zurück. Sobald er angekommen ist, erstatten Sie die Bestellung, indem Sie ihren Status auf Erstattet setzen: Die Erstattung geht über sudemi an den Käufer und schließt die Anfrage ab.';
+$_['text_request_rejected'] = 'Rücksendung abgelehnt. Der Käufer sieht Ihre Begründung.';
+$_['text_request_already'] = 'Diese Anfrage wurde bereits beantwortet. Die Liste wurde aktualisiert.';
+$_['error_request_not_found'] = 'Zu dieser Bestellung gibt es keine offene Rücksendeanfrage mehr. Die Liste wurde aktualisiert.';
+$_['error_request_reason'] = 'Für die Ablehnung einer Rücksendung ist eine Begründung nötig; der Käufer sieht sie.';
+$_['error_request_unavailable'] = 'sudemi ist gerade nicht erreichbar. Es wurde nichts beantwortet; bitte versuchen Sie es gleich noch einmal.';
+$_['text_request_note_accepted'] = 'sudemi: Rücksendeanfrage angenommen. Erstatten Sie die Bestellung (Status Erstattet), sobald der Artikel zurück ist.';
+$_['text_request_note_rejected'] = 'sudemi: Rücksendeanfrage abgelehnt. Dem Käufer angezeigter Grund: %s';
+$_['text_history_return_requested'] = 'Rücksendung angefragt';

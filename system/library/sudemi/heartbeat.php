@@ -24,6 +24,7 @@
 namespace Sudemi;
 
 require_once __DIR__ . '/withdrawal.php';
+require_once __DIR__ . '/requests.php';
 
 class Heartbeat
 {
@@ -150,6 +151,10 @@ class Heartbeat
             'checked' => time(),
         ]);
 
+        // Return requests this shop has to answer: the full list on every beat (absent when there
+        // are none), so the stored copy is replaced, and cleared when the key is missing.
+        Requests::remember($this->store, isset($body['open_requests']) ? $body['open_requests'] : array());
+
         // Orders whose buyers are waiting on an answer from this shop. Before the full sync
         // below, because each one is money held on someone's card against a deadline, while a
         // catalogue disagreement costs nothing by waiting another five minutes.
@@ -244,6 +249,7 @@ class Heartbeat
         $this->store->delete(self::SETTING_INTERVAL);
         $this->store->delete(self::SETTING_CHANGES);
         $this->store->delete(self::SETTING_CRON_TOKEN);
+        Requests::forget($this->store);
     }
 
     private function remember(array $status)

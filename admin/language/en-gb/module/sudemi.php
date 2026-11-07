@@ -135,3 +135,29 @@ $_['error_support_unavailable'] = 'sudemi support could not be reached just now.
 // a restored backup, or the shop moved. %s is the address the shop is connected under.
 $_['text_site_mismatch_at'] = 'sudemi refused requests from this site: this shop is connected to sudemi under a different address (%s). If this site is a staging copy or a restored backup, disconnect sudemi here. If the shop has moved to this address, connect it again.';
 $_['text_site_mismatch'] = 'sudemi refused requests from this site: this shop is connected to sudemi under a different address. If this site is a staging copy or a restored backup, disconnect sudemi here. If the shop has moved to this address, connect it again.';
+
+// Return requests from buyers (answered within 7 days: accept, or reject with a reason the buyer
+// sees). The notes go into the order history; %s is the reason given.
+$_['text_requests_title'] = 'Return requests';
+$_['text_requests_intro'] = 'Buyers asked to return these delivered orders. Answer each one by the date shown: accept it, or reject it with a reason (the buyer sees it). A request left unanswered goes to sudemi after 7 days. The list is updated with every report to sudemi.';
+$_['text_requests_empty'] = 'No open return requests.';
+$_['column_request_order'] = 'Order';
+$_['column_request_reason'] = 'Buyer\'s reason';
+$_['column_request_requested'] = 'Requested';
+$_['column_request_respond_by'] = 'Answer by';
+$_['column_request_answer'] = 'Your answer';
+$_['text_request_no_local'] = 'Not found in this shop';
+$_['text_request_no_reason'] = 'No reason given';
+$_['text_request_overdue'] = 'Overdue';
+$_['entry_request_reject_reason'] = 'Reason for rejecting (required, shown to the buyer)';
+$_['button_request_accept'] = 'Accept return';
+$_['button_request_reject'] = 'Reject return';
+$_['text_request_accepted'] = 'Return accepted. The buyer now sends the item back. Once it has arrived, refund the order by setting its status to Refunded: the refund goes to the buyer through sudemi and closes the request.';
+$_['text_request_rejected'] = 'Return rejected. The buyer is shown your reason.';
+$_['text_request_already'] = 'This request was already answered. The list has been updated.';
+$_['error_request_not_found'] = 'There is no open return request on this order any more. The list has been updated.';
+$_['error_request_reason'] = 'Rejecting a return needs a reason; the buyer is shown it.';
+$_['error_request_unavailable'] = 'sudemi could not be reached just now. Nothing was answered; please try again shortly.';
+$_['text_request_note_accepted'] = 'sudemi: return request accepted. Refund the order (status Refunded) once the item is back.';
+$_['text_request_note_rejected'] = 'sudemi: return request rejected. Reason shown to the buyer: %s';
+$_['text_history_return_requested'] = 'Return requested';

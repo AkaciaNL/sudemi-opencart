@@ -24,7 +24,7 @@ class Client
 
     /** A cap, so a strange Retry-After cannot park a cron run for an hour. */
     const RATE_LIMIT_MAX_WAIT = 90;
-    const VERSION = '1.2.4';
+    const VERSION = '1.2.5';
 
     private $keys;
     private $store;

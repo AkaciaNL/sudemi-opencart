@@ -229,6 +229,22 @@ idempotently:
 - `PAID` (or `SHIPPED`/`DELIVERED`): the money is taken. Fetch the address, mark the local order paid, and ship.
 - `DECLINED`: released without charge (the capture failed or the authorisation lapsed). Cancel the local order and restore its stock.
 - Only a local order still on hold is touched; anything else was settled before.
+- `CANCELLED` on an order already confirmed locally: the buyer cancelled before shipping and sudemi
+  refunded them in full. Move the local order to the shop's cancelled status, restore stock, add a
+  history note, and do **not** call `/cancel` or `/refund` back for that change. Leave orders
+  already shipped, complete, cancelled or refunded alone.
+
+### Return requests (rule 4 of docs/policies/cancellation-and-returns.md)
+
+The heartbeat answer carries `open_requests` when the shop has return requests to answer: the full
+list on every beat (absent when there are none), each
+`{"request_id","order_id","kind":"RETURN","reason","requested_at","respond_by"}`. Replace the
+stored copy on every 200 beat. `GET /integration/v1/orders` entries carry the same object as
+`customer_request`. Answer with `POST /integration/v1/orders/{order_id}/request/accept` (a JSON
+object, may be empty) or `/request/reject` with `{"reason": "..."}` (required, shown to the buyer;
+400 `invalid_request` without one). 200 `{"status":"ok"}` or `{"status":"already_resolved"}`, 404
+when there is no open request. After accepting, the shop refunds through `/refund` once the item is
+back; that refund closes the request.
 
 ## 5. What a plugin may **not** change
 

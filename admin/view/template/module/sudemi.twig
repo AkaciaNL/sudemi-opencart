@@ -84,7 +84,7 @@
                 <thead><tr><th>{{ column_order }}</th><th>{{ column_items }}</th><th>{{ column_status }}</th><th>{{ column_net }}</th><th>{{ column_customer }}</th></tr></thead>
                 <tbody>
                 {% for row in history.rows %}
-                  <tr><td><code>{{ row.id }}</code><br><small>{{ row.date }}</small></td><td>{{ row.items }}</td><td>{{ row.status }}</td><td>{{ row.net }}</td><td>{{ row.customer }}</td></tr>
+                  <tr><td><code>{{ row.id }}</code><br><small>{{ row.date }}</small></td><td>{{ row.items }}</td><td>{{ row.status }}{% if row.return_requested %}<br><span class="badge bg-warning text-dark">{{ text_history_return_requested }}</span>{% endif %}</td><td>{{ row.net }}</td><td>{{ row.customer }}</td></tr>
                 {% endfor %}
                 </tbody>
               </table>
@@ -138,6 +138,40 @@
 
       </div>
     </div>
+
+    {# Return requests: buyers who asked to return a delivered order. The shop answers within 7 days:
+       accept, or reject with a reason the buyer is shown. The list is the one the last heartbeat
+       brought; the buyer's reason is plain text, printed escaped. #}
+    {% if connected %}
+    <div class="card mt-3" id="sudemi-return-requests">
+      <div class="card-header"><i class="fa-solid fa-rotate-left"></i> {{ text_requests_title }}</div>
+      <div class="card-body">
+        <p class="form-text">{{ text_requests_intro }}</p>
+        {% if requests %}
+          <table class="table table-sm align-middle">
+            <thead><tr><th>{{ column_request_order }}</th><th>{{ column_request_reason }}</th><th>{{ column_request_respond_by }}</th><th style="width:22rem">{{ column_request_answer }}</th></tr></thead>
+            <tbody>
+            {% for r in requests %}
+              <tr class="sudemi-request" data-order-id="{{ r.order_id|e }}">
+                <td>{% if r.href %}<a href="{{ r.href|e }}">#{{ r.local|e }}</a>{% else %}{{ text_request_no_local|e }}{% endif %}<br><small>sudemi <code>{{ r.short|e }}</code></small><br><small>{{ column_request_requested|e }}: {{ r.requested_at|e }}</small></td>
+                <td style="white-space: pre-wrap; overflow-wrap: anywhere;">{% if r.reason %}{{ r.reason|e }}{% else %}<em>{{ text_request_no_reason|e }}</em>{% endif %}</td>
+                <td>{{ r.respond_by|e }}{% if r.overdue %}<br><span class="badge bg-danger">{{ text_request_overdue|e }}</span>{% endif %}</td>
+                <td>
+                  <button type="button" class="btn btn-success btn-sm mb-2" onclick="sudemiRequest(this, 'accept')">{{ button_request_accept|e }}</button>
+                  <label class="form-label small mb-1" for="sudemi-reject-{{ loop.index }}">{{ entry_request_reject_reason|e }}</label>
+                  <textarea id="sudemi-reject-{{ loop.index }}" class="form-control form-control-sm sudemi-reject-reason" rows="2" maxlength="1000" required></textarea>
+                  <button type="button" class="btn btn-outline-danger btn-sm mt-1" onclick="sudemiRequest(this, 'reject')">{{ button_request_reject|e }}</button>
+                </td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <p class="form-text mb-0" id="sudemi-return-requests-empty">{{ text_requests_empty }}</p>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
 
     {# Support: tickets between this shop and sudemi support. Message bodies are plain text from
        sudemi, printed escaped; white-space: pre-wrap keeps their line breaks. #}
@@ -239,6 +273,30 @@ function sudemiSupportReply() {
             if (json.success) { sudemiSupportShow(json.ticket_id); }
         },
         error: function () { alert('{{ error_support_unavailable|e('js') }}'); }
+    });
+}
+
+// Answering a return request is a guarded action (modify permission + user token), like the others.
+// A rejection needs a reason (shown to the buyer); it is checked here and again by sudemi.
+function sudemiRequest(button, action) {
+    var row = $(button).closest('tr.sudemi-request');
+    var reason = $.trim(row.find('.sudemi-reject-reason').val() || '');
+    if (action === 'reject' && reason === '') {
+        alert('{{ error_request_reason|e('js') }}');
+        row.find('.sudemi-reject-reason').focus();
+        return;
+    }
+    $(button).prop('disabled', true);
+    $.ajax({
+        url: 'index.php?route=extension/sudemi/module/sudemi.request' + (action === 'accept' ? 'Accept' : 'Reject') + '&user_token={{ user_token|e('js') }}',
+        type: 'post', dataType: 'json',
+        data: { order_id: row.data('order-id'), reason: action === 'reject' ? reason : '' },
+        success: function (json) {
+            if (json.error) { alert(json.error); }
+            if (json.success) { alert(json.success); }
+            location.reload();
+        },
+        error: function () { $(button).prop('disabled', false); alert('{{ error_request_unavailable|e('js') }}'); }
     });
 }
 

@@ -135,3 +135,29 @@ $_['error_support_unavailable'] = 'sudemi destek ekibine şu anda ulaşılamıyo
 // a restored backup, or the shop moved. %s is the address the shop is connected under.
 $_['text_site_mismatch_at'] = 'sudemi bu siteden gelen istekleri reddetti: bu mağaza sudemi\'ye farklı bir adresle bağlı (%s). Bu site bir test (staging) kopyası veya geri yüklenmiş bir yedekse, sudemi bağlantısını burada kesin. Mağaza bu adrese taşındıysa yeniden bağlayın.';
 $_['text_site_mismatch'] = 'sudemi bu siteden gelen istekleri reddetti: bu mağaza sudemi\'ye farklı bir adresle bağlı. Bu site bir test (staging) kopyası veya geri yüklenmiş bir yedekse, sudemi bağlantısını burada kesin. Mağaza bu adrese taşındıysa yeniden bağlayın.';
+
+// Return requests from buyers (answered within 7 days: accept, or reject with a reason the buyer
+// sees). The notes go into the order history; %s is the reason given.
+$_['text_requests_title'] = 'İade talepleri';
+$_['text_requests_intro'] = 'Alıcılar teslim edilen bu siparişleri iade etmek istiyor. Her talebi gösterilen tarihe kadar yanıtlayın: kabul edin ya da bir gerekçeyle reddedin (alıcı gerekçeyi görür). Yanıtlanmayan bir talep 7 gün sonra sudemi’ye geçer. Liste, sudemi’ye gönderilen her bildirimde güncellenir.';
+$_['text_requests_empty'] = 'Açık iade talebi yok.';
+$_['column_request_order'] = 'Sipariş';
+$_['column_request_reason'] = 'Alıcının gerekçesi';
+$_['column_request_requested'] = 'Talep tarihi';
+$_['column_request_respond_by'] = 'Son yanıt tarihi';
+$_['column_request_answer'] = 'Yanıtınız';
+$_['text_request_no_local'] = 'Bu mağazada bulunamadı';
+$_['text_request_no_reason'] = 'Gerekçe belirtilmedi';
+$_['text_request_overdue'] = 'Süresi geçti';
+$_['entry_request_reject_reason'] = 'Ret gerekçesi (zorunlu, alıcıya gösterilir)';
+$_['button_request_accept'] = 'İadeyi kabul et';
+$_['button_request_reject'] = 'İadeyi reddet';
+$_['text_request_accepted'] = 'İade kabul edildi. Alıcı ürünü şimdi geri gönderiyor. Ürün ulaştığında siparişin durumunu İade Edildi yaparak ücreti iade edin: iade sudemi üzerinden alıcıya ulaşır ve talebi kapatır.';
+$_['text_request_rejected'] = 'İade reddedildi. Alıcı gerekçenizi görür.';
+$_['text_request_already'] = 'Bu talep zaten yanıtlanmış. Liste güncellendi.';
+$_['error_request_not_found'] = 'Bu siparişte artık açık bir iade talebi yok. Liste güncellendi.';
+$_['error_request_reason'] = 'Bir iadeyi reddetmek için gerekçe gerekir; alıcı bu gerekçeyi görür.';
+$_['error_request_unavailable'] = 'Şu anda sudemi’ye ulaşılamıyor. Hiçbir yanıt gönderilmedi; lütfen biraz sonra tekrar deneyin.';
+$_['text_request_note_accepted'] = 'sudemi: iade talebi kabul edildi. Ürün geri geldiğinde siparişin ücretini iade edin (durum İade Edildi).';
+$_['text_request_note_rejected'] = 'sudemi: iade talebi reddedildi. Alıcıya gösterilen gerekçe: %s';
+$_['text_history_return_requested'] = 'İade talep edildi';

@@ -135,3 +135,29 @@ $_['error_support_unavailable'] = 'Pomoc techniczna sudemi jest w tej chwili nie
 // a restored backup, or the shop moved. %s is the address the shop is connected under.
 $_['text_site_mismatch_at'] = 'sudemi odrzuciło żądania z tej witryny: ten sklep jest połączony z sudemi pod innym adresem (%s). Jeśli ta witryna jest kopią testową (staging) lub przywróconą kopią zapasową, rozłącz tutaj sudemi. Jeśli sklep przeniósł się pod ten adres, połącz go ponownie.';
 $_['text_site_mismatch'] = 'sudemi odrzuciło żądania z tej witryny: ten sklep jest połączony z sudemi pod innym adresem. Jeśli ta witryna jest kopią testową (staging) lub przywróconą kopią zapasową, rozłącz tutaj sudemi. Jeśli sklep przeniósł się pod ten adres, połącz go ponownie.';
+
+// Return requests from buyers (answered within 7 days: accept, or reject with a reason the buyer
+// sees). The notes go into the order history; %s is the reason given.
+$_['text_requests_title'] = 'Prośby o zwrot';
+$_['text_requests_intro'] = 'Kupujący chcą zwrócić te dostarczone zamówienia. Odpowiedz na każdą prośbę przed podaną datą: zaakceptuj ją albo odrzuć, podając powód (kupujący go zobaczy). Prośba bez odpowiedzi trafia po 7 dniach do sudemi. Lista aktualizuje się przy każdym raporcie wysyłanym do sudemi.';
+$_['text_requests_empty'] = 'Brak otwartych próśb o zwrot.';
+$_['column_request_order'] = 'Zamówienie';
+$_['column_request_reason'] = 'Powód kupującego';
+$_['column_request_requested'] = 'Zgłoszono';
+$_['column_request_respond_by'] = 'Odpowiedz do';
+$_['column_request_answer'] = 'Twoja odpowiedź';
+$_['text_request_no_local'] = 'Nie znaleziono w tym sklepie';
+$_['text_request_no_reason'] = 'Nie podano powodu';
+$_['text_request_overdue'] = 'Po terminie';
+$_['entry_request_reject_reason'] = 'Powód odrzucenia (wymagany, widoczny dla kupującego)';
+$_['button_request_accept'] = 'Zaakceptuj zwrot';
+$_['button_request_reject'] = 'Odrzuć zwrot';
+$_['text_request_accepted'] = 'Zwrot zaakceptowany. Kupujący odsyła teraz towar. Gdy dotrze, zwróć pieniądze za zamówienie, ustawiając jego status na Zwrócono: zwrot trafia do kupującego przez sudemi i zamyka prośbę.';
+$_['text_request_rejected'] = 'Zwrot odrzucony. Kupujący widzi Twój powód.';
+$_['text_request_already'] = 'Na tę prośbę już odpowiedziano. Lista została zaktualizowana.';
+$_['error_request_not_found'] = 'To zamówienie nie ma już otwartej prośby o zwrot. Lista została zaktualizowana.';
+$_['error_request_reason'] = 'Odrzucenie zwrotu wymaga podania powodu; kupujący go zobaczy.';
+$_['error_request_unavailable'] = 'Nie można teraz połączyć się z sudemi. Nic nie zostało wysłane; spróbuj ponownie za chwilę.';
+$_['text_request_note_accepted'] = 'sudemi: prośba o zwrot zaakceptowana. Zwróć pieniądze za zamówienie (status Zwrócono), gdy towar wróci.';
+$_['text_request_note_rejected'] = 'sudemi: prośba o zwrot odrzucona. Powód pokazany kupującemu: %s';
+$_['text_history_return_requested'] = 'Zgłoszono zwrot';

@@ -135,3 +135,29 @@ $_['error_support_unavailable'] = 'לא ניתן להתחבר כרגע לתמי�
 // a restored backup, or the shop moved. %s is the address the shop is connected under.
 $_['text_site_mismatch_at'] = 'sudemi דחה בקשות מהאתר הזה: החנות הזו מחוברת ל-sudemi בכתובת אחרת (%s). אם האתר הזה הוא עותק בדיקות (staging) או גיבוי משוחזר, יש לנתק את sudemi כאן. אם החנות עברה לכתובת הזו, יש לחבר אותה מחדש.';
 $_['text_site_mismatch'] = 'sudemi דחה בקשות מהאתר הזה: החנות הזו מחוברת ל-sudemi בכתובת אחרת. אם האתר הזה הוא עותק בדיקות (staging) או גיבוי משוחזר, יש לנתק את sudemi כאן. אם החנות עברה לכתובת הזו, יש לחבר אותה מחדש.';
+
+// Return requests from buyers (answered within 7 days: accept, or reject with a reason the buyer
+// sees). The notes go into the order history; %s is the reason given.
+$_['text_requests_title'] = 'בקשות החזרה';
+$_['text_requests_intro'] = 'קונים מבקשים להחזיר את ההזמנות האלה שכבר נמסרו. יש להשיב לכל בקשה עד התאריך המוצג: לקבל אותה, או לדחות אותה עם נימוק (הקונה יראה אותו). בקשה שלא נענתה עוברת ל-sudemi אחרי 7 ימים. הרשימה מתעדכנת בכל דיווח ל-sudemi.';
+$_['text_requests_empty'] = 'אין בקשות החזרה פתוחות.';
+$_['column_request_order'] = 'הזמנה';
+$_['column_request_reason'] = 'הנימוק של הקונה';
+$_['column_request_requested'] = 'תאריך הבקשה';
+$_['column_request_respond_by'] = 'להשיב עד';
+$_['column_request_answer'] = 'התשובה שלך';
+$_['text_request_no_local'] = 'לא נמצאה בחנות זו';
+$_['text_request_no_reason'] = 'לא צוין נימוק';
+$_['text_request_overdue'] = 'באיחור';
+$_['entry_request_reject_reason'] = 'נימוק הדחייה (חובה, מוצג לקונה)';
+$_['button_request_accept'] = 'אישור ההחזרה';
+$_['button_request_reject'] = 'דחיית ההחזרה';
+$_['text_request_accepted'] = 'ההחזרה אושרה. הקונה שולח עכשיו את הפריט בחזרה. כשהוא מגיע, יש להחזיר את הכסף על ההזמנה על ידי שינוי הסטטוס שלה ל"הוחזר כסף": ההחזר מגיע לקונה דרך sudemi וסוגר את הבקשה.';
+$_['text_request_rejected'] = 'ההחזרה נדחתה. הקונה רואה את הנימוק שלך.';
+$_['text_request_already'] = 'כבר ניתנה תשובה לבקשה זו. הרשימה עודכנה.';
+$_['error_request_not_found'] = 'אין עוד בקשת החזרה פתוחה בהזמנה זו. הרשימה עודכנה.';
+$_['error_request_reason'] = 'דחיית החזרה מחייבת נימוק; הקונה יראה אותו.';
+$_['error_request_unavailable'] = 'לא ניתן להתחבר ל-sudemi כרגע. לא נשלחה תשובה; כדאי לנסות שוב בעוד רגע.';
+$_['text_request_note_accepted'] = 'sudemi: בקשת ההחזרה אושרה. יש להחזיר את הכסף על ההזמנה (סטטוס "הוחזר כסף") כשהפריט חוזר.';
+$_['text_request_note_rejected'] = 'sudemi: בקשת ההחזרה נדחתה. הנימוק שהוצג לקונה: %s';
+$_['text_history_return_requested'] = 'התבקשה החזרה';

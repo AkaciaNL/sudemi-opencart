@@ -135,3 +135,29 @@ $_['error_support_unavailable'] = 'No se ha podido contactar con el soporte de s
 // a restored backup, or the shop moved. %s is the address the shop is connected under.
 $_['text_site_mismatch_at'] = 'sudemi rechazó las solicitudes de este sitio: esta tienda está conectada a sudemi con otra dirección (%s). Si este sitio es una copia de pruebas (staging) o una copia de seguridad restaurada, desconecte sudemi aquí. Si la tienda se ha trasladado a esta dirección, vuelva a conectarla.';
 $_['text_site_mismatch'] = 'sudemi rechazó las solicitudes de este sitio: esta tienda está conectada a sudemi con otra dirección. Si este sitio es una copia de pruebas (staging) o una copia de seguridad restaurada, desconecte sudemi aquí. Si la tienda se ha trasladado a esta dirección, vuelva a conectarla.';
+
+// Return requests from buyers (answered within 7 days: accept, or reject with a reason the buyer
+// sees). The notes go into the order history; %s is the reason given.
+$_['text_requests_title'] = 'Solicitudes de devolución';
+$_['text_requests_intro'] = 'Los compradores quieren devolver estos pedidos entregados. Responda a cada solicitud antes de la fecha indicada: acéptela o recházela con un motivo (el comprador lo verá). Una solicitud sin respuesta pasa a sudemi a los 7 días. La lista se actualiza con cada informe enviado a sudemi.';
+$_['text_requests_empty'] = 'No hay solicitudes de devolución abiertas.';
+$_['column_request_order'] = 'Pedido';
+$_['column_request_reason'] = 'Motivo del comprador';
+$_['column_request_requested'] = 'Solicitada el';
+$_['column_request_respond_by'] = 'Responder antes del';
+$_['column_request_answer'] = 'Su respuesta';
+$_['text_request_no_local'] = 'No encontrado en esta tienda';
+$_['text_request_no_reason'] = 'Sin motivo indicado';
+$_['text_request_overdue'] = 'Vencida';
+$_['entry_request_reject_reason'] = 'Motivo del rechazo (obligatorio, se muestra al comprador)';
+$_['button_request_accept'] = 'Aceptar devolución';
+$_['button_request_reject'] = 'Rechazar devolución';
+$_['text_request_accepted'] = 'Devolución aceptada. El comprador devuelve ahora el artículo. Cuando haya llegado, reembolse el pedido cambiando su estado a Reembolsado: el reembolso llega al comprador a través de sudemi y cierra la solicitud.';
+$_['text_request_rejected'] = 'Devolución rechazada. El comprador ve su motivo.';
+$_['text_request_already'] = 'Esta solicitud ya tenía respuesta. La lista se ha actualizado.';
+$_['error_request_not_found'] = 'Este pedido ya no tiene ninguna solicitud de devolución abierta. La lista se ha actualizado.';
+$_['error_request_reason'] = 'Para rechazar una devolución hace falta un motivo; el comprador lo verá.';
+$_['error_request_unavailable'] = 'No se ha podido contactar con sudemi en este momento. No se ha respondido nada; inténtelo de nuevo en breve.';
+$_['text_request_note_accepted'] = 'sudemi: solicitud de devolución aceptada. Reembolse el pedido (estado Reembolsado) cuando el artículo haya vuelto.';
+$_['text_request_note_rejected'] = 'sudemi: solicitud de devolución rechazada. Motivo mostrado al comprador: %s';
+$_['text_history_return_requested'] = 'Devolución solicitada';

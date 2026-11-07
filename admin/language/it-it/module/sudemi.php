@@ -135,3 +135,29 @@ $_['error_support_unavailable'] = 'Al momento l’assistenza sudemi non è raggi
 // a restored backup, or the shop moved. %s is the address the shop is connected under.
 $_['text_site_mismatch_at'] = 'sudemi ha rifiutato le richieste da questo sito: questo negozio è collegato a sudemi con un altro indirizzo (%s). Se questo sito è una copia di staging o un backup ripristinato, scollega sudemi qui. Se il negozio si è trasferito a questo indirizzo, collegalo di nuovo.';
 $_['text_site_mismatch'] = 'sudemi ha rifiutato le richieste da questo sito: questo negozio è collegato a sudemi con un altro indirizzo. Se questo sito è una copia di staging o un backup ripristinato, scollega sudemi qui. Se il negozio si è trasferito a questo indirizzo, collegalo di nuovo.';
+
+// Return requests from buyers (answered within 7 days: accept, or reject with a reason the buyer
+// sees). The notes go into the order history; %s is the reason given.
+$_['text_requests_title'] = 'Richieste di reso';
+$_['text_requests_intro'] = 'Gli acquirenti chiedono di restituire questi ordini consegnati. Rispondi a ogni richiesta entro la data indicata: accettala oppure rifiutala indicando un motivo (l’acquirente lo vedrà). Una richiesta senza risposta passa a sudemi dopo 7 giorni. L’elenco si aggiorna a ogni segnalazione inviata a sudemi.';
+$_['text_requests_empty'] = 'Nessuna richiesta di reso aperta.';
+$_['column_request_order'] = 'Ordine';
+$_['column_request_reason'] = 'Motivo dell’acquirente';
+$_['column_request_requested'] = 'Richiesta il';
+$_['column_request_respond_by'] = 'Rispondere entro';
+$_['column_request_answer'] = 'La tua risposta';
+$_['text_request_no_local'] = 'Non trovato in questo negozio';
+$_['text_request_no_reason'] = 'Nessun motivo indicato';
+$_['text_request_overdue'] = 'Scaduta';
+$_['entry_request_reject_reason'] = 'Motivo del rifiuto (obbligatorio, mostrato all’acquirente)';
+$_['button_request_accept'] = 'Accetta il reso';
+$_['button_request_reject'] = 'Rifiuta il reso';
+$_['text_request_accepted'] = 'Reso accettato. Ora l’acquirente rispedisce l’articolo. Quando è arrivato, rimborsa l’ordine impostandone lo stato su Rimborsato: il rimborso arriva all’acquirente tramite sudemi e chiude la richiesta.';
+$_['text_request_rejected'] = 'Reso rifiutato. L’acquirente vede il tuo motivo.';
+$_['text_request_already'] = 'Questa richiesta aveva già una risposta. L’elenco è stato aggiornato.';
+$_['error_request_not_found'] = 'Su questo ordine non c’è più nessuna richiesta di reso aperta. L’elenco è stato aggiornato.';
+$_['error_request_reason'] = 'Per rifiutare un reso serve un motivo; l’acquirente lo vedrà.';
+$_['error_request_unavailable'] = 'Al momento sudemi non è raggiungibile. Non è stata inviata alcuna risposta; riprova tra poco.';
+$_['text_request_note_accepted'] = 'sudemi: richiesta di reso accettata. Rimborsa l’ordine (stato Rimborsato) quando l’articolo è tornato.';
+$_['text_request_note_rejected'] = 'sudemi: richiesta di reso rifiutata. Motivo mostrato all’acquirente: %s';
+$_['text_history_return_requested'] = 'Reso richiesto';

@@ -198,6 +198,14 @@ class Event extends \Opencart\System\Engine\Controller
         $complete = $this->config->get('config_complete_status');
         $complete = is_array($complete) ? array_map('intval', $complete) : [];
 
+        // An order cancelled from sudemi's side (the buyer cancelled before shipping) was already
+        // refunded there in full: a Canceled or Refunded set on it here must not ask sudemi to
+        // cancel or refund it a second time.
+        if ((self::STATUS_REFUNDED === $statusId || self::STATUS_CANCELED === $statusId)
+            && $services['orders']->isCancelledOnSudemi($orderId)) {
+            return;
+        }
+
         // sudemi holds the buyer's payment: a refund or cancellation made here has to reach it,
         // or the shop records it and the buyer never gets the money back.
         if (self::STATUS_REFUNDED === $statusId) {

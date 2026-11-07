@@ -22,6 +22,14 @@ class Orders
     /** OpenCart order_status_id 0 means "missing" - an order not yet confirmed to anyone. */
     const STATE_INCOMPLETE = 0;
 
+    /** OpenCart's built-in Shipped, Canceled and Refunded statuses. */
+    const STATUS_SHIPPED = 3;
+    const STATUS_CANCELED = 7;
+    const STATUS_REFUNDED = 11;
+
+    /** The history note on a local order cancelled because the buyer cancelled it on sudemi. */
+    const NOTE_CANCELLED_BY_BUYER = 'Cancelled by the buyer on sudemi before shipping; the buyer has been refunded in full';
+
     private $db;
     private $config;
     private $client;
@@ -410,7 +418,7 @@ class Orders
         }
     }
 
-    /** Paid means ship it; declined means it never happened. */
+    /** Paid means ship it; declined means it never happened; cancelled means do not ship it. */
     private function settle(array $settled)
     {
         $sudemiId = (string) $settled['order_id'];
@@ -419,17 +427,33 @@ class Orders
             return;
         }
         $orderId = $this->findLocalOrder($sudemiId);
-        // Only an order still unconfirmed here. One already confirmed or voided was settled
-        // before -- by an earlier beat, or by an accept that captured straight away.
-        if (!$orderId || $this->statusOf($orderId) !== self::STATE_INCOMPLETE) {
+        if (!$orderId) {
+            return;
+        }
+        $current = $this->statusOf($orderId);
+
+        // The buyer cancelled before shipping (or the order was cancelled on sudemi another way):
+        // sudemi already refunded the buyer in full. An order confirmed here would otherwise stay
+        // Pending/Processing and could still be shipped.
+        if ($state === 'CANCELLED' && $current !== self::STATE_INCOMPLETE) {
+            $this->cancelledOnSudemi($orderId, $sudemiId, $current);
+
             return;
         }
 
-        if ($state === 'DECLINED') {
-            // Released without being charged: the capture failed, or the authorisation lapsed
-            // before the last shop answered. The stock the order reserved goes back, and the order
-            // stays voided.
-            $reason = !empty($settled['declined_reason']) ? (string) $settled['declined_reason'] : 'reason not given';
+        // Only an order still unconfirmed here. One already confirmed or voided was settled
+        // before -- by an earlier beat, or by an accept that captured straight away.
+        if ($current !== self::STATE_INCOMPLETE) {
+            return;
+        }
+
+        if ($state === 'DECLINED' || $state === 'CANCELLED' || $state === 'REFUNDED') {
+            // Released without being charged: the capture failed, the authorisation lapsed before
+            // the last shop answered, or the buyer cancelled while it waited. (CANCELLED or
+            // REFUNDED on an order never confirmed here: paid and refunded between two beats.) The
+            // stock the order reserved goes back, the order stays voided, and it is never shipped.
+            $reason = !empty($settled['declined_reason']) ? (string) $settled['declined_reason']
+                : ($state === 'DECLINED' ? 'reason not given' : 'cancelled on sudemi; any payment was refunded');
             $this->restockOrder($orderId);
             // Marked so a second beat does not restock again: the comment no longer matches.
             $this->db->query(
@@ -438,7 +462,7 @@ class Orders
                   WHERE order_id = '" . (int) $orderId . "'"
             );
             $this->logger->warn(sprintf(
-                'sudemi order %s was released after all: %s. Stock restored; nothing was charged.',
+                'sudemi order %s was released after all: %s. Stock restored; do not ship it.',
                 $sudemiId,
                 $reason
             ));
@@ -449,6 +473,101 @@ class Orders
         $this->fillCustomer($orderId, $sudemiId);
         $this->setStatus($orderId, (int) $this->config->get('config_order_status_id'));
         $this->logger->info(sprintf('sudemi order %s is paid; order %d can be shipped.', $sudemiId, $orderId));
+    }
+
+    /**
+     * A confirmed local order whose sudemi order was cancelled (by the buyer, before shipping):
+     * moved to Canceled with stock restored the way OpenCart's own cancel restores it, and a note
+     * in the order history. Written straight to the tables, so OpenCart's addHistory event does
+     * not fire and this extension does not send sudemi a cancel (or refund) for a cancellation
+     * that came from sudemi; isCancelledOnSudemi() guards the event for later manual changes.
+     *
+     * Left alone: an order already Canceled or Refunded here, one already shipped or complete,
+     * and anything not in an open (processing) status. sudemi repeats the entry for 7 days.
+     */
+    private function cancelledOnSudemi($orderId, $sudemiId, $current)
+    {
+        $processing = $this->statusList('config_processing_status');
+        $complete = $this->statusList('config_complete_status');
+        $confirmed = (int) $this->config->get('config_order_status_id');
+
+        if (in_array($current, array(self::STATUS_CANCELED, self::STATUS_REFUNDED, self::STATUS_SHIPPED), true)
+            || in_array($current, $complete, true)
+            || $this->isCancelledOnSudemi($orderId)) {
+            return;
+        }
+        if (!in_array($current, $processing, true) && $current !== $confirmed) {
+            $this->logger->warn(sprintf(
+                'sudemi order %s was cancelled on sudemi, but local order %d has a status this extension does not change. Check it before shipping.',
+                $sudemiId,
+                $orderId
+            ));
+
+            return;
+        }
+
+        // OpenCart restocks when an order leaves a processing/complete status for one that is
+        // neither; the extension's own confirmation status counts too, because it took that stock.
+        if (in_array($current, array_merge($processing, $complete), true) || $current === $confirmed) {
+            $this->restockOrder($orderId);
+        }
+        $this->setStatus($orderId, self::STATUS_CANCELED);
+        $this->note($orderId, self::NOTE_CANCELLED_BY_BUYER, self::STATUS_CANCELED);
+        $this->logger->info(sprintf(
+            'sudemi order %s was cancelled by the buyer before shipping; order %d is now Canceled and its stock restored. The buyer was refunded in full by sudemi. Do not ship it.',
+            $sudemiId,
+            $orderId
+        ));
+    }
+
+    /**
+     * Whether this local order was cancelled from sudemi's side (the note above is in its
+     * history). The order-status event uses it so a later Canceled/Refunded set by hand on such an
+     * order does not ask sudemi to cancel or refund a second time.
+     */
+    public function isCancelledOnSudemi($orderId)
+    {
+        $query = $this->db->query(
+            "SELECT COUNT(*) AS n FROM " . $this->prefix . "order_history
+              WHERE order_id = '" . (int) $orderId . "'
+                AND comment = '" . $this->db->escape(self::NOTE_CANCELLED_BY_BUYER) . "'"
+        );
+
+        return $query->num_rows && (int) $query->row['n'] > 0;
+    }
+
+    /**
+     * Adds a note to the order's history (not sent to the customer), keeping its status unless
+     * one is given.
+     */
+    public function note($orderId, $comment, $statusId = null)
+    {
+        $statusId = $statusId === null ? $this->statusOf($orderId) : (int) $statusId;
+        if ($statusId < 0) {
+            return;
+        }
+        $this->db->query(
+            "INSERT INTO " . $this->prefix . "order_history SET
+                order_id = '" . (int) $orderId . "',
+                order_status_id = '" . (int) $statusId . "',
+                notify = '0',
+                comment = '" . $this->db->escape((string) $comment) . "',
+                date_added = NOW()"
+        );
+    }
+
+    /** @return int[] a configured status list (config_processing_status, config_complete_status) */
+    private function statusList($key)
+    {
+        $value = $this->config->get($key);
+
+        return is_array($value) ? array_map('intval', $value) : array();
+    }
+
+    /** @return int|null the local order for a sudemi order, if this shop has one */
+    public function localOrderOf($sudemiId)
+    {
+        return $this->findLocalOrder((string) $sudemiId);
     }
 
     private function statusOf($orderId)

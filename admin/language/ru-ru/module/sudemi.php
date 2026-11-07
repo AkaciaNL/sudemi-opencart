@@ -135,3 +135,29 @@ $_['error_support_unavailable'] = 'Служба поддержки sudemi сей
 // a restored backup, or the shop moved. %s is the address the shop is connected under.
 $_['text_site_mismatch_at'] = 'sudemi отклонил запросы с этого сайта: этот магазин подключён к sudemi под другим адресом (%s). Если этот сайт является тестовой копией (staging) или восстановленной резервной копией, отключите sudemi здесь. Если магазин переехал на этот адрес, подключите его заново.';
 $_['text_site_mismatch'] = 'sudemi отклонил запросы с этого сайта: этот магазин подключён к sudemi под другим адресом. Если этот сайт является тестовой копией (staging) или восстановленной резервной копией, отключите sudemi здесь. Если магазин переехал на этот адрес, подключите его заново.';
+
+// Return requests from buyers (answered within 7 days: accept, or reject with a reason the buyer
+// sees). The notes go into the order history; %s is the reason given.
+$_['text_requests_title'] = 'Запросы на возврат';
+$_['text_requests_intro'] = 'Покупатели хотят вернуть эти доставленные заказы. Ответьте на каждый запрос до указанной даты: примите его или отклоните, указав причину (покупатель её увидит). Запрос без ответа через 7 дней передаётся в sudemi. Список обновляется при каждом отчёте в sudemi.';
+$_['text_requests_empty'] = 'Открытых запросов на возврат нет.';
+$_['column_request_order'] = 'Заказ';
+$_['column_request_reason'] = 'Причина покупателя';
+$_['column_request_requested'] = 'Запрошено';
+$_['column_request_respond_by'] = 'Ответить до';
+$_['column_request_answer'] = 'Ваш ответ';
+$_['text_request_no_local'] = 'Не найден в этом магазине';
+$_['text_request_no_reason'] = 'Причина не указана';
+$_['text_request_overdue'] = 'Просрочено';
+$_['entry_request_reject_reason'] = 'Причина отказа (обязательно, видна покупателю)';
+$_['button_request_accept'] = 'Принять возврат';
+$_['button_request_reject'] = 'Отклонить возврат';
+$_['text_request_accepted'] = 'Возврат принят. Теперь покупатель отправляет товар обратно. Когда он придёт, верните деньги за заказ, установив статус «Возмещён»: возврат поступит покупателю через sudemi и закроет запрос.';
+$_['text_request_rejected'] = 'Возврат отклонён. Покупатель видит вашу причину.';
+$_['text_request_already'] = 'На этот запрос уже ответили. Список обновлён.';
+$_['error_request_not_found'] = 'По этому заказу больше нет открытого запроса на возврат. Список обновлён.';
+$_['error_request_reason'] = 'Чтобы отклонить возврат, нужна причина; покупатель её увидит.';
+$_['error_request_unavailable'] = 'Сейчас не удаётся связаться с sudemi. Ответ не отправлен; попробуйте ещё раз чуть позже.';
+$_['text_request_note_accepted'] = 'sudemi: запрос на возврат принят. Верните деньги за заказ (статус «Возмещён»), когда товар вернётся.';
+$_['text_request_note_rejected'] = 'sudemi: запрос на возврат отклонён. Причина, показанная покупателю: %s';
+$_['text_history_return_requested'] = 'Запрошен возврат';

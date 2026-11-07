@@ -135,3 +135,29 @@ $_['error_support_unavailable'] = 'تعذّر الوصول إلى دعم sudemi 
 // a restored backup, or the shop moved. %s is the address the shop is connected under.
 $_['text_site_mismatch_at'] = 'رفض sudemi الطلبات القادمة من هذا الموقع: هذا المتجر مربوط بـ sudemi بعنوان آخر (%s). إذا كان هذا الموقع نسخة تجريبية (staging) أو نسخة احتياطية مستعادة، فافصل sudemi هنا. وإذا انتقل المتجر إلى هذا العنوان، فاربطه من جديد.';
 $_['text_site_mismatch'] = 'رفض sudemi الطلبات القادمة من هذا الموقع: هذا المتجر مربوط بـ sudemi بعنوان آخر. إذا كان هذا الموقع نسخة تجريبية (staging) أو نسخة احتياطية مستعادة، فافصل sudemi هنا. وإذا انتقل المتجر إلى هذا العنوان، فاربطه من جديد.';
+
+// Return requests from buyers (answered within 7 days: accept, or reject with a reason the buyer
+// sees). The notes go into the order history; %s is the reason given.
+$_['text_requests_title'] = 'طلبات الإرجاع';
+$_['text_requests_intro'] = 'يرغب المشترون في إرجاع هذه الطلبات التي تم تسليمها. أجب عن كل طلب قبل التاريخ المعروض: اقبله، أو ارفضه مع ذكر السبب (سيراه المشتري). الطلب الذي لا يُجاب عنه يُحال إلى sudemi بعد 7 أيام. تُحدَّث القائمة مع كل تقرير يُرسل إلى sudemi.';
+$_['text_requests_empty'] = 'لا توجد طلبات إرجاع مفتوحة.';
+$_['column_request_order'] = 'الطلب';
+$_['column_request_reason'] = 'سبب المشتري';
+$_['column_request_requested'] = 'تاريخ الطلب';
+$_['column_request_respond_by'] = 'الرد قبل';
+$_['column_request_answer'] = 'ردّك';
+$_['text_request_no_local'] = 'غير موجود في هذا المتجر';
+$_['text_request_no_reason'] = 'لم يُذكر سبب';
+$_['text_request_overdue'] = 'متأخر';
+$_['entry_request_reject_reason'] = 'سبب الرفض (إلزامي، يظهر للمشتري)';
+$_['button_request_accept'] = 'قبول الإرجاع';
+$_['button_request_reject'] = 'رفض الإرجاع';
+$_['text_request_accepted'] = 'تم قبول الإرجاع. سيعيد المشتري الآن إرسال المنتج. عند وصوله، رُدّ المبلغ بتغيير حالة الطلب إلى "تم الاسترداد": يصل المبلغ إلى المشتري عبر sudemi ويُغلق الطلب.';
+$_['text_request_rejected'] = 'تم رفض الإرجاع. يرى المشتري السبب الذي ذكرته.';
+$_['text_request_already'] = 'تمت الإجابة عن هذا الطلب من قبل. تم تحديث القائمة.';
+$_['error_request_not_found'] = 'لم يعد هناك طلب إرجاع مفتوح لهذا الطلب. تم تحديث القائمة.';
+$_['error_request_reason'] = 'رفض الإرجاع يتطلب ذكر سبب؛ سيظهر للمشتري.';
+$_['error_request_unavailable'] = 'تعذّر الاتصال بـ sudemi حاليًا. لم يُرسل أي رد؛ يُرجى المحاولة مرة أخرى بعد قليل.';
+$_['text_request_note_accepted'] = 'sudemi: تم قبول طلب الإرجاع. رُدّ مبلغ الطلب (الحالة "تم الاسترداد") عند عودة المنتج.';
+$_['text_request_note_rejected'] = 'sudemi: تم رفض طلب الإرجاع. السبب المعروض للمشتري: %s';
+$_['text_history_return_requested'] = 'طُلب الإرجاع';
