@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.2.3 — 2026-11-07
+- Security: the extension page is HTML-escaped explicitly (OpenCart 4 turns Twig's autoescaping off). Before, a support message or ticket subject containing HTML was rendered as HTML in the shop's back office.
+
 ## 1.2.2
 
 - New **Support** section on the extension page: the shop owner opens a ticket with sudemi support

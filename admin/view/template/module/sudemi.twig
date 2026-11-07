@@ -1,5 +1,9 @@
-{# Everything printed here goes through Twig's autoescaping; nothing is marked raw. #}
-{{ header }}{{ column_left }}
+{# OpenCart 4 switches Twig's autoescaping OFF, so it is switched on explicitly for this whole
+   page: every value (ticket subjects and messages from sudemi support, product names, order
+   data) is HTML-escaped. Only OpenCart's own header, menu and footer markup is printed raw.
+   (Security fix 2026-11-07: a support message containing HTML was rendered as HTML.) #}
+{% autoescape 'html' %}
+{{ header|raw }}{{ column_left|raw }}
 <div id="content">
   <div class="page-header">
     <div class="container-fluid">
@@ -242,7 +246,7 @@ function sudemiSupportReply() {
 // AJAX call; the controller compares it with hash_equals before doing anything.
 function sudemiDelivery() {
     $.ajax({
-        url: 'index.php?route=extension/sudemi/module/sudemi.delivery&user_token={{ user_token }}',
+        url: 'index.php?route=extension/sudemi/module/sudemi.delivery&user_token={{ user_token|e('js') }}',
         type: 'post', dataType: 'json',
         data: { handling_days: $('#sudemi-handling').val(), transit_days: $('#sudemi-transit').val() },
         success: function (json) { if (json.error) { alert(json.error); } else { location.reload(); } }
@@ -251,7 +255,7 @@ function sudemiDelivery() {
 
 function sudemiPost(action) {
     $.ajax({
-        url: 'index.php?route=extension/sudemi/module/sudemi.' + action + '&user_token={{ user_token }}',
+        url: 'index.php?route=extension/sudemi/module/sudemi.' + action + '&user_token={{ user_token|e('js') }}',
         type: 'post',
         dataType: 'json',
         success: function (json) {
@@ -263,4 +267,5 @@ function sudemiPost(action) {
     });
 }
 </script>
-{{ footer }}
+{{ footer|raw }}
+{% endautoescape %}
