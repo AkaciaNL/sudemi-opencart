@@ -23,6 +23,7 @@ class Sudemi extends \Opencart\System\Engine\Controller
         $this->beatIfDue();
 
         $data = $this->common();
+        $data['support'] = $this->supportPage($data['connected']);
         $data['header'] = $this->load->controller('common/header');
         $data['column_left'] = $this->load->controller('common/column_left');
         $data['footer'] = $this->load->controller('common/footer');
@@ -138,6 +139,212 @@ class Sudemi extends \Opencart\System\Engine\Controller
         $json['success'] = $this->language->get('text_disconnected');
 
         $this->respond($json);
+    }
+
+    /** Opens a support ticket for this shop (signed call to sudemi; sudemi sends the e-mails). */
+    public function supportOpen(): void
+    {
+        $this->load->language('extension/sudemi/module/sudemi');
+        $json = [];
+
+        if (!$this->guard($json)) {
+            $this->respond($json);
+
+            return;
+        }
+
+        $sudemi = $this->services();
+        if (!$sudemi['client']->isConnected()) {
+            $json['error'] = $this->language->get('text_support_not_connected');
+            $this->respond($json);
+
+            return;
+        }
+        $post = $this->request->post;
+        $result = $sudemi['support']->open(
+            $this->posted('category'),
+            $this->posted('subject'),
+            $this->posted('message'),
+            $this->posted('order_id'),
+            $this->adminLocale()
+        );
+        if ($result['ok']) {
+            $json['success'] = sprintf($this->language->get('text_support_opened'),
+                isset($result['data']['number']) ? (string) $result['data']['number'] : '');
+            $json['ticket_id'] = (string) $result['data']['id'];
+        } else {
+            $json['error'] = $this->supportError($result['error']);
+        }
+
+        $this->respond($json);
+    }
+
+    /** Adds the shop's reply to one of its tickets. */
+    public function supportReply(): void
+    {
+        $this->load->language('extension/sudemi/module/sudemi');
+        $json = [];
+
+        if (!$this->guard($json)) {
+            $this->respond($json);
+
+            return;
+        }
+
+        $sudemi = $this->services();
+        if (!$sudemi['client']->isConnected()) {
+            $json['error'] = $this->language->get('text_support_not_connected');
+            $this->respond($json);
+
+            return;
+        }
+        $post = $this->request->post;
+        $result = $sudemi['support']->reply(
+            $this->posted('ticket_id'),
+            $this->posted('message')
+        );
+        if ($result['ok']) {
+            $json['success'] = $this->language->get('text_support_replied');
+            $json['ticket_id'] = (string) $result['data']['id'];
+        } else {
+            $json['error'] = $this->supportError($result['error']);
+        }
+
+        $this->respond($json);
+    }
+
+    /**
+     * The Support section: this shop's tickets, and the thread of the one asked for in
+     * ?sudemi_ticket=<uuid>. Read-only; opening and replying go through the guarded actions.
+     */
+    private function supportPage(bool $connected): array
+    {
+        $categories = [];
+        foreach (\Sudemi\Support::CATEGORIES as $category) {
+            $categories[] = ['value' => $category, 'label' => $this->language->get('text_support_category_' . strtolower($category))];
+        }
+        $page = ['connected' => $connected, 'categories' => $categories, 'tickets' => [], 'error' => '',
+            'ticket' => null, 'ticket_error' => ''];
+        if (!$connected) {
+            return $page;
+        }
+        // Tickets can carry order details and the shop owner's own words: only for those who may
+        // also act on them.
+        if (!$this->user->hasPermission('modify', self::PERMISSION)) {
+            $page['error'] = $this->language->get('error_permission');
+
+            return $page;
+        }
+
+        try {
+            $support = $this->services()['support'];
+            $list = $support->tickets();
+            if ($list['ok']) {
+                foreach ($list['data'] as $ticket) {
+                    $page['tickets'][] = $this->supportSummary($ticket);
+                }
+            } else {
+                $page['error'] = $this->supportError($list['error']);
+            }
+
+            $wanted = isset($this->request->get['sudemi_ticket']) ? (string) $this->request->get['sudemi_ticket'] : '';
+            if ($wanted !== '') {
+                $one = $support->ticket($wanted);
+                if ($one['ok']) {
+                    $ticket = $this->supportSummary($one['data']);
+                    $ticket['messages'] = [];
+                    foreach ($one['data']['messages'] as $message) {
+                        if (!is_array($message)) {
+                            continue;
+                        }
+                        $fromSupport = isset($message['author']) && $message['author'] === 'SUPPORT';
+                        $ticket['messages'][] = [
+                            'support' => $fromSupport,
+                            'author' => $this->language->get($fromSupport ? 'text_support_from_support' : 'text_support_from_shop'),
+                            'body' => isset($message['body']) ? (string) $message['body'] : '',
+                            'date' => $this->supportDate(isset($message['createdAt']) ? $message['createdAt'] : ''),
+                        ];
+                    }
+                    $page['ticket'] = $ticket;
+                } else {
+                    $page['ticket_error'] = $this->supportError($one['error']);
+                }
+            }
+        } catch (\Throwable $e) {
+            $page['error'] = $this->language->get('error_support_unavailable');
+        }
+
+        return $page;
+    }
+
+    private function supportSummary(array $ticket): array
+    {
+        $status = isset($ticket['status']) && in_array($ticket['status'], \Sudemi\Support::STATUSES, true)
+            ? (string) $ticket['status'] : 'OPEN';
+        $category = isset($ticket['category']) && in_array($ticket['category'], \Sudemi\Support::CATEGORIES, true)
+            ? (string) $ticket['category'] : 'OTHER';
+
+        return [
+            'id' => (string) $ticket['id'],
+            'number' => isset($ticket['number']) ? (string) $ticket['number'] : '',
+            'subject' => isset($ticket['subject']) ? (string) $ticket['subject'] : '',
+            'status' => $status,
+            'status_label' => $this->language->get('text_support_status_' . strtolower($status)),
+            'category_label' => $this->language->get('text_support_category_' . strtolower($category)),
+            'order_id' => isset($ticket['orderId']) && is_string($ticket['orderId']) ? $ticket['orderId'] : '',
+            'updated' => $this->supportDate(isset($ticket['lastMessageAt']) ? $ticket['lastMessageAt']
+                : (isset($ticket['updatedAt']) ? $ticket['updatedAt'] : '')),
+            'href' => 'index.php?route=extension/sudemi/module/sudemi&user_token=' . rawurlencode((string) $this->session->data['user_token'])
+                . '&sudemi_ticket=' . rawurlencode((string) $ticket['id']) . '#sudemi-support',
+        ];
+    }
+
+    /** "2026-11-06T14:03:22.123Z" -> "2026-11-06 14:03 UTC". */
+    private function supportDate($iso): string
+    {
+        if (!is_string($iso) || !preg_match('/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/', $iso, $m)) {
+            return '';
+        }
+
+        return $m[1] . ' ' . $m[2] . ' UTC';
+    }
+
+    private function supportError(?string $code): string
+    {
+        switch ($code) {
+            case \Sudemi\Support::ERROR_INVALID:
+                return $this->language->get('error_support_invalid');
+            case \Sudemi\Support::ERROR_NOT_FOUND:
+                return $this->language->get('error_support_not_found');
+            case \Sudemi\Support::ERROR_TOO_MANY:
+                return $this->language->get('error_support_too_many');
+            default:
+                return $this->language->get('error_support_unavailable');
+        }
+    }
+
+    /**
+     * A posted field as the person typed it. OpenCart's Request runs htmlspecialchars over all
+     * input; sudemi stores plain text and escapes on output, so the encoding is undone here
+     * (otherwise "<" would reach support as "&lt;").
+     */
+    private function posted(string $field): string
+    {
+        $value = isset($this->request->post[$field]) && is_string($this->request->post[$field])
+            ? $this->request->post[$field] : '';
+
+        return html_entity_decode($value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    }
+
+    /** The admin's language as sudemi knows it ("de-de" -> "de"), or null. */
+    private function adminLocale(): ?string
+    {
+        $code = (string) $this->language->get('code');
+        if ($code === '' || $code === 'code') {
+            $code = (string) $this->config->get('config_language_admin');
+        }
+
+        return \Sudemi\Support::locale($code);
     }
 
     /** Permission, then CSRF token, on every action without exception. */
@@ -408,6 +615,7 @@ class Sudemi extends \Opencart\System\Engine\Controller
         require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/orders.php';
         require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/heartbeat.php';
         require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/withdrawal.php';
+        require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/support.php';
 
         $this->load->model('setting/setting');
         $store = new \Sudemi\SettingStore($this->db);
@@ -426,8 +634,9 @@ class Sudemi extends \Opencart\System\Engine\Controller
         // An extension upgraded in place never runs install() again; this is where it catches up.
         $withdrawal = new \Sudemi\Withdrawal($this->db);
         $withdrawal->ensureSchema($store);
+        $support = new \Sudemi\Support($client);
 
         return compact('store', 'logger', 'keys', 'client', 'pairing', 'catalogue', 'sync',
-            'queue', 'heartbeat', 'withdrawal');
+            'queue', 'heartbeat', 'withdrawal', 'support');
     }
 }

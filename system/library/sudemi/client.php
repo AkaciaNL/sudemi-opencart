@@ -24,7 +24,7 @@ class Client
 
     /** A cap, so a strange Retry-After cannot park a cron run for an hour. */
     const RATE_LIMIT_MAX_WAIT = 90;
-    const VERSION = '1.2.1';
+    const VERSION = '1.2.2';
 
     private $keys;
     private $store;
@@ -83,6 +83,19 @@ class Client
     public function getSigned($path)
     {
         return $this->requestWithBackoff($path, array(), true, 'GET');
+    }
+
+    /**
+     * A signed call sent exactly once, whatever the answer.
+     *
+     * For calls a person is waiting on in the admin (support tickets): there a 429 is an answer to
+     * show, not a reason to sleep, and a POST must never be repeated behind their back.
+     *
+     * @return array|null ['status' => int, 'body' => array, 'retry_after' => int], null if unsent
+     */
+    public function sendSigned($method, $path, array $body = [])
+    {
+        return $this->request($path, $body, true, $method === 'GET' ? 'GET' : 'POST');
     }
 
     private function requestWithBackoff($path, array $body, $signed, $method = 'POST')

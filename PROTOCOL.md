@@ -157,6 +157,7 @@ plugin never invents sudemi ids.
 | `POST /integration/v1/products` | Products in batches of ≤ 500: identity, titles and descriptions per language, category, brand, GTIN/MPN, **specs** as typed attributes, images as URLs, price, stock, shipping, the GPSR safety block FR-34 requires, and an optional `withdrawalExclusion` (`hygiene`, `custom`, `perishable`, `media`, `press`, `mixed`, `alcohol`: the Directive 2011/83/EU art. 16 exception the shop marked the product with; omitted when the normal right of withdrawal applies) |
 | `PATCH /integration/v1/products/prices` | Price and stock deltas only — the hot path, called on a shop's own `product_updated` hook |
 | `POST /integration/v1/sync/{id}/commit` | Ends a full sync and tells the platform which products were *not* in it |
+| `GET`/`POST /integration/v1/support/tickets`, `GET /integration/v1/support/tickets/{id}`, `POST /integration/v1/support/tickets/{id}/messages` | Support tickets between the shop and sudemi support: list, open (`category`, `subject`, `message`, optional `orderId`, optional 2-letter `locale`), read a thread, reply. Sent once, never retried; 400/404/429 are shown to the shop owner. sudemi sends the e-mails, the plugin none |
 
 ### Images
 

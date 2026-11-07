@@ -134,10 +134,110 @@
 
       </div>
     </div>
+
+    {# Support: tickets between this shop and sudemi support. Message bodies are plain text from
+       sudemi, printed escaped; white-space: pre-wrap keeps their line breaks. #}
+    <div class="card mt-3" id="sudemi-support">
+      <div class="card-header"><i class="fa-solid fa-life-ring"></i> {{ text_support_title }}</div>
+      <div class="card-body">
+        {% if not support.connected %}
+          <p class="form-text mb-0">{{ text_support_not_connected }}</p>
+        {% else %}
+          <p class="form-text">{{ text_support_intro }}</p>
+          {% if support.error %}<div class="alert alert-warning">{{ support.error }}</div>{% endif %}
+
+          {% if support.ticket_error %}<div class="alert alert-warning">{{ support.ticket_error }}</div>{% endif %}
+          {% if support.ticket %}
+            <div class="border rounded p-3 mb-4" id="sudemi-support-ticket" data-ticket-id="{{ support.ticket.id }}">
+              <h2 class="h5">{{ support.ticket.number }} · {{ support.ticket.subject }}</h2>
+              <p class="form-text">{{ support.ticket.category_label }} · {{ column_support_status }}: <strong>{{ support.ticket.status_label }}</strong>{% if support.ticket.order_id %} · {{ entry_support_order }}: <code>{{ support.ticket.order_id }}</code>{% endif %}</p>
+              {% for message in support.ticket.messages %}
+                <div class="card mb-2 {% if message.support %}border-primary{% else %}border-secondary{% endif %}">
+                  <div class="card-header py-1 {% if message.support %}bg-primary text-white{% endif %}"><strong>{{ message.author }}</strong> <small class="ms-2">{{ message.date }}</small></div>
+                  <div class="card-body py-2" style="white-space: pre-wrap; overflow-wrap: anywhere;">{{ message.body }}</div>
+                </div>
+              {% endfor %}
+              <label class="form-label mt-2" for="sudemi-support-reply">{{ entry_support_reply }}</label>
+              <textarea id="sudemi-support-reply" class="form-control" rows="4" maxlength="10000"></textarea>
+              {% if support.ticket.status == 'CLOSED' %}<div class="form-text">{{ text_support_reply_reopens }}</div>{% endif %}
+              <button class="btn btn-primary mt-2" onclick="sudemiSupportReply()">{{ button_support_reply }}</button>
+              <a class="btn btn-link mt-2" href="index.php?route=extension/sudemi/module/sudemi&amp;user_token={{ user_token }}#sudemi-support">{{ button_support_back }}</a>
+            </div>
+          {% endif %}
+
+          <h2 class="h5">{{ text_support_tickets }}</h2>
+          {% if support.tickets %}
+            <table class="table table-sm" id="sudemi-support-tickets">
+              <thead><tr><th>{{ column_support_number }}</th><th>{{ column_support_subject }}</th><th>{{ column_support_status }}</th><th>{{ column_support_updated }}</th></tr></thead>
+              <tbody>
+              {% for t in support.tickets %}
+                <tr><td><a href="{{ t.href }}"><code>{{ t.number }}</code></a></td><td><a href="{{ t.href }}">{{ t.subject }}</a><br><small>{{ t.category_label }}</small></td><td>{{ t.status_label }}</td><td>{{ t.updated }}</td></tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          {% elseif not support.error %}
+            <p class="form-text">{{ text_support_empty }}</p>
+          {% endif %}
+
+          <h2 class="h5 mt-4">{{ text_support_new }}</h2>
+          <div class="row g-2">
+            <div class="col-md-4"><label class="form-label" for="sudemi-support-category">{{ entry_support_category }}</label>
+              <select id="sudemi-support-category" class="form-select">
+                {% for c in support.categories %}<option value="{{ c.value }}">{{ c.label }}</option>{% endfor %}
+              </select></div>
+            <div class="col-md-8"><label class="form-label" for="sudemi-support-order">{{ entry_support_order }}</label>
+              <input id="sudemi-support-order" type="text" class="form-control" maxlength="36" placeholder="{{ help_support_order }}"/></div>
+            <div class="col-12"><label class="form-label" for="sudemi-support-subject">{{ entry_support_subject }}</label>
+              <input id="sudemi-support-subject" type="text" class="form-control" minlength="3" maxlength="200"/></div>
+            <div class="col-12"><label class="form-label" for="sudemi-support-message">{{ entry_support_message }}</label>
+              <textarea id="sudemi-support-message" class="form-control" rows="5" maxlength="10000"></textarea>
+              <div class="form-text">{{ text_support_email }}</div></div>
+          </div>
+          <button class="btn btn-primary mt-2" onclick="sudemiSupportOpen()">{{ button_support_open }}</button>
+        {% endif %}
+      </div>
+    </div>
   </div>
 </div>
 
 <script type="text/javascript">
+// Opening and replying are guarded actions (modify permission + user token), like the others.
+var sudemiSupportUrl = 'index.php?route=extension/sudemi/module/sudemi&user_token={{ user_token|e('js') }}';
+
+function sudemiSupportShow(ticketId) {
+    location.href = sudemiSupportUrl + '&sudemi_ticket=' + encodeURIComponent(ticketId) + '#sudemi-support';
+}
+
+function sudemiSupportOpen() {
+    $.ajax({
+        url: 'index.php?route=extension/sudemi/module/sudemi.supportOpen&user_token={{ user_token|e('js') }}',
+        type: 'post', dataType: 'json',
+        data: {
+            category: $('#sudemi-support-category').val(), subject: $('#sudemi-support-subject').val(),
+            message: $('#sudemi-support-message').val(), order_id: $('#sudemi-support-order').val()
+        },
+        success: function (json) {
+            if (json.error) { alert(json.error); return; }
+            if (json.success) { alert(json.success); sudemiSupportShow(json.ticket_id); }
+        },
+        error: function () { alert('{{ error_support_unavailable|e('js') }}'); }
+    });
+}
+
+function sudemiSupportReply() {
+    var ticketId = $('#sudemi-support-ticket').data('ticket-id');
+    $.ajax({
+        url: 'index.php?route=extension/sudemi/module/sudemi.supportReply&user_token={{ user_token|e('js') }}',
+        type: 'post', dataType: 'json',
+        data: { ticket_id: ticketId, message: $('#sudemi-support-reply').val() },
+        success: function (json) {
+            if (json.error) { alert(json.error); return; }
+            if (json.success) { sudemiSupportShow(json.ticket_id); }
+        },
+        error: function () { alert('{{ error_support_unavailable|e('js') }}'); }
+    });
+}
+
 // The user token travels in the query string, which is how OpenCart's admin authenticates an
 // AJAX call; the controller compares it with hash_equals before doing anything.
 function sudemiDelivery() {
