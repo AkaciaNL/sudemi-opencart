@@ -10,6 +10,7 @@ $_['text_intro'] = 'Connecting this shop lets an AI assistant find your products
 $_['text_connected'] = 'Connected to sudemi.';
 $_['text_not_confirmed'] = 'Not confirmed yet. Open the link, confirm the shop on sudemi, then check again.';
 $_['text_disconnected'] = 'Disconnected.';
+$_['text_sync_started'] = 'The catalogue sync has started and runs in the background; the catalogue is sent within a few minutes.';
 $_['text_synced'] = 'The catalogue was sent.';
 $_['text_sync_failed'] = 'The catalogue could not be sent. Nothing was delisted.';
 $_['text_sync_held'] = 'The catalogue sync is on hold: it would remove many listed products from sudemi, so nothing was changed. If those products really were removed from this shop, contact sudemi support (support@sudemi.com).';

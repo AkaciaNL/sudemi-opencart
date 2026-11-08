@@ -10,6 +10,7 @@ $_['text_intro'] = 'Als je deze winkel koppelt, kan een AI-assistent je producte
 $_['text_connected'] = 'Gekoppeld aan sudemi.';
 $_['text_not_confirmed'] = 'Nog niet bevestigd. Open de link, bevestig de winkel op sudemi en controleer daarna opnieuw.';
 $_['text_disconnected'] = 'Ontkoppeld.';
+$_['text_sync_started'] = 'De synchronisatie van de catalogus is gestart en loopt op de achtergrond; de catalogus wordt binnen een paar minuten verstuurd.';
 $_['text_synced'] = 'De catalogus is verstuurd.';
 $_['text_sync_failed'] = 'De catalogus kon niet worden verstuurd. Er is niets offline gehaald.';
 $_['text_sync_held'] = 'De catalogussynchronisatie staat in de wacht: die zou veel vermelde producten van sudemi verwijderen, dus er is niets gewijzigd. Zijn die producten echt uit deze winkel verwijderd, neem dan contact op met sudemi-support (support@sudemi.com).';

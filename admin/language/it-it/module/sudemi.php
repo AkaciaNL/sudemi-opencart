@@ -10,6 +10,7 @@ $_['text_intro'] = 'Collegando questo negozio, un assistente IA può trovare i t
 $_['text_connected'] = 'Collegato a sudemi.';
 $_['text_not_confirmed'] = 'Non ancora confermato. Apri il link, conferma il negozio su sudemi, poi verifica di nuovo.';
 $_['text_disconnected'] = 'Scollegato.';
+$_['text_sync_started'] = 'La sincronizzazione del catalogo è stata avviata e viene eseguita in background; il catalogo viene inviato entro pochi minuti.';
 $_['text_synced'] = 'Il catalogo è stato inviato.';
 $_['text_sync_failed'] = 'Non è stato possibile inviare il catalogo. Nessuna inserzione è stata rimossa.';
 $_['text_sync_held'] = 'La sincronizzazione del catalogo è in sospeso: rimuoverebbe da sudemi molti prodotti in vendita, quindi non è stato modificato nulla. Se quei prodotti sono stati davvero rimossi da questo negozio, contatta l’assistenza sudemi (support@sudemi.com).';

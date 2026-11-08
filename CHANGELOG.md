@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.2.9
+
+- **No full catalogue sync inside any page request.** In 1.2.8 the extension page's "Send the
+  catalogue now" button still ran the whole sync inside that request. It now only asks for it
+  ("The catalogue sync has started and runs in the background", in all 12 languages); the cron URL
+  sends it, or without cron the small steps after the extension page is opened. Saving the
+  delivery times now also asks for a sync (every product carries the times). Storefront pages
+  never ran or start a full sync.
+- PROTOCOL.md: current copy (a full sync never runs inside a page request).
+
 ## 1.2.8
 
 - **A full catalogue sync never runs inside an admin page load any more.** Before, the heartbeat

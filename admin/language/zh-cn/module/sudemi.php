@@ -10,6 +10,7 @@ $_['text_intro'] = '连接此店铺后，AI 助手即可找到您的商品并为
 $_['text_connected'] = '已连接到 sudemi。';
 $_['text_not_confirmed'] = '尚未确认。请打开链接，在 sudemi 上确认店铺，然后再次检查。';
 $_['text_disconnected'] = '已断开连接。';
+$_['text_sync_started'] = '目录同步已开始，在后台运行；目录将在几分钟内发送。';
 $_['text_synced'] = '商品目录已发送。';
 $_['text_sync_failed'] = '无法发送商品目录。没有任何商品被下架。';
 $_['text_sync_held'] = '商品目录同步已暂停：它会从 sudemi 移除许多在售商品，因此未做任何更改。如果这些商品确实已从本店删除，请联系 sudemi 支持（support@sudemi.com）。';

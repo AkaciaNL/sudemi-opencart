@@ -10,6 +10,7 @@ $_['text_intro'] = 'Wenn Sie diesen Shop verbinden, kann ein KI-Assistent Ihre P
 $_['text_connected'] = 'Mit sudemi verbunden.';
 $_['text_not_confirmed'] = 'Noch nicht bestätigt. Öffnen Sie den Link, bestätigen Sie den Shop auf sudemi und prüfen Sie dann erneut.';
 $_['text_disconnected'] = 'Getrennt.';
+$_['text_sync_started'] = 'Die Katalogsynchronisierung wurde gestartet und läuft im Hintergrund; der Katalog wird innerhalb weniger Minuten gesendet.';
 $_['text_synced'] = 'Der Katalog wurde gesendet.';
 $_['text_sync_failed'] = 'Der Katalog konnte nicht gesendet werden. Es wurde nichts aus der Listung genommen.';
 $_['text_sync_held'] = 'Der Katalogabgleich ist angehalten: Er würde viele gelistete Produkte von sudemi entfernen, daher wurde nichts geändert. Wenn diese Produkte wirklich aus diesem Shop entfernt wurden, wenden Sie sich an den sudemi-Support (support@sudemi.com).';

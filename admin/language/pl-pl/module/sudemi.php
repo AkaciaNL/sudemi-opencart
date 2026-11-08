@@ -10,6 +10,7 @@ $_['text_intro'] = 'Połączenie tego sklepu pozwala asystentowi AI znajdować T
 $_['text_connected'] = 'Połączono z sudemi.';
 $_['text_not_confirmed'] = 'Jeszcze niepotwierdzone. Otwórz link, potwierdź sklep w sudemi, a następnie sprawdź ponownie.';
 $_['text_disconnected'] = 'Rozłączono.';
+$_['text_sync_started'] = 'Synchronizacja katalogu została uruchomiona i działa w tle; katalog zostanie wysłany w ciągu kilku minut.';
 $_['text_synced'] = 'Katalog został wysłany.';
 $_['text_sync_failed'] = 'Nie udało się wysłać katalogu. Żadna oferta nie została wycofana.';
 $_['text_sync_held'] = 'Synchronizacja katalogu jest wstrzymana: usunęłaby z sudemi wiele wystawionych produktów, więc nic nie zostało zmienione. Jeśli te produkty naprawdę zostały usunięte z tego sklepu, skontaktuj się z pomocą sudemi (support@sudemi.com).';

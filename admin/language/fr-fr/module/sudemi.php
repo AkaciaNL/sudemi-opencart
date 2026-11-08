@@ -10,6 +10,7 @@ $_['text_intro'] = 'Connecter cette boutique permet à un assistant IA de trouve
 $_['text_connected'] = 'Connecté à sudemi.';
 $_['text_not_confirmed'] = 'Pas encore confirmé. Ouvrez le lien, confirmez la boutique sur sudemi, puis vérifiez à nouveau.';
 $_['text_disconnected'] = 'Déconnecté.';
+$_['text_sync_started'] = 'La synchronisation du catalogue a démarré et s’exécute en arrière-plan ; le catalogue est envoyé en quelques minutes.';
 $_['text_synced'] = 'Le catalogue a été envoyé.';
 $_['text_sync_failed'] = 'Le catalogue n’a pas pu être envoyé. Aucun produit n’a été retiré.';
 $_['text_sync_held'] = 'La synchronisation du catalogue est en attente : elle retirerait de sudemi de nombreux produits listés, donc rien n’a été modifié. Si ces produits ont vraiment été retirés de cette boutique, contactez le support sudemi (support@sudemi.com).';

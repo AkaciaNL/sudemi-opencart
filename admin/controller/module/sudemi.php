@@ -84,16 +84,10 @@ class Sudemi extends \Opencart\System\Engine\Controller
             return;
         }
 
-        $sudemi = $this->services();
-        // Called once and held: evaluating it twice would send the whole catalogue twice.
-        $ok = $sudemi['heartbeat']->syncAnchored();
-        if ($ok === 'held') {
-            $json['error'] = $this->language->get('text_sync_held');
-        } else {
-            $json[$ok ? 'success' : 'error'] = $ok
-                ? $this->language->get('text_synced')
-                : $this->language->get('text_sync_failed');
-        }
+        // Only asked for: a full sync never runs inside a page request. The cron entry sends it
+        // (or, without cron, small steps after this page is opened; see Sync::work).
+        $this->services()['sync']->request();
+        $json['success'] = $this->language->get('text_sync_started');
 
         $this->respond($json);
     }
@@ -116,6 +110,8 @@ class Sudemi extends \Opencart\System\Engine\Controller
                 $sudemi['store']->write($key, max(0, min(60, (int) $this->request->post[$field])));
             }
         }
+        // Every product carries the times: the catalogue is sent again (by the cron entry).
+        $sudemi['sync']->request();
         $json['success'] = $this->language->get('text_delivery_saved');
         $this->respond($json);
     }

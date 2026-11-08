@@ -10,6 +10,7 @@ $_['text_intro'] = 'Bu mağazayı bağladığınızda bir yapay zekâ asistanı 
 $_['text_connected'] = 'sudemi\'ye bağlandı.';
 $_['text_not_confirmed'] = 'Henüz onaylanmadı. Bağlantıyı açın, mağazayı sudemi\'de onaylayın, ardından tekrar kontrol edin.';
 $_['text_disconnected'] = 'Bağlantı kesildi.';
+$_['text_sync_started'] = 'Katalog senkronizasyonu başlatıldı ve arka planda çalışıyor; katalog birkaç dakika içinde gönderilir.';
 $_['text_synced'] = 'Katalog gönderildi.';
 $_['text_sync_failed'] = 'Katalog gönderilemedi. Hiçbir ürün listeden kaldırılmadı.';
 $_['text_sync_held'] = 'Katalog eşitlemesi beklemede: sudemi\'deki birçok listelenmiş ürünü kaldıracaktı, bu yüzden hiçbir şey değiştirilmedi. Bu ürünler gerçekten bu mağazadan kaldırıldıysa sudemi destek ekibiyle iletişime geçin (support@sudemi.com).';
