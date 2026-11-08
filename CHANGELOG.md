@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.2.8
+
+- **A full catalogue sync never runs inside an admin page load any more.** Before, the heartbeat
+  sent when the extension page was opened (the fallback for shops without a cron entry) ran the
+  whole sync inline when sudemi asked for one, which on a large catalogue held the admin's screen
+  for minutes. Now the heartbeat only asks for the sync. The extension's cron URL runs it to the
+  end; opening the extension page sends at most a small step (25 products, about two seconds) after
+  the page was produced (after it was sent, on PHP-FPM), and later page loads continue where it
+  stopped. A database lock keeps two requests from sending the sync at once; a sync stopped
+  halfway resumes where it stopped; one older than 5.5 hours starts again. "Send the catalogue
+  now" still sends it at once.
+- Editing a master product with variants, or one of its variants, sends the whole family (the
+  master and every variant, each its own listing) in one push, with the shop's catalogue revision
+  computed after the save (after OpenCart updated the variants), so such an edit no longer costs a
+  full sync.
+- The revision is sent only when no price change is queued, the category tree sudemi holds is
+  current, every request of the push was accepted whole, and no listing removed in the shop (a
+  product or variant deleted, disabled or given a required option) is still waiting for a full sync
+  to take it off sudemi. Before, editing another product after such a removal could make sudemi
+  agree with the shop while the removed listing stayed listed.
+- Product changes are pushed once per product family at the end of the request, instead of once
+  per event.
+
 ## 1.2.7 - 2026-11-08
 - The full sync's commit carries the catalogue revision the shop had when the sync started. sudemi adopts it, so a product changed or disabled while the sync ran is caught by the next heartbeat and synced. The heartbeat right after the commit is still sent.
 - Saving a product (and a stock change from an order) sends the product's whole listing (title, description, price, stock, categories, images, shipping) instead of price and stock only, with the shop's catalogue revision computed after the save when nothing else is waiting to be sent. sudemi adopts it when every item applied, so a product edit no longer costs a full catalogue sync. A master product with variants and a push while queued price changes wait go without the revision; a disabled product or one with required options is still sent as a price update without it (a full sync follows, as before). When the category tree changed since it was last sent, it is sent first; if that fails, the push goes without the revision.

@@ -73,10 +73,17 @@ class Catalogue
      * payload walking it around an internal network one image at a time.
      */
     /**
-     * @param int|null $productId only this product (a change push); null for a page of all
+     * @param int|null   $productId only this product; null for a page of all
+     * @param int[]|null $ids       only these products (a page of a full sync, a change push)
      */
-    public function products($offset, $limit, $productId = null)
+    public function products($offset, $limit, $productId = null, $ids = null)
     {
+        if (is_array($ids)) {
+            $ids = array_values(array_filter(array_map('intval', $ids)));
+            if (empty($ids)) {
+                return [];
+            }
+        }
         $languageId = (int) $this->config->get('config_language_id');
         $offset = max(0, (int) $offset);
         $limit = max(1, min(500, (int) $limit));
@@ -89,7 +96,8 @@ class Catalogue
                LEFT JOIN ' . $this->prefix . 'manufacturer m ON (p.manufacturer_id = m.manufacturer_id)' . $this->withdrawalJoin() . '
                LEFT JOIN ' . $this->prefix . 'product_description pd
                  ON (p.product_id = pd.product_id)
-              WHERE pd.language_id = ' . $languageId . ' AND p.status = 1' . ($productId !== null ? ' AND p.product_id = ' . (int) $productId : '') . '
+              WHERE pd.language_id = ' . $languageId . ' AND p.status = 1' . ($productId !== null ? ' AND p.product_id = ' . (int) $productId : '')
+                . (is_array($ids) ? ' AND p.product_id IN (' . implode(',', $ids) . ')' : '') . '
                 AND p.product_id NOT IN (SELECT po.product_id FROM ' . $this->prefix . 'product_option po WHERE po.required = 1)
               ORDER BY p.product_id ASC
               LIMIT ' . $offset . ', ' . $limit
@@ -143,24 +151,87 @@ class Catalogue
         return empty($products) ? null : $products[0];
     }
 
-    /**
-     * Whether this is an OpenCart 4 master product with variants: saving it changes the variants,
-     * which a push of the master alone does not carry. True when it cannot be told.
-     */
-    public function hasVariants($productId)
+    /** The listings of these products (enabled, without a required option), in id order. */
+    public function productsByIds(array $ids)
     {
-        try {
-            $column = $this->db->query("SHOW COLUMNS FROM `" . $this->prefix . "product` LIKE 'master_id'");
-            if (empty($column->row)) {
-                return false;
-            }
-            $query = $this->db->query('SELECT COUNT(*) AS n FROM ' . $this->prefix . 'product
-                WHERE master_id = ' . (int) $productId);
-
-            return empty($query->row) || (int) $query->row['n'] > 0;
-        } catch (\Throwable $e) {
-            return true;
+        $ids = array_values(array_filter(array_map('intval', $ids)));
+        if (empty($ids)) {
+            return [];
         }
+
+        return $this->products(0, count($ids), null, $ids);
+    }
+
+    /**
+     * Ids of the products a full sync sends (enabled, without a required option) after $after,
+     * in id order: where a full sync continues after it stopped.
+     */
+    public function productIdsAfter($after, $limit)
+    {
+        $query = $this->db->query(
+            'SELECT p.product_id FROM ' . $this->prefix . 'product p
+              WHERE p.status = 1 AND p.product_id > ' . (int) $after . '
+                AND p.product_id NOT IN (SELECT po.product_id FROM ' . $this->prefix . 'product_option po WHERE po.required = 1)
+              ORDER BY p.product_id ASC LIMIT ' . max(1, (int) $limit)
+        );
+
+        return array_map(function ($row) { return (int) $row['product_id']; }, $query->rows);
+    }
+
+    /** The OpenCart 4 master product a variant belongs to, or the product itself. */
+    public function familyOf($productId)
+    {
+        if (!$this->hasMasterColumn()) {
+            return (int) $productId;
+        }
+        $query = $this->db->query('SELECT master_id FROM ' . $this->prefix . 'product
+            WHERE product_id = ' . (int) $productId);
+
+        return !empty($query->row) && (int) $query->row['master_id'] > 0 ? (int) $query->row['master_id'] : (int) $productId;
+    }
+
+    /** The product and, for a master product, every variant of it (any status); empty when deleted. */
+    public function familyIds($productId)
+    {
+        $query = $this->db->query('SELECT product_id FROM ' . $this->prefix . 'product
+            WHERE product_id = ' . (int) $productId
+            . ($this->hasMasterColumn() ? ' OR master_id = ' . (int) $productId : '')
+            . ' ORDER BY product_id ASC');
+
+        return array_map(function ($row) { return (int) $row['product_id']; }, $query->rows);
+    }
+
+    private $masterColumn = null;
+
+    private function hasMasterColumn()
+    {
+        if ($this->masterColumn === null) {
+            $column = $this->db->query("SHOW COLUMNS FROM `" . $this->prefix . "product` LIKE 'master_id'");
+            $this->masterColumn = !empty($column->row);
+        }
+
+        return $this->masterColumn;
+    }
+
+    /**
+     * Keeps two requests from sending the same full sync at once. A MySQL named lock: released by
+     * the database itself when the request ends, so a crash never leaves it held.
+     */
+    public function lock()
+    {
+        $query = $this->db->query("SELECT GET_LOCK('" . $this->lockName() . "', 0) AS got");
+
+        return !empty($query->row) && (int) $query->row['got'] === 1;
+    }
+
+    public function unlock()
+    {
+        $this->db->query("SELECT RELEASE_LOCK('" . $this->lockName() . "') AS released");
+    }
+
+    private function lockName()
+    {
+        return 'sudemi_sync_' . substr(md5((defined('DB_DATABASE') ? DB_DATABASE : '') . '|' . $this->prefix), 0, 16);
     }
 
     /**

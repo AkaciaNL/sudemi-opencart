@@ -3,7 +3,8 @@
  * The entry point this shop's own cron calls, every five minutes.
  *
  * OpenCart has no scheduler, so the beat has to come from somewhere: either the host's crontab
- * calling this URL, or - as a fallback for shops with no cron at all - an admin page load.
+ * calling this URL, or - as a fallback for shops with no cron at all - an admin page load, which
+ * sends at most a small step of a full catalogue sync. Only this entry runs one to the end.
  *
  * It is reachable without a session, which is why it carries a token. Without one a stranger
  * could trigger a full catalogue walk on this shop as often as they liked, and a cron endpoint
@@ -64,7 +65,15 @@ class Cron extends \Opencart\System\Engine\Controller
         require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/withdrawal.php';
         (new \Sudemi\Withdrawal($this->db))->ensureSchema($store);
 
+        // A full sync of a large catalogue outlives a short PHP time limit; where the host lets
+        // it, this run sends it to the end. Stopped anyway, it resumes where it stopped.
+        ignore_user_abort(true);
+        @set_time_limit(0);
+
         $answered = $heartbeat->run();
+        // The full sync the beat (or a product's withdrawal setting) asked for, or the rest of
+        // one that admin page loads started. Only this entry runs it to the end.
+        $sync->work();
 
         // A beat that could not reach sudemi is still a successful cron run: the shop's own
         // scheduler must not start mailing failures because a marketplace was briefly down.

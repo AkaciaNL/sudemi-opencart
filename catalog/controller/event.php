@@ -52,6 +52,9 @@ class Event extends \Opencart\System\Engine\Controller
         try {
             $services = $this->services();
             $services['heartbeat']->noteChange();
+            // Its listings stay on sudemi until a full sync's commit removes them; until then no
+            // change push may carry the catalogue revision.
+            $services['sync']->noteRemoval();
         } catch (\Throwable $e) {
             // Swallowed deliberately: see the class comment.
             return;

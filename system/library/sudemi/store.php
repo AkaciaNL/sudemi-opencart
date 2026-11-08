@@ -54,6 +54,12 @@ class SettingStore
         unset($this->cache[$key]);
     }
 
+    /** Forgets what was read, so the next read sees what another request wrote meanwhile. */
+    public function reload()
+    {
+        $this->cache = null;
+    }
+
     private function load()
     {
         if ($this->cache !== null) {

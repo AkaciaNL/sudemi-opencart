@@ -139,6 +139,8 @@ class Sudemi extends \Opencart\System\Engine\Controller
         // them: leaving them would mean a reconnect pushing stale prices.
         $sudemi['queue']->forget();
         $sudemi['store']->delete(\Sudemi\Sync::SETTING_CATEGORIES);
+        // A sync in progress belongs to the old connection.
+        $sudemi['store']->delete(\Sudemi\Sync::SETTING_STATE);
         $sudemi['store']->delete(\Sudemi\Client::SETTING_INSTALL_ID);
         $sudemi['pairing']->clearChallenge();
         $json['success'] = $this->language->get('text_disconnected');
@@ -589,21 +591,48 @@ class Sudemi extends \Opencart\System\Engine\Controller
      *
      * Not the supported path - a shop nobody logs into would go quiet and have its listings
      * paused, correctly - but it means the common case of "installed the extension, never set
-     * up cron" keeps working rather than failing silently a week later. Guarded by the interval,
-     * and only on this settings page, so no storefront request ever waits on our network.
+     * up cron" keeps working rather than failing silently a week later. Only on this settings
+     * page, so no storefront request ever waits on our network.
+     *
+     * Run after the page was produced (after it was sent, where PHP-FPM allows it): the beat
+     * when one is due, and a small step (at most Sync::STEP_PRODUCTS products, about two
+     * seconds) of a waiting full sync. Never the whole sync: on a large catalogue that held the
+     * admin's screen for minutes. The cron entry runs the rest; without cron the following page
+     * loads continue where the last one stopped.
      */
     private function beatIfDue(): void
     {
         try {
             $sudemi = $this->services();
-            if ($sudemi['client']->isConnected() && $sudemi['heartbeat']->isDue()) {
-                $sudemi['heartbeat']->run();
+            if (!$sudemi['client']->isConnected()
+                || (!$sudemi['heartbeat']->isDue() && !$sudemi['sync']->pending())) {
+                return;
             }
         } catch (\Throwable $e) {
             // A settings page that cannot render because a marketplace is down is worse than a
             // missed beat.
             return;
         }
+        register_shutdown_function(function () use ($sudemi) {
+            if (function_exists('fastcgi_finish_request') || function_exists('litespeed_finish_request')) {
+                while (ob_get_level() > 0 && @ob_end_flush()) {
+                }
+                if (function_exists('fastcgi_finish_request')) {
+                    fastcgi_finish_request();
+                } else {
+                    litespeed_finish_request();
+                }
+            }
+            ignore_user_abort(true);
+            try {
+                if ($sudemi['heartbeat']->isDue()) {
+                    $sudemi['heartbeat']->run();
+                }
+                $sudemi['sync']->work(\Sudemi\Sync::STEP_PRODUCTS, \Sudemi\Sync::STEP_SECONDS);
+            } catch (\Throwable $e) {
+                $sudemi['logger']->warn('Background step failed: ' . $e->getMessage());
+            }
+        });
     }
 
     private function common(): array

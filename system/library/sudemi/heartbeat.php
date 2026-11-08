@@ -189,14 +189,15 @@ class Heartbeat
 
         // sudemi and this shop disagree about what the catalogue is, so something did not
         // arrive. A full sync is the only answer that does not involve guessing which product.
-        if (!empty($body['full_sync_requested'])) {
-            $this->logger->info('sudemi asked for a full sync.');
-            $this->store->delete(Withdrawal::SETTING_RESYNC_DUE);
-            $this->syncAnchored();
-        } elseif ($this->store->read(Withdrawal::SETTING_RESYNC_DUE)) {
-            // A product's right-of-withdrawal setting changed: price pushes do not carry it.
-            $this->store->delete(Withdrawal::SETTING_RESYNC_DUE);
-            $this->syncAnchored();
+        // Asked for here, never run here: a full sync of a large catalogue takes minutes, and a
+        // beat also runs after admin page loads. The cron entry runs it (or, without cron, small
+        // steps after admin page loads; see Sync::work). While one is being sent, sudemi asks
+        // because it has not arrived yet: not asked again.
+        if (!empty($body['full_sync_requested']) && !$this->sync->inProgress()) {
+            if (!$this->store->read(Withdrawal::SETTING_RESYNC_DUE)) {
+                $this->logger->info('sudemi asked for a full sync.');
+            }
+            $this->store->write(Withdrawal::SETTING_RESYNC_DUE, 1);
         }
 
         return true;
@@ -230,39 +231,23 @@ class Heartbeat
     }
 
     /**
-     * How many product changes this shop has seen since the extension was installed.
-     *
-     * Monotonic and never reset: the value is meaningless, only its movement matters. Reset it
-     * and an old revision could be reproduced, which is exactly the agreement we must not fake.
-     */
-    /**
-     * A full sync, followed at once by a heartbeat carrying the revision taken before the sync
-     * read the catalogue.
-     *
-     * After a commit sudemi forgets the revision it held and adopts the next one it is told. If
-     * that were the next regular beat, a product disabled in the minutes between the sync and
-     * that beat would be adopted as already synced and stay listed. Sending the revision the
-     * sync started from means anything changed since makes the next beat disagree, and sudemi
-     * asks for another sync.
+     * A whole full sync now (the "send the catalogue now" button). Its commit carries the
+     * revision taken before the sync read the catalogue, and a heartbeat with it follows at
+     * once; see Sync::commit().
      *
      * @return bool|string what Sync::runFull returned
      */
     public function syncAnchored()
     {
-        $anchor = $this->catalogue->revision($this->changes());
-        $result = $this->sync->runFull($anchor);
-        if ($result === true && $anchor !== null) {
-            $this->client->postSigned('/integration/v1/heartbeat', [
-                'catalogueRevision' => $anchor,
-                'productCount' => $this->catalogue->productCount(),
-                'intervalSeconds' => self::DEFAULT_INTERVAL,
-                'pluginVersion' => Client::VERSION,
-            ]);
-        }
-
-        return $result;
+        return $this->sync->runFull();
     }
 
+    /**
+     * How many product changes this shop has seen since the extension was installed.
+     *
+     * Monotonic and never reset: the value is meaningless, only its movement matters. Reset it
+     * and an old revision could be reproduced, which is exactly the agreement we must not fake.
+     */
     public function changes()
     {
         return (int) $this->store->read(self::SETTING_CHANGES);
