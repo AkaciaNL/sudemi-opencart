@@ -66,6 +66,20 @@ class Queue
         return is_array($decoded) ? $decoded : [];
     }
 
+    /** Drops what is waiting for one product: a newer push for it carries its current state. */
+    public function discard($externalId)
+    {
+        $pending = $this->all();
+        if (array_key_exists((string) $externalId, $pending)) {
+            unset($pending[(string) $externalId]);
+            if (empty($pending)) {
+                $this->store->delete(self::SETTING);
+            } else {
+                $this->store->write(self::SETTING, json_encode($pending));
+            }
+        }
+    }
+
     public function count()
     {
         return count($this->all());

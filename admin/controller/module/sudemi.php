@@ -138,6 +138,7 @@ class Sudemi extends \Opencart\System\Engine\Controller
         // Price changes that never got through go with the credential that would have signed
         // them: leaving them would mean a reconnect pushing stale prices.
         $sudemi['queue']->forget();
+        $sudemi['store']->delete(\Sudemi\Sync::SETTING_CATEGORIES);
         $sudemi['store']->delete(\Sudemi\Client::SETTING_INSTALL_ID);
         $sudemi['pairing']->clearChallenge();
         $json['success'] = $this->language->get('text_disconnected');
@@ -754,7 +755,7 @@ class Sudemi extends \Opencart\System\Engine\Controller
         $client->setSiteUrl($this->shopUrl());
         $pairing = new \Sudemi\Pairing($client, $keys, $store, $logger);
         $catalogue = new \Sudemi\Catalogue($this->db, $this->config);
-        $sync = new \Sudemi\Sync($client, $logger, $catalogue);
+        $sync = new \Sudemi\Sync($client, $logger, $catalogue, $store);
         $queue = new \Sudemi\Queue($store, $client, $logger);
         $orders = new \Sudemi\Orders($this->db, $this->config, $client, $logger, $store);
         $heartbeat = new \Sudemi\Heartbeat(

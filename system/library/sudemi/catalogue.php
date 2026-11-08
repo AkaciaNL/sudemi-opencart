@@ -72,7 +72,10 @@ class Catalogue
      * through its egress guard and refuses anything not on the verified shop, which stops a
      * payload walking it around an internal network one image at a time.
      */
-    public function products($offset, $limit)
+    /**
+     * @param int|null $productId only this product (a change push); null for a page of all
+     */
+    public function products($offset, $limit, $productId = null)
     {
         $languageId = (int) $this->config->get('config_language_id');
         $offset = max(0, (int) $offset);
@@ -86,7 +89,7 @@ class Catalogue
                LEFT JOIN ' . $this->prefix . 'manufacturer m ON (p.manufacturer_id = m.manufacturer_id)' . $this->withdrawalJoin() . '
                LEFT JOIN ' . $this->prefix . 'product_description pd
                  ON (p.product_id = pd.product_id)
-              WHERE pd.language_id = ' . $languageId . ' AND p.status = 1
+              WHERE pd.language_id = ' . $languageId . ' AND p.status = 1' . ($productId !== null ? ' AND p.product_id = ' . (int) $productId : '') . '
                 AND p.product_id NOT IN (SELECT po.product_id FROM ' . $this->prefix . 'product_option po WHERE po.required = 1)
               ORDER BY p.product_id ASC
               LIMIT ' . $offset . ', ' . $limit
@@ -130,6 +133,34 @@ class Catalogue
         }
 
         return $products;
+    }
+
+    /** One product's whole listing, as a full sync sends it, or null when it is not listed. */
+    public function listing($productId)
+    {
+        $products = $this->products(0, 1, (int) $productId);
+
+        return empty($products) ? null : $products[0];
+    }
+
+    /**
+     * Whether this is an OpenCart 4 master product with variants: saving it changes the variants,
+     * which a push of the master alone does not carry. True when it cannot be told.
+     */
+    public function hasVariants($productId)
+    {
+        try {
+            $column = $this->db->query("SHOW COLUMNS FROM `" . $this->prefix . "product` LIKE 'master_id'");
+            if (empty($column->row)) {
+                return false;
+            }
+            $query = $this->db->query('SELECT COUNT(*) AS n FROM ' . $this->prefix . 'product
+                WHERE master_id = ' . (int) $productId);
+
+            return empty($query->row) || (int) $query->row['n'] > 0;
+        } catch (\Throwable $e) {
+            return true;
+        }
     }
 
     /**

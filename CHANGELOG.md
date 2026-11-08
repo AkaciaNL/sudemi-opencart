@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.7 - 2026-11-08
+- The full sync's commit carries the catalogue revision the shop had when the sync started. sudemi adopts it, so a product changed or disabled while the sync ran is caught by the next heartbeat and synced. The heartbeat right after the commit is still sent.
+- Saving a product (and a stock change from an order) sends the product's whole listing (title, description, price, stock, categories, images, shipping) instead of price and stock only, with the shop's catalogue revision computed after the save when nothing else is waiting to be sent. sudemi adopts it when every item applied, so a product edit no longer costs a full catalogue sync. A master product with variants and a push while queued price changes wait go without the revision; a disabled product or one with required options is still sent as a price update without it (a full sync follows, as before). When the category tree changed since it was last sent, it is sent first; if that fails, the push goes without the revision.
+- A newer push for a product drops its older queued price, which could otherwise be sent after it and put the old price back.
+
 ## 1.2.6 - 2026-11-07
 - After a full catalogue sync the extension tells sudemi at once which catalogue state the sync described (a heartbeat with the revision taken when the sync started). Before, sudemi adopted whatever the next heartbeat reported, so a product disabled in the minutes after a sync could stay listed on sudemi.
 - Order safety: an order is only voided when sudemi gives a definitive answer. Before, any answer to the confirmation other than "ok" (sudemi briefly unavailable, 429, 409 site_mismatch, or "already answered" after a lost reply) put the stock back and left the order unconfirmed, although the buyer could already have been charged, so a paid order was never shipped. Now: "already answered, PAID" confirms the order and fetches the address; "already answered, DECLINED" (or CANCELLED) releases it and puts the stock back once; anything else leaves the order and its stock as they are and asks again on the next heartbeat.

@@ -250,7 +250,7 @@ class Heartbeat
     public function syncAnchored()
     {
         $anchor = $this->catalogue->revision($this->changes());
-        $result = $this->sync->runFull();
+        $result = $this->sync->runFull($anchor);
         if ($result === true && $anchor !== null) {
             $this->client->postSigned('/integration/v1/heartbeat', [
                 'catalogueRevision' => $anchor,

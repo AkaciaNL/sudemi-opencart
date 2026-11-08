@@ -39,7 +39,7 @@ class Cron extends \Opencart\System\Engine\Controller
         $client = new \Sudemi\Client($keys, $store, $logger);
         $pairing = new \Sudemi\Pairing($client, $keys, $store, $logger);
         $catalogue = new \Sudemi\Catalogue($this->db, $this->config);
-        $sync = new \Sudemi\Sync($client, $logger, $catalogue);
+        $sync = new \Sudemi\Sync($client, $logger, $catalogue, $store);
         $queue = new \Sudemi\Queue($store, $client, $logger);
         $orders = new \Sudemi\Orders($this->db, $this->config, $client, $logger, $store);
         $heartbeat = new \Sudemi\Heartbeat(

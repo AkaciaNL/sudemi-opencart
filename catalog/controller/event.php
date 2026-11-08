@@ -175,29 +175,9 @@ class Event extends \Opencart\System\Engine\Controller
 
     private function pushWith(array $services, int $productId): void
     {
-        if ($productId <= 0 || !$services['client']->isConnected()) {
-            return;
-        }
-
-        $update = $services['catalogue']->priceAndStock($productId);
-        if ($update === null) {
-            return;
-        }
-
-        // Counted before the attempt, not after a success: the counter is what lets sudemi
-        // notice a change that never arrived, so it has to move even when the push fails.
-        $services['heartbeat']->noteChange();
-
-        $response = $services['client']->postSigned(
-            '/integration/v1/products/prices',
-            ['updates' => [$update]]
-        );
-
-        // A dropped change is a wrong price on a marketplace until the next full sync, so a
-        // failure is written down rather than logged and forgotten. The heartbeat drains it.
-        if ($response === null || $response['status'] !== 200) {
-            $services['queue']->enqueue($update);
-        }
+        // The whole listing (with the catalogue revision when nothing else waits), or price and
+        // stock; a failure is queued and the heartbeat drains it. See Sync::pushChange.
+        $services['sync']->pushChange($productId, $services['queue'], $services['heartbeat']);
     }
 
     private function services(): array
@@ -222,7 +202,7 @@ class Event extends \Opencart\System\Engine\Controller
         $client = new \Sudemi\Client($keys, $store, $logger);
         $pairing = new \Sudemi\Pairing($client, $keys, $store, $logger);
         $catalogue = new \Sudemi\Catalogue($this->db, $this->config);
-        $sync = new \Sudemi\Sync($client, $logger, $catalogue);
+        $sync = new \Sudemi\Sync($client, $logger, $catalogue, $store);
         $queue = new \Sudemi\Queue($store, $client, $logger);
         $orders = new \Sudemi\Orders($this->db, $this->config, $client, $logger, $store);
         $heartbeat = new \Sudemi\Heartbeat(
