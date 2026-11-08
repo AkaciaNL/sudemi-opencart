@@ -163,3 +163,7 @@ $_['error_request_unavailable'] = 'تعذّر الاتصال بـ sudemi حال�
 $_['text_request_note_accepted'] = 'sudemi: تم قبول طلب الإرجاع. رُدّ مبلغ الطلب (الحالة "تم الاسترداد") عند عودة المنتج.';
 $_['text_request_note_rejected'] = 'sudemi: تم رفض طلب الإرجاع. السبب المعروض للمشتري: %s';
 $_['text_history_return_requested'] = 'طُلب الإرجاع';
+// The totals of a sudemi order (order page, invoice), written in the store's language.
+$_['text_order_sub_total'] = 'المجموع الفرعي';
+$_['text_order_shipping'] = 'شحن sudemi';
+$_['text_order_total'] = 'الإجمالي';

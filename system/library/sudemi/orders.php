@@ -538,10 +538,34 @@ class Orders
             return null;
         }
 
-        foreach ($pending['lines'] as $line) {
+        // What the buyer paid, from sudemi. Null from a core that does not send it yet, and then
+        // the lines are written without prices, as before.
+        $paid = self::paidAmounts($pending);
+        $goodsNet = 0;
+        $taxes = [];
+        foreach ($pending['lines'] as $index => $line) {
             $productId = isset($line['external_id']) ? (int) $line['external_id'] : 0;
             $quantity = isset($line['quantity']) ? (int) $line['quantity'] : 1;
             $name = isset($line['title']) ? (string) $line['title'] : '';
+            $price = 0.0;
+            $lineTotal = 0.0;
+            $unitTax = 0.0;
+            if ($paid !== null) {
+                // The buyer's price wins over today's catalogue price: it may have changed since
+                // the last sync, and the shop's order has to say what was actually paid. OpenCart
+                // keeps prices without tax, so the VAT inside the paid price is split out at the
+                // shop's own rates for the destination, never added on top.
+                $gross = $paid['lines'][$index] * max(1, $quantity);
+                $split = self::splitTax($gross, $this->percentRates($productId, $countryId));
+                $goodsNet += $split['net'];
+                foreach ($split['taxes'] as $rateId => $tax) {
+                    $taxes[$rateId] = (isset($taxes[$rateId]) ? $taxes[$rateId] : 0) + $tax;
+                }
+                $qty = max(1, $quantity);
+                $price = round($split['net'] / 100 / $qty, 4);
+                $lineTotal = $split['net'] / 100;
+                $unitTax = round(array_sum($split['taxes']) / 100 / $qty, 4);
+            }
             $this->db->query(
                 "INSERT INTO " . $this->prefix . "order_product SET
                     order_id = '" . $orderId . "',
@@ -549,9 +573,9 @@ class Orders
                     name = '" . $this->db->escape($name) . "',
                     model = '',
                     quantity = '" . $quantity . "',
-                    price = '0',
-                    total = '0',
-                    tax = '0',
+                    price = '" . (float) $price . "',
+                    total = '" . (float) $lineTotal . "',
+                    tax = '" . (float) $unitTax . "',
                     reward = '0'"
             );
             // Taken now, with the order, so this storefront cannot sell the same unit while the
@@ -564,7 +588,193 @@ class Orders
             );
         }
 
+        if ($paid !== null) {
+            // The order's totals, as OpenCart's own checkout writes them: without them the order
+            // page shows no shipping and the shop's books miss what the buyer paid for it. The
+            // total row is total_minor whatever the parts add up to.
+            $text = $this->text();
+            $rows = [['sub_total', $text['text_order_sub_total'], $goodsNet, 1]];
+            $rows[] = ['shipping', $text['text_order_shipping'], $paid['shipping'], 3];
+            foreach ($taxes as $rateId => $tax) {
+                $rows[] = ['tax', $this->rateName($rateId), $tax, 5];
+            }
+            $rows[] = ['total', $text['text_order_total'], $paid['total'], 9];
+            $hasExtension = $this->db->query(
+                "SHOW COLUMNS FROM " . $this->prefix . "order_total LIKE 'extension'"
+            )->num_rows > 0;
+            foreach ($rows as $row) {
+                $this->db->query(
+                    "INSERT INTO " . $this->prefix . "order_total SET
+                        order_id = '" . $orderId . "',"
+                        . ($hasExtension ? " extension = 'opencart'," : '') . "
+                        code = '" . $this->db->escape($row[0]) . "',
+                        title = '" . $this->db->escape($row[1]) . "',
+                        value = '" . (float) ($row[2] / 100) . "',
+                        sort_order = '" . (int) $row[3] . "'"
+                );
+            }
+        }
+
         return $orderId;
+    }
+
+    /**
+     * What the buyer paid for a pending order, in minor units: the shipping, each line's unit
+     * price (keyed like the lines) and the total.
+     *
+     * Null when sudemi did not send them (a core older than this extension) or sent something
+     * that is not money; the order is then written as before.
+     *
+     * @return array|null
+     */
+    public static function paidAmounts(array $pending)
+    {
+        if (!isset($pending['shipping_minor'], $pending['total_minor']) || empty($pending['lines'])
+            || !is_array($pending['lines']) || !is_numeric($pending['shipping_minor'])
+            || !is_numeric($pending['total_minor']) || (int) $pending['shipping_minor'] < 0) {
+            return null;
+        }
+        $lines = [];
+        foreach ($pending['lines'] as $index => $line) {
+            if (!is_array($line) || !isset($line['unit_price_minor']) || !is_numeric($line['unit_price_minor'])
+                || (int) $line['unit_price_minor'] < 0) {
+                return null;
+            }
+            $lines[$index] = (int) $line['unit_price_minor'];
+        }
+
+        return [
+            'shipping' => (int) $pending['shipping_minor'],
+            'lines' => $lines,
+            'total' => (int) $pending['total_minor'],
+        ];
+    }
+
+    /**
+     * Splits the VAT out of a gross amount: net plus the taxes is always exactly the gross.
+     *
+     * @param int                $grossMinor
+     * @param array<int, float>  $rates tax_rate_id => percentage
+     *
+     * @return array{net: int, taxes: array<int, int>}
+     */
+    public static function splitTax($grossMinor, array $rates)
+    {
+        $sum = array_sum($rates);
+        if ($grossMinor <= 0 || $sum <= 0) {
+            return ['net' => (int) $grossMinor, 'taxes' => []];
+        }
+        $net = (int) round($grossMinor * 100 / (100 + $sum));
+        $left = $grossMinor - $net;
+        $taxes = [];
+        $ids = array_keys($rates);
+        foreach ($ids as $i => $rateId) {
+            // The last rate takes the rounding, so the parts add up to the gross exactly.
+            $tax = $i === count($ids) - 1 ? $left : (int) round(($grossMinor - $net) * $rates[$rateId] / $sum);
+            $taxes[$rateId] = $tax;
+            $left -= $tax;
+        }
+
+        return ['net' => $net, 'taxes' => $taxes];
+    }
+
+    /**
+     * The shop's percentage tax rates for a product shipped to a country (the same rule the sync
+     * uses to put the tax into the price it sends). Fixed-amount rates are left in the price.
+     *
+     * @return array<int, float> tax_rate_id => percentage
+     */
+    private function percentRates($productId, $countryId)
+    {
+        if (!$countryId) {
+            return [];
+        }
+        $product = $this->db->query(
+            "SELECT tax_class_id FROM " . $this->prefix . "product WHERE product_id = '" . (int) $productId . "' LIMIT 1"
+        );
+        $taxClassId = $product->num_rows ? (int) $product->row['tax_class_id'] : 0;
+        if (!$taxClassId) {
+            return [];
+        }
+        $query = $this->db->query(
+            'SELECT tr2.tax_rate_id, tr2.rate FROM ' . $this->prefix . 'tax_rule tr1
+               JOIN ' . $this->prefix . 'tax_rate tr2 ON tr1.tax_rate_id = tr2.tax_rate_id
+               JOIN ' . $this->prefix . 'zone_to_geo_zone z2gz ON tr2.geo_zone_id = z2gz.geo_zone_id
+              WHERE tr1.tax_class_id = ' . $taxClassId . ' AND z2gz.country_id = ' . (int) $countryId . "
+                AND z2gz.zone_id = 0 AND tr2.type = 'P'
+              GROUP BY tr2.tax_rate_id, tr2.rate"
+        );
+        $rates = [];
+        foreach ($query->rows as $row) {
+            $rates[(int) $row['tax_rate_id']] = (float) $row['rate'];
+        }
+
+        return $rates;
+    }
+
+    /** The shop's own name for a tax rate, as OpenCart's checkout titles its tax rows. */
+    private function rateName($rateId)
+    {
+        $row = $this->db->query(
+            "SELECT name FROM " . $this->prefix . "tax_rate WHERE tax_rate_id = '" . (int) $rateId . "' LIMIT 1"
+        );
+
+        return $row->num_rows ? (string) $row->row['name'] : 'VAT';
+    }
+
+    /**
+     * The order texts in the store's default language, from this extension's own language files
+     * (the 12 languages of the admin page), English when the store's language is not one of them.
+     *
+     * @return array<string, string>
+     */
+    private function text()
+    {
+        $code = 'en-gb';
+        $row = $this->db->query(
+            "SELECT code FROM " . $this->prefix . "language WHERE language_id = '" . (int) $this->config->get('config_language_id') . "' LIMIT 1"
+        );
+        if ($row->num_rows) {
+            $code = strtolower((string) $row->row['code']);
+        }
+
+        return self::orderTexts($code);
+    }
+
+    /** The order texts for one OpenCart language code, falling back to English per text. */
+    public static function orderTexts($code)
+    {
+        $keys = ['text_order_sub_total', 'text_order_shipping', 'text_order_total'];
+        $out = [];
+        foreach ([self::languageFile('en-gb'), self::languageFile($code)] as $strings) {
+            foreach ($keys as $key) {
+                if (isset($strings[$key]) && $strings[$key] !== '') {
+                    $out[$key] = (string) $strings[$key];
+                }
+            }
+        }
+        foreach ($keys as $key) {
+            if (!isset($out[$key])) {
+                $out[$key] = 'sudemi';
+            }
+        }
+
+        return $out;
+    }
+
+    private static function languageFile($code)
+    {
+        if (!preg_match('/^[a-z]{2}(-[a-z]{2})?$/', (string) $code)) {
+            return [];
+        }
+        $file = __DIR__ . '/../../../admin/language/' . $code . '/module/sudemi.php';
+        if (!is_file($file)) {
+            return [];
+        }
+        $_ = [];
+        include $file;
+
+        return $_;
     }
 
     /**

@@ -163,3 +163,7 @@ $_['error_request_unavailable'] = '暂时无法连接 sudemi。未发送任何�
 $_['text_request_note_accepted'] = 'sudemi：已接受退货申请。商品退回后请为订单退款（状态“已退款”）。';
 $_['text_request_note_rejected'] = 'sudemi：已拒绝退货申请。向买家显示的理由：%s';
 $_['text_history_return_requested'] = '已申请退货';
+// The totals of a sudemi order (order page, invoice), written in the store's language.
+$_['text_order_sub_total'] = '小计';
+$_['text_order_shipping'] = 'sudemi 配送';
+$_['text_order_total'] = '总计';

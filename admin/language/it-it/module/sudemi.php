@@ -163,3 +163,7 @@ $_['error_request_unavailable'] = 'Al momento sudemi non è raggiungibile. Non �
 $_['text_request_note_accepted'] = 'sudemi: richiesta di reso accettata. Rimborsa l’ordine (stato Rimborsato) quando l’articolo è tornato.';
 $_['text_request_note_rejected'] = 'sudemi: richiesta di reso rifiutata. Motivo mostrato all’acquirente: %s';
 $_['text_history_return_requested'] = 'Reso richiesto';
+// The totals of a sudemi order (order page, invoice), written in the store's language.
+$_['text_order_sub_total'] = 'Subtotale';
+$_['text_order_shipping'] = 'Spedizione sudemi';
+$_['text_order_total'] = 'Totale';

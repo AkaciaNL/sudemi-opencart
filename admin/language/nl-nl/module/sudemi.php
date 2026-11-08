@@ -163,3 +163,7 @@ $_['error_request_unavailable'] = 'sudemi is op dit moment niet bereikbaar. Er i
 $_['text_request_note_accepted'] = 'sudemi: retourverzoek geaccepteerd. Betaal de bestelling terug (status Terugbetaald) zodra het artikel terug is.';
 $_['text_request_note_rejected'] = 'sudemi: retourverzoek afgewezen. Reden getoond aan de koper: %s';
 $_['text_history_return_requested'] = 'Retour aangevraagd';
+// The totals of a sudemi order (order page, invoice), written in the store's language.
+$_['text_order_sub_total'] = 'Subtotaal';
+$_['text_order_shipping'] = 'Verzending via sudemi';
+$_['text_order_total'] = 'Totaal';

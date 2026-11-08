@@ -163,3 +163,7 @@ $_['error_request_unavailable'] = 'Şu anda sudemi’ye ulaşılamıyor. Hiçbir
 $_['text_request_note_accepted'] = 'sudemi: iade talebi kabul edildi. Ürün geri geldiğinde siparişin ücretini iade edin (durum İade Edildi).';
 $_['text_request_note_rejected'] = 'sudemi: iade talebi reddedildi. Alıcıya gösterilen gerekçe: %s';
 $_['text_history_return_requested'] = 'İade talep edildi';
+// The totals of a sudemi order (order page, invoice), written in the store's language.
+$_['text_order_sub_total'] = 'Ara toplam';
+$_['text_order_shipping'] = 'sudemi kargo';
+$_['text_order_total'] = 'Toplam';

@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.2.10
+
+- **A sudemi order is booked at what the buyer paid.** Each order line gets the price the buyer
+  paid on sudemi (not the shop's current price, which may have changed since the last sync), and
+  the order gets OpenCart's totals rows: sub-total, the shipping the buyer paid ("sudemi shipping"),
+  the VAT per tax rate and the total. Before, the lines had no price and the order had no totals
+  rows, so the order page and the shop's books showed no shipping. The total is exactly what the
+  buyer paid; the payment method is sudemi.
+- The VAT is taken out of the paid prices at the shop's own percentage rates for the destination
+  country (the same rule the sync uses to put it into the price), never added on top. The shipping
+  is booked as paid.
+- The totals rows are written in the store's language (12 languages).
+- With a sudemi core that does not send the paid amounts yet, orders are written as before.
+- PROTOCOL.md: current copy (shipping_minor and unit_price_minor on pending orders).
+
 ## 1.2.9
 
 - **No full catalogue sync inside any page request.** In 1.2.8 the extension page's "Send the

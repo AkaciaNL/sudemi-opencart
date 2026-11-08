@@ -341,5 +341,35 @@ $r = $real->postSigned( '/integration/v1/orders/x/accept', array() );
 \Sudemi\Client::$interceptor = null;
 check( 'interceptor: its answer is used', 503 === $r['status'] && 'POST /integration/v1/orders/x/accept' === $r['body']['seen'] );
 
+// ---- 8. what the buyer paid (1.2.10) -------------------------------------------------------------
+$mug = array(
+	'total_minor'    => 1345,
+	'shipping_minor' => 495,
+	'currency_code'  => 'EUR',
+	'lines'          => array( array( 'external_id' => '14', 'quantity' => 1, 'unit_price_minor' => 850 ) ),
+);
+check( 'paid amounts read', array( 'shipping' => 495, 'lines' => array( 0 => 850 ), 'total' => 1345 ) === \Sudemi\Orders::paidAmounts( $mug ) );
+$older = $mug;
+unset( $older['shipping_minor'] );
+check( 'older core without shipping: written as before', null === \Sudemi\Orders::paidAmounts( $older ) );
+$older = $mug;
+unset( $older['lines'][0]['unit_price_minor'] );
+check( 'older core without line prices: written as before', null === \Sudemi\Orders::paidAmounts( $older ) );
+$split = \Sudemi\Orders::splitTax( 850, array( 7 => 21.0 ) );
+check( 'VAT split out of 8.50 at 21%: 7.02 + 1.48', 702 === $split['net'] && array( 7 => 148 ) === $split['taxes'] );
+$split = \Sudemi\Orders::splitTax( 1000, array( 1 => 10.0, 2 => 5.0 ) );
+check( 'two rates add up to the gross exactly', 1000 === $split['net'] + array_sum( $split['taxes'] ) );
+check( 'no rates: the gross is the net', array( 'net' => 850, 'taxes' => array() ) === \Sudemi\Orders::splitTax( 850, array() ) );
+$texts = \Sudemi\Orders::orderTexts( 'nl-nl' );
+check( 'order texts in Dutch', 'Verzending via sudemi' === $texts['text_order_shipping'] && 'Totaal' === $texts['text_order_total'] );
+check( 'unknown language falls back to English', 'Sub-Total' === \Sudemi\Orders::orderTexts( 'xx-xx' )['text_order_sub_total'] );
+check( 'a path in the language code is refused', 'Total' === \Sudemi\Orders::orderTexts( '../../x' )['text_order_total'] );
+foreach ( glob( __DIR__ . '/../admin/language/*/module/sudemi.php' ) as $file ) {
+	$code = basename( dirname( dirname( $file ) ) );
+	$_    = array();
+	include $file;
+	check( "order texts present in $code", isset( $_['text_order_sub_total'], $_['text_order_shipping'], $_['text_order_total'] ) );
+}
+
 echo $failures ? "\n$failures check(s) failed\n" : "\nall checks passed\n";
 exit( $failures ? 1 : 0 );

@@ -163,3 +163,7 @@ $_['error_request_unavailable'] = 'Nie można teraz połączyć się z sudemi. N
 $_['text_request_note_accepted'] = 'sudemi: prośba o zwrot zaakceptowana. Zwróć pieniądze za zamówienie (status Zwrócono), gdy towar wróci.';
 $_['text_request_note_rejected'] = 'sudemi: prośba o zwrot odrzucona. Powód pokazany kupującemu: %s';
 $_['text_history_return_requested'] = 'Zgłoszono zwrot';
+// The totals of a sudemi order (order page, invoice), written in the store's language.
+$_['text_order_sub_total'] = 'Suma częściowa';
+$_['text_order_shipping'] = 'Wysyłka sudemi';
+$_['text_order_total'] = 'Razem';

@@ -163,3 +163,7 @@ $_['error_request_unavailable'] = 'Сейчас не удаётся связат
 $_['text_request_note_accepted'] = 'sudemi: запрос на возврат принят. Верните деньги за заказ (статус «Возмещён»), когда товар вернётся.';
 $_['text_request_note_rejected'] = 'sudemi: запрос на возврат отклонён. Причина, показанная покупателю: %s';
 $_['text_history_return_requested'] = 'Запрошен возврат';
+// The totals of a sudemi order (order page, invoice), written in the store's language.
+$_['text_order_sub_total'] = 'Промежуточный итог';
+$_['text_order_shipping'] = 'Доставка sudemi';
+$_['text_order_total'] = 'Итого';

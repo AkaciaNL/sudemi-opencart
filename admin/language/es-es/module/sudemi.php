@@ -163,3 +163,7 @@ $_['error_request_unavailable'] = 'No se ha podido contactar con sudemi en este 
 $_['text_request_note_accepted'] = 'sudemi: solicitud de devolución aceptada. Reembolse el pedido (estado Reembolsado) cuando el artículo haya vuelto.';
 $_['text_request_note_rejected'] = 'sudemi: solicitud de devolución rechazada. Motivo mostrado al comprador: %s';
 $_['text_history_return_requested'] = 'Devolución solicitada';
+// The totals of a sudemi order (order page, invoice), written in the store's language.
+$_['text_order_sub_total'] = 'Subtotal';
+$_['text_order_shipping'] = 'Envío de sudemi';
+$_['text_order_total'] = 'Total';

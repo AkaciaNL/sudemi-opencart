@@ -163,3 +163,7 @@ $_['error_request_unavailable'] = 'לא ניתן להתחבר ל-sudemi כרגע
 $_['text_request_note_accepted'] = 'sudemi: בקשת ההחזרה אושרה. יש להחזיר את הכסף על ההזמנה (סטטוס "הוחזר כסף") כשהפריט חוזר.';
 $_['text_request_note_rejected'] = 'sudemi: בקשת ההחזרה נדחתה. הנימוק שהוצג לקונה: %s';
 $_['text_history_return_requested'] = 'התבקשה החזרה';
+// The totals of a sudemi order (order page, invoice), written in the store's language.
+$_['text_order_sub_total'] = 'סכום ביניים';
+$_['text_order_shipping'] = 'משלוח sudemi';
+$_['text_order_total'] = 'סה״כ';

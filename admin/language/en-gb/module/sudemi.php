@@ -163,3 +163,7 @@ $_['error_request_unavailable'] = 'sudemi could not be reached just now. Nothing
 $_['text_request_note_accepted'] = 'sudemi: return request accepted. Refund the order (status Refunded) once the item is back.';
 $_['text_request_note_rejected'] = 'sudemi: return request rejected. Reason shown to the buyer: %s';
 $_['text_history_return_requested'] = 'Return requested';
+// The totals of a sudemi order (order page, invoice), written in the store's language.
+$_['text_order_sub_total'] = 'Sub-Total';
+$_['text_order_shipping'] = 'sudemi shipping';
+$_['text_order_total'] = 'Total';
