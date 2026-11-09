@@ -280,7 +280,9 @@ class Heartbeat
         $this->store->delete(self::SETTING_STATUS);
         $this->store->delete(self::SETTING_INTERVAL);
         $this->store->delete(self::SETTING_CHANGES);
-        $this->store->delete(self::SETTING_CRON_TOKEN);
+        // The cron token stays: it is only the secret that lets the crontab line trigger a run
+        // (which does nothing while the shop is not connected), so keeping it means the line the
+        // shop owner set up keeps working after Disconnect and a new Connect.
         Requests::forget($this->store);
     }
 

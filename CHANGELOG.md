@@ -1,5 +1,30 @@
 # Changelog
 
+## 1.2.11
+
+- **A confirmed connection is collected by cron.** While a connection is started and not yet
+  collected, every run of the extension's cron URL (and, for shops without cron, opening the
+  extension page, after the page was sent) asks sudemi once whether the shop owner has confirmed
+  it: at most once a minute for the first half hour, then every twenty minutes (within the 100
+  polls a pairing allows), and never sooner than a 429 Retry-After says. When it has, the extension
+  stores the connection exactly as the "Check again" button does, and the same cron run sends the
+  first heartbeat and the catalogue. Before, the shop only connected when someone pressed "Check
+  again".
+- A connection attempt older than 24 hours (the pairing lifetime) is given up, with one line in
+  the extension log; start it again.
+- **The cron URL stays the same after Disconnect and a new Connect.** Before, Disconnect deleted the
+  cron token and the extension page made a new one, so a crontab line set up earlier got "no"
+  (403) and the shop went quiet. The token is only the secret that lets the crontab trigger a run
+  (which does nothing while the shop is not connected), so it is kept. "Connect" also makes sure it
+  exists, so the cron URL works for a freshly started connection.
+- "Check again" says the shop is connected when cron collected the connection a moment earlier.
+- **Names and descriptions are sent as text.** OpenCart stores what is typed in its admin
+  HTML-escaped, and the extension sent it like that: the seller portal and buyers saw "Laptops
+  &amp;amp; Notebooks", and a description kept its tags because they were stored as "&amp;lt;p&amp;gt;".
+  Product titles, descriptions, brands, attributes, category names and descriptions, the shop's
+  name and description (sync and the draft offered when connecting) are now decoded first, then
+  tags removed from descriptions. What is already on sudemi is corrected by the next full sync.
+
 ## 1.2.10
 
 - **A sudemi order is booked at what the buyer paid.** Each order line gets the price the buyer

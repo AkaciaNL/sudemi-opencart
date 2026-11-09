@@ -19,6 +19,22 @@ class Pairing
     const SETTING_CODE = 'sudemi_pairing_code';
     const SETTING_POLL = 'sudemi_pairing_poll';
     const SETTING_CLAIM_URL = 'sudemi_claim_url';
+    /** When this pairing was started (unix time), so the background poll knows its lifetime. */
+    const SETTING_STARTED = 'sudemi_pairing_started';
+    /** Not before this time (unix) does the background poll ask again. */
+    const SETTING_NEXT_POLL = 'sudemi_pairing_next_poll';
+
+    /** sudemi keeps a pairing open for 24 hours; after that there is nothing left to collect. */
+    const LIFETIME = 86400;
+
+    /**
+     * The background poll asks at most once a minute for the first half hour (the shop owner is
+     * usually confirming right now, in another tab), then every twenty minutes. That keeps a
+     * whole 24-hour pairing within the 100 polls sudemi allows per pairing (PROTOCOL.md).
+     */
+    const POLL_EVERY = 60;
+    const POLL_FAST_FOR = 1800;
+    const POLL_SLOW_EVERY = 1200;
 
     private $client;
     private $keys;
@@ -65,6 +81,8 @@ class Pairing
         $this->store->write(self::SETTING_CODE, isset($body['public_code']) ? $body['public_code'] : '');
         $this->store->write(self::SETTING_POLL, isset($body['poll_token']) ? $body['poll_token'] : '');
         $this->store->write(self::SETTING_CLAIM_URL, isset($body['claim_url']) ? $body['claim_url'] : '');
+        $this->store->write(self::SETTING_STARTED, time());
+        $this->store->delete(self::SETTING_NEXT_POLL);
 
         if (!$this->challengeFileServed()) {
             $this->logger->warn('The challenge file could not be written to ' . self::CHALLENGE_PATH
@@ -74,6 +92,7 @@ class Pairing
         return ['ok' => true, 'message' => 'Open the link and confirm the shop on sudemi.'];
     }
 
+    /** Asks whether the shop has been claimed yet. Called by "Check again" and by pollInBackground(). */
     public function poll()
     {
         $code = $this->store->read(self::SETTING_CODE);
@@ -82,11 +101,21 @@ class Pairing
             return false;
         }
 
+        // Whoever asked (the button or the background), the background poll waits a while.
+        $this->store->write(self::SETTING_NEXT_POLL, time() + $this->pollGap());
         $result = $this->client->postUnsigned('/integration/v1/pair/poll', [
             'publicCode' => $code,
             'pollToken' => $token,
         ]);
         if ($result === null) {
+            return false;
+        }
+
+        // 429: sudemi asks for a pause. The background poll waits as long as it was told.
+        if ($result['status'] === 429) {
+            $wait = !empty($result['retry_after']) ? (int) $result['retry_after'] : 300;
+            $this->store->write(self::SETTING_NEXT_POLL, time() + max($this->pollGap(), min(3600, $wait)));
+
             return false;
         }
 
@@ -110,6 +139,60 @@ class Pairing
         }
 
         return false;
+    }
+
+    /** True while a pairing was started here and has not been collected or given up yet. */
+    public function pending()
+    {
+        $code = $this->store->read(self::SETTING_CODE);
+        $token = $this->store->read(self::SETTING_POLL);
+
+        return is_string($code) && $code !== '' && is_string($token) && $token !== '';
+    }
+
+    /**
+     * Collects a claimed pairing without anyone pressing "Check again".
+     *
+     * Called by every cron run and by the fallback beat on the settings page. While a pairing is
+     * open it asks sudemi once (at most once a minute, later every twenty minutes, and never
+     * sooner than a 429 said), and on success stores the install exactly as the button does, so
+     * the same run's heartbeat already goes out signed and sudemi asks for the first full sync.
+     * A pairing older than its 24-hour lifetime is given up with one line in the log.
+     *
+     * @return bool whether this call connected the shop
+     */
+    public function pollInBackground()
+    {
+        if (!$this->pending()) {
+            return false;
+        }
+        $now = time();
+        $started = (int) $this->store->read(self::SETTING_STARTED);
+        if ($started <= 0) {
+            // Started by a version that did not record it: count the lifetime from now. sudemi
+            // still answers 410 when it really expired, which ends the polling sooner.
+            $this->store->write(self::SETTING_STARTED, $now);
+            $started = $now;
+        }
+        if ($now - $started >= self::LIFETIME) {
+            $this->forget();
+            $this->logger->warn('The connection attempt expired after 24 hours without being confirmed on sudemi. Start it again.');
+
+            return false;
+        }
+        if ((int) $this->store->read(self::SETTING_NEXT_POLL) > $now) {
+            return false;
+        }
+
+        return $this->poll();
+    }
+
+    /** Seconds until the background poll may ask again, by how long this pairing has been open. */
+    private function pollGap()
+    {
+        $started = (int) $this->store->read(self::SETTING_STARTED);
+
+        return ($started > 0 && time() - $started >= self::POLL_FAST_FOR) ? self::POLL_SLOW_EVERY : self::POLL_EVERY;
     }
 
     /**
@@ -199,5 +282,7 @@ class Pairing
         $this->store->delete(self::SETTING_CODE);
         $this->store->delete(self::SETTING_POLL);
         $this->store->delete(self::SETTING_CLAIM_URL);
+        $this->store->delete(self::SETTING_STARTED);
+        $this->store->delete(self::SETTING_NEXT_POLL);
     }
 }

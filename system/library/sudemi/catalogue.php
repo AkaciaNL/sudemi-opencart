@@ -29,11 +29,34 @@ class Catalogue
         $this->shipping = new Shipping($db, $config);
     }
 
+    /**
+     * A name as text. OpenCart stores what the admin typed HTML-escaped (its Request class runs
+     * htmlspecialchars over all input), so "Salt & Pepper" is "Salt &amp; Pepper" in the database;
+     * sudemi wants the text itself and escapes it where it shows it.
+     */
+    public static function text($value)
+    {
+        return trim(html_entity_decode((string) $value, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+    }
+
+    /**
+     * A description as plain text. Decoded first, because the stored HTML is itself escaped
+     * ("&lt;p&gt;", on which strip_tags does nothing); then the tags go, and the entities the
+     * HTML held ("&amp;", "&nbsp;") are decoded too. A no-break space becomes a plain space.
+     */
+    public static function plain($value)
+    {
+        $text = strip_tags(html_entity_decode((string) $value, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        return trim(str_replace("\u{00A0}", ' ', $text));
+    }
+
     public function shop()
     {
         return [
-            'displayName' => $this->config->get('config_name'),
-            'description' => $this->config->get('config_meta_description'),
+            'displayName' => self::text($this->config->get('config_name')),
+            'description' => self::plain($this->config->get('config_meta_description')),
             'languages' => [substr((string) $this->config->get('config_language'), 0, 2)],
             'currency' => $this->config->get('config_currency'),
             'supportEmail' => $this->config->get('config_email'),
@@ -57,8 +80,8 @@ class Catalogue
             $categories[] = [
                 'externalId' => (string) $row['category_id'],
                 'parentExternalId' => !empty($row['parent_id']) ? (string) $row['parent_id'] : null,
-                'name' => (string) $row['name'],
-                'description' => strip_tags((string) $row['description']),
+                'name' => self::text($row['name']),
+                'description' => self::plain($row['description']),
             ];
         }
 
@@ -118,8 +141,8 @@ class Catalogue
                 'sku' => (string) $row['sku'],
                 'gtin' => ((string) $row['ean']) !== '' ? (string) $row['ean'] : (((string) $row['upc']) !== '' ? (string) $row['upc'] : null),
                 'mpn' => (string) $row['mpn'],
-                'title' => (string) $row['name'],
-                'description' => strip_tags((string) $row['description']),
+                'title' => self::text($row['name']),
+                'description' => self::plain($row['description']),
                 'url' => $this->productUrl($productId),
                 // OpenCart stores prices without tax; buyers are shown and charged the price with it.
                 'priceMinor' => $this->minor($this->shipping->withStoreTax($this->effectivePrice($productId, $row['price']), $row['tax_class_id'])),
@@ -131,7 +154,7 @@ class Catalogue
                 'shipping' => $this->shipping->ratesFor($this->kilograms($row['weight'], $row['weight_class_id']), (bool) $row['shipping']),
                 'maxHandlingTimeDays' => $this->shipping->handlingDays(),
                 'maxTransitTimeDays' => $this->shipping->transitDays(),
-                'brand' => ((string) $row['manufacturer']) !== '' ? (string) $row['manufacturer'] : null,
+                'brand' => self::text($row['manufacturer']) !== '' ? self::text($row['manufacturer']) : null,
                 'categoryExternalIds' => $this->categoryIds($productId),
                 'images' => $this->images($productId, (string) $row['image']),
                 'specs' => $this->specs($productId, $languageId),
@@ -413,8 +436,8 @@ class Catalogue
         foreach ($query->rows as $row) {
             if (!empty($row['name'])) {
                 $specs[] = [
-                    'name' => (string) $row['name'],
-                    'values' => [(string) $row['text']],
+                    'name' => self::text($row['name']),
+                    'values' => [self::text($row['text'])],
                 ];
             }
         }

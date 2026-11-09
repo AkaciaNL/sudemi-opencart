@@ -70,6 +70,10 @@ class Cron extends \Opencart\System\Engine\Controller
         ignore_user_abort(true);
         @set_time_limit(0);
 
+        // A pairing the shop owner confirmed on sudemi is collected here, so the shop connects
+        // without anyone pressing "Check again". Once collected, the beat below already runs.
+        $pairing->pollInBackground();
+
         $answered = $heartbeat->run();
         // The full sync the beat (or a product's withdrawal setting) asked for, or the rest of
         // one that admin page loads started. Only this entry runs it to the end.

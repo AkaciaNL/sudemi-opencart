@@ -47,6 +47,9 @@ class Sudemi extends \Opencart\System\Engine\Controller
         $json[$result['ok'] ? 'success' : 'error'] = $result['message'];
         if ($result['ok']) {
             $json['claim_url'] = $sudemi['pairing']->claimUrl();
+            // The cron URL has to work before this page is shown again: the next cron run is what
+            // collects this pairing once the shop owner has confirmed it on sudemi.
+            $sudemi['heartbeat']->cronToken();
         }
 
         $this->respond($json);
@@ -64,7 +67,8 @@ class Sudemi extends \Opencart\System\Engine\Controller
         }
 
         $sudemi = $this->services();
-        if ($sudemi['pairing']->poll()) {
+        // Also connected when cron (or the background poll) collected it a moment earlier.
+        if ($sudemi['pairing']->poll() || $sudemi['client']->isConnected()) {
             $json['success'] = $this->language->get('text_connected');
         } else {
             $json['error'] = $this->language->get('text_not_confirmed');
@@ -590,8 +594,9 @@ class Sudemi extends \Opencart\System\Engine\Controller
      * up cron" keeps working rather than failing silently a week later. Only on this settings
      * page, so no storefront request ever waits on our network.
      *
-     * Run after the page was produced (after it was sent, where PHP-FPM allows it): the beat
-     * when one is due, and a small step (at most Sync::STEP_PRODUCTS products, about two
+     * Run after the page was produced (after it was sent, where PHP-FPM allows it): collecting a
+     * pairing the shop owner confirmed on sudemi while one is open, otherwise the beat when one
+     * is due, and a small step (at most Sync::STEP_PRODUCTS products, about two
      * seconds) of a waiting full sync. Never the whole sync: on a large catalogue that held the
      * admin's screen for minutes. The cron entry runs the rest; without cron the following page
      * loads continue where the last one stopped.
@@ -600,8 +605,11 @@ class Sudemi extends \Opencart\System\Engine\Controller
     {
         try {
             $sudemi = $this->services();
-            if (!$sudemi['client']->isConnected()
-                || (!$sudemi['heartbeat']->isDue() && !$sudemi['sync']->pending())) {
+            // Not connected: only a pairing waiting to be collected, asked at most once a minute
+            // (see Pairing::pollInBackground), for shops with no cron entry.
+            $connected = $sudemi['client']->isConnected();
+            $collect = !$connected && $sudemi['pairing']->pending();
+            if (!$collect && (!$connected || (!$sudemi['heartbeat']->isDue() && !$sudemi['sync']->pending()))) {
                 return;
             }
         } catch (\Throwable $e) {
@@ -609,7 +617,7 @@ class Sudemi extends \Opencart\System\Engine\Controller
             // missed beat.
             return;
         }
-        register_shutdown_function(function () use ($sudemi) {
+        register_shutdown_function(function () use ($sudemi, $collect) {
             if (function_exists('fastcgi_finish_request') || function_exists('litespeed_finish_request')) {
                 while (ob_get_level() > 0 && @ob_end_flush()) {
                 }
@@ -621,6 +629,11 @@ class Sudemi extends \Opencart\System\Engine\Controller
             }
             ignore_user_abort(true);
             try {
+                if ($collect) {
+                    $sudemi['pairing']->pollInBackground();
+
+                    return;
+                }
                 if ($sudemi['heartbeat']->isDue()) {
                     $sudemi['heartbeat']->run();
                 }
@@ -734,8 +747,9 @@ class Sudemi extends \Opencart\System\Engine\Controller
     private function proposedProfile(): array
     {
         return [
-            'displayName' => $this->config->get('config_name'),
-            'legalName' => $this->config->get('config_owner'),
+            // Stored HTML-escaped by OpenCart, like everything typed in its admin.
+            'displayName' => \Sudemi\Catalogue::text($this->config->get('config_name')),
+            'legalName' => \Sudemi\Catalogue::text($this->config->get('config_owner')),
             'establishmentCountry' => $this->countryCode(),
             'dispatchCountry' => $this->countryCode(),
             'traderStatus' => 'TRADER',
