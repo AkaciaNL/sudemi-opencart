@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.13
+
+- **Shipping VAT is booked separately.** The shipping on a sudemi order is now booked net, with its
+  VAT in the order's tax row at the shipping method's tax class, as OpenCart's own checkout does.
+  Before, the shipping kept its VAT inside and the order had no tax row for it.
+
 ## 1.2.12
 
 - **Orders are booked in the currency the buyer paid in.** A sudemi order carries the shop's
