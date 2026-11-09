@@ -44,6 +44,11 @@ core the extension works as 1.2 did.
   note saying who: your shop declined it on sudemi, sudemi declined it automatically (for example
   not answered in time), or the buyer cancelled before it was confirmed. Once per order, from
   `settled_orders` or the change feed; with an older core no note, as before.
+- **No change lost**: a change-feed entry that cannot be applied (for example an order accepted on
+  the portal whose order page could not be read to book it) is no longer marked as handled. It goes
+  on a retry list and is read from its order page on the next heartbeats (at most 10 per beat); the
+  feed itself moves on. After 100 attempts or 7 days the extension gives up with an error in its
+  log, never silently.
 - **sudemi shipping page**: ship to the shop's own prices, or choose countries and a price per
   country on sudemi; "Fill in from my shop" takes the countries and prices from your geo zones and
   shipping methods; the page shows what buyers pay now per country.

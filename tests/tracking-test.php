@@ -435,6 +435,22 @@ check( 'the admin language changed afterwards: no second note in English', 2 ===
 check( 'declineNotes: three per language, twelve languages, HTML-escaped as stored',
 	36 === count( \Sudemi\Orders::declineNotes() ) && in_array( 'Annulée par l’acheteur sur sudemi avant la confirmation de la commande ; l’acheteur n’a pas été débité', \Sudemi\Orders::declineNotes(), true ) );
 
+// ---- 5c. accepted on the portal, its order page not readable: not marked handled ---------------
+const O2 = '22222222-3333-4444-8555-666666666666';
+foreach ( array( 'unreachable' => null, 'HTTP 503' => array( 'status' => 503, 'body' => array() ) ) as $what => $answer ) {
+	list( $orders, $db, $client, $store ) = shop( 2, 'PAID' );
+	$client->answers = array( $answer );
+	$thrown = null;
+	try {
+		$orders->applyChange( array( 'order_id' => O2, 'status' => 'PAID', 'revision' => 3, 'refunded_minor' => 0, 'tracking' => null, 'request' => null ) );
+	} catch ( \Sudemi\ApplyLater $e ) {
+		$thrown = $e;
+	}
+	check( "feed PAID for an order not booked here, order page $what: ApplyLater thrown, the revision NOT saved, an error logged",
+		null !== $thrown && ! isset( $db->sudemi[ O2 ] ) && array( 'GET /integration/v1/orders/' . O2 ) === $client->paths()
+		&& false !== strpos( (string) $store->read( 'sudemi_log' ), 'its order page could not be read' ) );
+}
+
 // ---- 6. the texts in every language ---------------------------------------------------------------
 $keys = array( 'text_tracking_saved', 'text_tracking_sent', 'text_tracking_unchanged', 'text_tracking_retry', 'error_tracking_final',
 	'error_tracking_failed', 'error_tracking_code_required', 'button_update_tracking', 'help_update_tracking', 'text_action_tracking_updated',

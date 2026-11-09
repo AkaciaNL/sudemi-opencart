@@ -27,6 +27,13 @@ class Changes
     const SAFETY_EVERY = 86400;
     const SAFETY_PAGES = 10;
 
+    /** Feed entries that could not be applied, read again from their order pages on later beats. */
+    const SETTING_RETRY = 'sudemi_changes_retry';
+    const RETRY_MAX = 100;
+    const RETRY_DAYS = 7;
+    const RETRY_PER_BEAT = 10;
+    const RETRY_KEEP = 200;
+
     private $store;
     private $client;
     private $logger;
@@ -68,17 +75,22 @@ class Changes
             $this->logger->info('sudemi started the order change feed again (the last 7 days).');
         }
         $applied = 0;
+        $retry = $this->retryList();
+        $fresh = array();
         foreach ($body['changed_orders'] as $entry) {
             if (!is_array($entry)) {
                 continue;
             }
+            $id = isset($entry['order_id']) ? strtolower((string) $entry['order_id']) : '';
             try {
                 if ($this->orders->applyChange($entry)) {
                     ++$applied;
                 }
-            } catch (\Exception $e) {
-                $this->logger->error('Could not apply a change to sudemi order '
-                    . (isset($entry['order_id']) ? (string) $entry['order_id'] : '?') . ': ' . $e->getMessage());
+                unset($retry[$id]);
+            } catch (\Throwable $e) {
+                // Kept for a later beat (the order page is read then); the cursor still moves on.
+                $retry = $this->failed($retry, $id, $e);
+                $fresh[$id] = true;
             }
         }
         if ($applied > 0) {
@@ -90,8 +102,93 @@ class Changes
                 'cursor' => $body['changes_cursor'],
             )));
         }
+        $this->saveRetryList($this->retryFailed($retry, $fresh));
 
         return !empty($body['changes_more']);
+    }
+
+    /**
+     * Orders whose feed entry could not be applied, as {order id: {attempts, first, error}}. The
+     * cursor never waits for them: each is read from its order page on the next beats instead.
+     */
+    public function retryList()
+    {
+        $raw = $this->store->read(self::SETTING_RETRY);
+        $list = is_string($raw) ? json_decode($raw, true) : $raw;
+
+        return is_array($list) ? $list : array();
+    }
+
+    private function saveRetryList(array $list)
+    {
+        if ($list) {
+            $this->store->write(self::SETTING_RETRY, json_encode($list));
+        } else {
+            $this->store->delete(self::SETTING_RETRY);
+        }
+    }
+
+    /** Counts a failure for an order (new ones start at 1) and logs it; a full list loses its oldest, loudly. */
+    private function failed(array $list, $id, $e)
+    {
+        if (!preg_match('/^' . Orders::UUID . '$/', $id)) {
+            $this->logger->error('Could not apply a change to sudemi order ' . ($id !== '' ? $id : '?') . ': ' . $e->getMessage());
+
+            return $list;
+        }
+        $row = isset($list[$id]) ? $list[$id] : array('attempts' => 0, 'first' => time());
+        $row['attempts'] = (int) $row['attempts'] + 1;
+        $row['error'] = substr((string) $e->getMessage(), 0, 200);
+        unset($list[$id]);
+        $list[$id] = $row;
+        $this->logger->warn(sprintf('Could not apply a change to sudemi order %s (%s); will read it again on the next heartbeat (attempt %d of %d).',
+            $id, $row['error'], $row['attempts'], self::RETRY_MAX));
+        while (count($list) > self::RETRY_KEEP) {
+            $oldest = array_key_first($list);
+            $this->logger->error(sprintf('Gave up on sudemi order %s: too many orders waiting to be read again. Check it on the sudemi orders page.', $oldest));
+            unset($list[$oldest]);
+        }
+
+        return $list;
+    }
+
+    /**
+     * Reads the orders on the retry list (not the ones that just failed in this beat) from their
+     * order pages and applies them. One that keeps failing is given up after RETRY_MAX attempts or
+     * RETRY_DAYS days, with an error in the log, never silently.
+     */
+    private function retryFailed(array $list, array $skip)
+    {
+        $done = 0;
+        foreach ($list as $id => $row) {
+            if (isset($skip[$id])) {
+                continue;
+            }
+            if ($done >= self::RETRY_PER_BEAT) {
+                break;
+            }
+            ++$done;
+            try {
+                $detail = $this->orders->detail($id);
+                if ($detail === null) {
+                    throw new \RuntimeException('order page not readable');
+                }
+                $this->orders->applyChange(Orders::changeFromDetail($detail), $detail);
+                unset($list[$id]);
+                $this->logger->info('sudemi order ' . $id . ' was read again and brought up to date.');
+                continue;
+            } catch (\Throwable $e) {
+                $list[$id]['attempts'] = (int) $row['attempts'] + 1;
+                $list[$id]['error'] = substr((string) $e->getMessage(), 0, 200);
+            }
+            if ($list[$id]['attempts'] >= self::RETRY_MAX || time() - (int) $row['first'] > self::RETRY_DAYS * 86400) {
+                $this->logger->error(sprintf('Gave up on sudemi order %s after %d attempts (%s). Check it on the sudemi orders page.',
+                    $id, $list[$id]['attempts'], $list[$id]['error']));
+                unset($list[$id]);
+            }
+        }
+
+        return $list;
     }
 
     /**
@@ -114,6 +211,7 @@ class Changes
         $from = gmdate('Y-m-d', time() - 86400);
         $offset = 0;
         $applied = 0;
+        $retry = $this->retryList();
         for ($page = 0; $page < self::SAFETY_PAGES; ++$page) {
             $response = $this->client->sendSigned('GET', '/integration/v1/orders'
                 . Client::query(array('from' => $from, 'sort' => 'placed', 'dir' => 'asc', 'limit' => 100, 'offset' => $offset)));
@@ -124,13 +222,14 @@ class Changes
                 if (!is_array($row) || !isset($row['revision'])) {
                     continue;
                 }
+                $id = isset($row['order_id']) ? strtolower((string) $row['order_id']) : '';
                 try {
                     if ($this->orders->applyChange(Orders::changeFromRow($row))) {
                         ++$applied;
                     }
-                } catch (\Exception $e) {
-                    $this->logger->error('Could not apply sudemi order ' . (isset($row['order_id']) ? (string) $row['order_id'] : '?')
-                        . ': ' . $e->getMessage());
+                    unset($retry[$id]);
+                } catch (\Throwable $e) {
+                    $retry = $this->failed($retry, $id, $e);
                 }
             }
             if (!isset($response['body']['next_offset']) || $response['body']['next_offset'] === null) {
@@ -138,6 +237,7 @@ class Changes
             }
             $offset = (int) $response['body']['next_offset'];
         }
+        $this->saveRetryList($retry);
         if ($applied > 0) {
             $this->logger->info(sprintf('Daily check: %d sudemi order(s) brought up to date.', $applied));
         }
@@ -149,5 +249,6 @@ class Changes
     {
         $this->store->delete(self::SETTING_CURSOR);
         $this->store->delete(self::SETTING_SAFETY);
+        $this->store->delete(self::SETTING_RETRY);
     }
 }

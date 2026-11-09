@@ -316,6 +316,7 @@ class Heartbeat
         // The change feed's cursor belongs to this connection; a new one starts with ''.
         $this->store->delete(Changes::SETTING_CURSOR);
         $this->store->delete(Changes::SETTING_SAFETY);
+        $this->store->delete(Changes::SETTING_RETRY);
     }
 
     private function remember(array $status)

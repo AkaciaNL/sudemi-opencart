@@ -2097,6 +2097,15 @@ class Orders
         // was handled outside this extension, and booking it now would take its stock twice.
         if ($local === null && in_array($status, self::IMPORT_STATUSES, true)) {
             $detail = $detail !== null ? $detail : $this->detail($sudemiId);
+            if ($detail === null) {
+                // The order page could not be read, so the order cannot be booked now. The revision
+                // is not saved (it would mark the order as handled and it would never be booked):
+                // the caller keeps it for a later beat (Changes' retry list).
+                $this->logger->error(sprintf('sudemi order %s was accepted on sudemi, but its order page could not be read; '
+                    . 'it is booked here on a later heartbeat.', $sudemiId));
+
+                throw new ApplyLater('order page not readable');
+            }
             if ($detail !== null) {
                 $pending = self::pendingFromDetail($detail);
                 $problem = $this->currencyProblem($pending);
@@ -2364,4 +2373,12 @@ class Orders
 
         return htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
     }
+}
+
+/**
+ * An entry that cannot be applied now (the order page could not be read to book the order) and
+ * was not marked as handled: the change feed keeps it on its retry list (Changes).
+ */
+class ApplyLater extends \RuntimeException
+{
 }
