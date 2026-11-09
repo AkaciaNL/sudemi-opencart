@@ -63,7 +63,7 @@ class FakeClient extends \Sudemi\Client {
 	public function isConnected() {
 		return true;
 	}
-	public function sendSigned( $method, $path, array $body = array() ) {
+	public function sendSigned( $method, $path, array $body = array(), array $headers = array() ) {
 		$this->calls[] = array( $method, $path, $body, json_encode( $body ) );
 		return array_shift( $this->answers );
 	}
@@ -333,7 +333,7 @@ check( 'localOrderOf(): finds the local order by its sudemi id', 42 === $orders-
 // ---- 4. the order-status events skip an order cancelled on sudemi --------------------------------
 foreach ( array( 'admin/controller/event.php', 'catalog/controller/event.php' ) as $file ) {
 	$source = (string) file_get_contents( __DIR__ . '/../' . $file );
-	$guard  = strpos( $source, 'isCancelledOnSudemi($orderId)' );
+	$guard  = strpos( $source, 'isSettledOnSudemi($orderId)' );
 	check( "$file: the guard runs before refund()/cancel() are sent", false !== $guard
 		&& $guard < strpos( $source, "->refund(\$sudemiId" ) && $guard < strpos( $source, "->cancelFromShop(\$sudemiId" ) );
 }

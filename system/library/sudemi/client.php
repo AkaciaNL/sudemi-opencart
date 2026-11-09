@@ -27,7 +27,7 @@ class Client
 
     /** A cap, so a strange Retry-After cannot park a cron run for an hour. */
     const RATE_LIMIT_MAX_WAIT = 90;
-    const VERSION = '1.2.13';
+    const VERSION = '1.3.0';
 
     /**
      * Test seam, null in production. When set (only by PHP code running in this same process,
@@ -193,9 +193,34 @@ class Client
      *
      * @return array|null ['status' => int, 'body' => array, 'retry_after' => int], null if unsent
      */
-    public function sendSigned($method, $path, array $body = [])
+    public function sendSigned($method, $path, array $body = [], array $headers = [])
     {
-        return $this->request($path, $body, true, $method === 'GET' ? 'GET' : 'POST');
+        return $this->request($path, $body, true, $method === 'GET' ? 'GET' : 'POST', $headers);
+    }
+
+    /**
+     * A signed GET whose answer is not JSON (the CSV export), sent once: ['status' => int,
+     * 'raw' => string, 'headers' => [lower-case name => value]], or null when unsent.
+     */
+    public function getRaw($path)
+    {
+        return $this->send($path, [], true, 'GET', [], true);
+    }
+
+    /**
+     * Builds "?a=1&b=2" from the non-empty values, encoded the way it is sent (and signed: the
+     * signature covers the query string exactly as it travels).
+     */
+    public static function query(array $params)
+    {
+        $kept = [];
+        foreach ($params as $key => $value) {
+            if ($value !== null && $value !== '') {
+                $kept[$key] = (string) $value;
+            }
+        }
+
+        return empty($kept) ? '' : '?' . http_build_query($kept, '', '&', PHP_QUERY_RFC3986);
     }
 
     private function requestWithBackoff($path, array $body, $signed, $method = 'POST')
@@ -224,20 +249,20 @@ class Client
         }
     }
 
-    private function request($path, array $body, $signed, $method = 'POST')
+    private function request($path, array $body, $signed, $method = 'POST', array $extra = [])
     {
         if (self::$interceptor !== null) {
-            $send = function () use ($path, $body, $signed, $method) {
-                return $this->send($path, $body, $signed, $method);
+            $send = function () use ($path, $body, $signed, $method, $extra) {
+                return $this->send($path, $body, $signed, $method, $extra);
             };
 
             return call_user_func(self::$interceptor, $method, $path, $body, $send);
         }
 
-        return $this->send($path, $body, $signed, $method);
+        return $this->send($path, $body, $signed, $method, $extra);
     }
 
-    private function send($path, array $body, $signed, $method)
+    private function send($path, array $body, $signed, $method, array $extra = [], $rawAnswer = false)
     {
         // A GET carries no body, and the signature covers the hash of the body actually sent --
         // so it has to be the hash of nothing, not the hash of "{}". Invalid UTF-8 in shop text
@@ -250,6 +275,12 @@ class Client
         }
 
         $headers = ['Content-Type: application/json'];
+        foreach ($extra as $name => $value) {
+            // Only plain header names and values without line breaks (an Idempotency-Key).
+            if (preg_match('/^[A-Za-z0-9-]+$/', (string) $name)) {
+                $headers[] = $name . ': ' . preg_replace('/[\r\n]+/', '', (string) $value);
+            }
+        }
 
         if ($signed) {
             $signedHeaders = $this->signedHeaders($method, $path, $json);
@@ -273,11 +304,17 @@ class Client
             CURLOPT_FOLLOWLOCATION => false,
             CURLOPT_USERAGENT => 'sudemi-opencart/' . self::VERSION,
         ]);
-        // Only Retry-After is read, and only so a throttled sync knows how long to pause.
+        // Retry-After, so a throttled sync knows how long to pause, and for the CSV export the
+        // few headers it is passed on with.
         $retryAfter = 0;
-        curl_setopt($curl, CURLOPT_HEADERFUNCTION, function ($handle, $header) use (&$retryAfter) {
+        $seen = [];
+        curl_setopt($curl, CURLOPT_HEADERFUNCTION, function ($handle, $header) use (&$retryAfter, &$seen) {
             if (stripos($header, 'retry-after:') === 0) {
                 $retryAfter = (int) trim(substr($header, strlen('retry-after:')));
+            }
+            $colon = strpos($header, ':');
+            if ($colon !== false) {
+                $seen[strtolower(trim(substr($header, 0, $colon)))] = trim(substr($header, $colon + 1));
             }
 
             return strlen($header);
@@ -291,6 +328,9 @@ class Client
             $this->logger->warn('Could not reach sudemi: ' . $error);
 
             return null;
+        }
+        if ($rawAnswer) {
+            return ['status' => $status, 'raw' => (string) $raw, 'headers' => $seen];
         }
 
         $parsed = json_decode($raw, true);

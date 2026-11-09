@@ -1,5 +1,43 @@
 # Changelog
 
+## 1.3.0
+
+Orders and shipping managed from the OpenCart admin (owner, 2026-11-09). The sudemi portal stays the
+source of truth: every page reads from sudemi, every action is sent to sudemi, and the local order
+follows what sudemi answers. Needs sudemi core 2026-11-09 (PROTOCOL.md section 4d); with an older
+core the extension works as 1.2 did.
+
+- **sudemi orders page** (menu sudemi > sudemi orders): the portal's order table with its filters
+  (status, dates, order number or product, sort), paging, the CSV export (the portal's columns, in
+  the admin's language, decimal point or comma), and bulk actions: accept, decline with a reason,
+  shipped (a carrier, a tracking code per order) and delivered, at most 100 orders at a time.
+- **Order page**: lines (linked to the product), money (goods, shipping, commission, what you
+  receive, refunded), tracking, the history (placed, accepted, paid, shipped, delivered, refunds,
+  buyer requests), the payout (state, what you receive, paid out, due date), an open return or
+  cancellation request with accept and reject, and the actions sudemi allows now: accept, decline,
+  ship with carrier and tracking code, delivered, **part refunds**, and cancel with a full refund.
+  Refunds and cancellations carry an idempotency key, so a retry never pays the buyer back twice.
+  A link goes to the order in this shop.
+- **Accepting by hand**: "Confirm new orders automatically" can be switched off. New orders then
+  wait under "Waiting for your answer" until you accept (the order is booked here and the buyer
+  charged) or decline them with a reason. On (the default) works as before.
+- **Orders changed anywhere reach this shop** (the heartbeat's change feed): shipped, delivered,
+  refunded, cancelled, tracking codes and buyer requests set on the portal, by the seller API, by
+  sudemi support or by a deadline are applied to the local order (status and a note in its
+  history), once, by revision. An order accepted on the portal is booked here. A daily check of the
+  orders since yesterday catches anything missed.
+- **Tracking code on the order**: OpenCart's order page has a sudemi panel with a carrier and
+  tracking code field. Setting the order to Shipped sends them (before, only the shipping method's
+  name was sent as the carrier).
+- **sudemi shipping page**: ship to the shop's own prices, or choose countries and a price per
+  country on sudemi; "Fill in from my shop" takes the countries and prices from your geo zones and
+  shipping methods; the page shows what buyers pay now per country.
+- **Payouts panel** on the orders page: the payout account's state and, per currency, paid out,
+  still to come, waiting for shipment, scheduled (with the next date), on its way and held.
+- A Refunded or Canceled set by hand on an order already refunded or cancelled on sudemi no longer
+  asks sudemi for the money again.
+- All new texts in the 12 admin languages. The extension still sends no e-mail.
+
 ## 1.2.13
 
 - **Shipping VAT is booked separately.** The shipping on a sudemi order is now booked net, with its

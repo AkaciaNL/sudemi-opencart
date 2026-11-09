@@ -140,9 +140,15 @@ class Orders
         return 'retry';
     }
 
+    /** Stands for "sudemi's order page or change feed says so" where an outcome is applied without a call. */
+    const REPORTED = array('status' => 200, 'body' => array('status' => 'as sudemi reports it'));
+
     /** "HTTP 503 (message)" or "unreachable", for log lines. */
     private static function describe($response)
     {
+        if ($response === self::REPORTED) {
+            return 'as sudemi reports it';
+        }
         if (!is_array($response) || !isset($response['status'])) {
             return 'sudemi could not be reached';
         }
@@ -166,6 +172,11 @@ class Orders
     public function handlePending($pending)
     {
         if (empty($pending) || !is_array($pending)) {
+            return;
+        }
+        if (!$this->autoConfirm()) {
+            // Answered by a person on the sudemi Orders page (or on the portal). Nothing is booked
+            // or declined here; sudemi releases the buyer's hold if nobody answers in time.
             return;
         }
         foreach ($pending as $order) {
@@ -255,14 +266,21 @@ class Orders
         $this->accept($sudemiId, $orderId);
     }
 
-    /** Sends the acceptance and applies only a definitive answer; anything else is retried. */
+    /**
+     * Sends the acceptance and applies only a definitive answer; anything else is retried.
+     *
+     * @return string the outcome (paid, waiting, declined, cancelled, retry)
+     */
     private function accept($sudemiId, $orderId)
     {
         $response = $this->client->postSigned(
             '/integration/v1/orders/' . rawurlencode($sudemiId) . '/accept',
             array()
         );
-        $this->applyOutcome(self::acceptOutcome($response), $sudemiId, $orderId, $response);
+        $outcome = self::acceptOutcome($response);
+        $this->applyOutcome($outcome, $sudemiId, $orderId, $response);
+
+        return $outcome;
     }
 
     /**
@@ -623,6 +641,9 @@ class Orders
         if (!$orderId) {
             return null;
         }
+        // This shop's copy of the order starts here (revision 0), so the change feed's first entry
+        // for it is applied with its notes.
+        $this->saveRow($sudemiId, array('order_id' => $orderId));
 
         // What the buyer paid, from sudemi. Null from a core that does not send it yet, and then
         // the lines are written without prices, as before.
@@ -1201,16 +1222,20 @@ class Orders
     {
         $body = array();
         if ('shipped' === $event) {
-            // OpenCart core keeps no tracking field. Shipping extensions add their own, and the
-            // shipping_method is the only thing core records -- so its name is sent as the carrier
-            // and the code is left out rather than invented. sudemi says "not given" rather than
-            // withholding the dispatch notice over a missing field.
-            $query = $this->db->query(
-                "SELECT shipping_method FROM " . $this->prefix . "order
-                  WHERE order_id = '" . (int) $orderId . "' LIMIT 1"
-            );
-            $carrier = $query->num_rows ? self::carrierName((string) $query->row['shipping_method']) : null;
-            $body = array('carrier' => $carrier, 'trackingCode' => null);
+            // OpenCart core keeps no tracking field, so this extension adds one to the order page
+            // (the sudemi panel, stored in its own table). Without one, the shipping method's name
+            // is sent as the carrier and the code is left out rather than invented.
+            $tracking = $this->trackingOf($sudemiId);
+            $carrier = $tracking['carrier'];
+            if ($carrier === '') {
+                $query = $this->db->query(
+                    "SELECT shipping_method FROM " . $this->prefix . "order
+                      WHERE order_id = '" . (int) $orderId . "' LIMIT 1"
+                );
+                $carrier = $query->num_rows ? (string) self::carrierName((string) $query->row['shipping_method']) : '';
+            }
+            $body = array('carrier' => $carrier === '' ? null : $carrier,
+                'trackingCode' => $tracking['code'] === '' ? null : $tracking['code']);
         }
 
         $this->sendReport($sudemiId, $event, $body, true);
@@ -1468,7 +1493,7 @@ class Orders
      * A refund made in the shop (status Refunded), passed to sudemi, which holds the buyer's
      * payment and pays it back; null amount = in full. The outcome is logged either way.
      */
-    public function refund($sudemiId, $amountMinor, $reason, $currency = null)
+    public function refund($sudemiId, $amountMinor, $reason, $currency = null, $idempotencyKey = null)
     {
         // A refund is in the order's currency (the one the buyer paid in). One in another
         // currency would pay back a different amount than meant: refused here, never sent.
@@ -1492,8 +1517,20 @@ class Orders
             $body['currency'] = $currency;
         }
 
-        return $this->moneyResult($sudemiId, $this->client->postSigned('/integration/v1/orders/' . rawurlencode($sudemiId) . '/refund', $body));
+        // A retry of the same refund (a lost answer, a 429) must not pay the buyer back twice:
+        // sudemi answers a repeated key with the first answer and moves no money (24 h).
+        if ($idempotencyKey === null) {
+            $idempotencyKey = 'oc-' . $sudemiId . '-' . ($amountMinor === null ? 'rest' : 'p' . (int) $amountMinor . '-' . bin2hex(random_bytes(6)));
+        }
+        $response = $this->client->sendSigned('POST', '/integration/v1/orders/' . rawurlencode($sudemiId) . '/refund', $body,
+            array('Idempotency-Key' => $idempotencyKey));
+        $this->lastResponse = $response;
+
+        return $this->moneyResult($sudemiId, $response);
     }
+
+    /** The last refund or cancel answer, for the admin page to show sudemi's own words. */
+    public $lastResponse = null;
 
     /** The currency the local order for a sudemi order was booked in, or null when there is none. */
     private function bookedCurrency($sudemiId)
@@ -1509,9 +1546,13 @@ class Orders
     }
 
     /** A paid order cancelled in the shop: refunded in full and cancelled on sudemi. */
-    public function cancel($sudemiId, $reason)
+    public function cancel($sudemiId, $reason, $idempotencyKey = null)
     {
-        return $this->moneyResult($sudemiId, $this->client->postSigned('/integration/v1/orders/' . rawurlencode($sudemiId) . '/cancel', ['reason' => $reason]));
+        $response = $this->client->sendSigned('POST', '/integration/v1/orders/' . rawurlencode($sudemiId) . '/cancel',
+            ['reason' => $reason], array('Idempotency-Key' => $idempotencyKey !== null ? $idempotencyKey : 'oc-cancel-' . $sudemiId));
+        $this->lastResponse = $response;
+
+        return $this->moneyResult($sudemiId, $response);
     }
 
     private function moneyResult($sudemiId, $response)
@@ -1527,5 +1568,530 @@ class Orders
             . '). The buyer has NOT been paid back; contact sudemi support (support@sudemi.com).');
 
         return false;
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // 1.3.0: managing orders from the shop. sudemi is the source of truth: actions go to sudemi,
+    // and what sudemi answers (the order page, the change feed) is what this shop's copy shows.
+    // ------------------------------------------------------------------------------------------
+
+    /** Whether pending orders are answered automatically (the default, as before 1.3.0). */
+    const SETTING_AUTO_CONFIRM = 'sudemi_auto_confirm';
+
+    /** The statuses an order accepted elsewhere (the portal) is booked here in. */
+    const IMPORT_STATUSES = array('ACCEPTED', 'PAID');
+
+    public function autoConfirm()
+    {
+        if ($this->store === null) {
+            return true;
+        }
+        $value = $this->store->read(self::SETTING_AUTO_CONFIRM);
+
+        return $value === null || $value === '' || (string) $value === '1';
+    }
+
+    public function setAutoConfirm($on)
+    {
+        if ($this->store !== null) {
+            $this->store->write(self::SETTING_AUTO_CONFIRM, $on ? '1' : '0');
+        }
+    }
+
+    /** The order page as sudemi shows it (GET /orders/{id}), or null. */
+    public function detail($sudemiId)
+    {
+        if (!preg_match('/^' . self::UUID . '$/', (string) $sudemiId)) {
+            return null;
+        }
+        $response = $this->client->sendSigned('GET', '/integration/v1/orders/' . rawurlencode(strtolower($sudemiId)));
+        if (!is_array($response) || (int) $response['status'] !== 200 || !is_array($response['body'])) {
+            return null;
+        }
+
+        return $response['body'];
+    }
+
+    /**
+     * A pending order in the shape the heartbeat sends it, from sudemi's order page, so an order
+     * accepted by a person (here or on the portal) is booked exactly like one accepted automatically.
+     */
+    public static function pendingFromDetail(array $detail)
+    {
+        $money = isset($detail['money']) && is_array($detail['money']) ? $detail['money'] : array();
+        $lines = array();
+        foreach ((isset($detail['lines']) && is_array($detail['lines']) ? $detail['lines'] : array()) as $line) {
+            if (!is_array($line)) {
+                continue;
+            }
+            $lines[] = array(
+                'product_id' => isset($line['product_id']) ? $line['product_id'] : null,
+                'external_id' => isset($line['external_id']) ? $line['external_id'] : null,
+                'title' => isset($line['title']) ? (string) $line['title'] : '',
+                'quantity' => isset($line['quantity']) ? (int) $line['quantity'] : 1,
+                'unit_price_minor' => isset($line['unit_price_minor']) ? $line['unit_price_minor'] : null,
+            );
+        }
+
+        return array(
+            'order_id' => isset($detail['order_id']) ? (string) $detail['order_id'] : (isset($detail['id']) ? (string) $detail['id'] : ''),
+            'total_minor' => isset($money['total_minor']) ? $money['total_minor'] : null,
+            'shipping_minor' => isset($money['shipping_minor']) ? $money['shipping_minor'] : null,
+            'currency_code' => isset($money['currency_code']) ? $money['currency_code'] : null,
+            'destination_country' => isset($detail['destination_country']) ? (string) $detail['destination_country'] : '',
+            'lines' => $lines,
+        );
+    }
+
+    /**
+     * Gets a waiting order ready to be accepted by a person: the local order booked (stock taken)
+     * as the automatic answer does, unless it already exists.
+     *
+     * @return array ['ok' => bool, 'order_id' => int, 'error' => string|null, 'reason' => string|null]
+     */
+    public function prepareAccept($sudemiId, $detail = null)
+    {
+        $sudemiId = strtolower((string) $sudemiId);
+        $local = $this->localRow($sudemiId);
+        if ($local !== null) {
+            if ($local['released'] || in_array($local['status'], array(self::STATUS_CANCELED, self::STATUS_REFUNDED), true)) {
+                return array('ok' => false, 'order_id' => $local['id'], 'error' => 'cancelled_here', 'reason' => null);
+            }
+            if ($local['status'] !== self::STATE_INCOMPLETE) {
+                // Confirmed here already: sudemi has this order as accepted.
+                return array('ok' => false, 'order_id' => $local['id'], 'error' => 'wrong_state', 'reason' => null);
+            }
+
+            return array('ok' => true, 'order_id' => $local['id'], 'error' => null, 'reason' => null);
+        }
+        $detail = $detail !== null ? $detail : $this->detail($sudemiId);
+        if ($detail === null) {
+            return array('ok' => false, 'order_id' => 0, 'error' => 'unavailable', 'reason' => null);
+        }
+        if (!isset($detail['status']) || $detail['status'] !== 'AWAITING_SELLER') {
+            return array('ok' => false, 'order_id' => 0, 'error' => 'wrong_state', 'reason' => null);
+        }
+        $pending = self::pendingFromDetail($detail);
+        $problem = $this->currencyProblem($pending);
+        if ($problem === null) {
+            $problem = $this->firstShortfall($pending);
+        }
+        if ($problem !== null) {
+            // Nothing is sent: the person decides (decline it, or fix the stock and accept again).
+            return array('ok' => false, 'order_id' => 0, 'error' => 'shortfall', 'reason' => $problem);
+        }
+        $orderId = $this->createLocalOrder($pending, $sudemiId);
+        if (!$orderId) {
+            return array('ok' => false, 'order_id' => 0, 'error' => 'not_recorded', 'reason' => null);
+        }
+
+        return array('ok' => true, 'order_id' => $orderId, 'error' => null, 'reason' => null);
+    }
+
+    /**
+     * A person accepts a waiting order: booked here first (as the automatic answer does), then
+     * accepted on sudemi, then sudemi's order page is applied to the local order.
+     *
+     * @return array ['outcome' => paid|waiting|declined|cancelled|retry|refused, 'error' => ?, 'reason' => ?, 'order_id' => int]
+     */
+    public function acceptManually($sudemiId)
+    {
+        $sudemiId = strtolower((string) $sudemiId);
+        $ready = $this->prepareAccept($sudemiId);
+        if (!$ready['ok']) {
+            return array('outcome' => 'refused', 'error' => $ready['error'], 'reason' => $ready['reason'], 'order_id' => $ready['order_id']);
+        }
+        $outcome = $this->accept($sudemiId, $ready['order_id']);
+        $this->refresh($sudemiId);
+
+        return array('outcome' => $outcome, 'error' => null, 'reason' => null, 'order_id' => $ready['order_id']);
+    }
+
+    /**
+     * A person declines a waiting order, with the reason the buyer is shown. A local order booked
+     * for it (an accept that did not get through) gets its stock back.
+     *
+     * @return string declined|paid|waiting|cancelled|retry
+     */
+    public function rejectManually($sudemiId, $reason)
+    {
+        $sudemiId = strtolower((string) $sudemiId);
+        $response = $this->client->sendSigned('POST',
+            '/integration/v1/orders/' . rawurlencode($sudemiId) . '/reject', array('reason' => (string) $reason));
+        $outcome = self::rejectOutcome($response);
+        $local = $this->localRow($sudemiId);
+        if ($local !== null && $outcome !== 'retry') {
+            $this->applyOutcome($outcome, $sudemiId, $local['id'], $response);
+        }
+        $this->refresh($sudemiId);
+
+        return $outcome;
+    }
+
+    /**
+     * What a bulk accept answered for one order, applied to its local order.
+     *
+     * @param array $result one entry of results[] (order_id, result, error, payment)
+     */
+    public function applyBulkAccept(array $result, $orderId)
+    {
+        $sudemiId = isset($result['order_id']) ? (string) $result['order_id'] : '';
+        if ($sudemiId === '' || !$orderId) {
+            return;
+        }
+        if (isset($result['result']) && $result['result'] === 'done') {
+            $outcome = isset($result['payment']) && $result['payment'] === 'waiting_for_other_shops' ? 'waiting' : 'paid';
+            $this->applyOutcome($outcome, $sudemiId, $orderId, self::REPORTED);
+        } elseif (isset($result['error']) && $result['error'] === 'no_such_order') {
+            $this->applyOutcome('declined', $sudemiId, $orderId, self::REPORTED);
+        }
+        // Anything else (already_resolved, a lapsed authorisation, a failure) is asked again by
+        // the heartbeat, which applies how the order really ended.
+        $this->refresh($sudemiId);
+    }
+
+    /** Reads the order back from sudemi and applies it here: the answer to every action. */
+    public function refresh($sudemiId)
+    {
+        $detail = $this->detail($sudemiId);
+        if ($detail === null) {
+            return null;
+        }
+        $this->applyChange(self::changeFromDetail($detail), $detail);
+
+        return $detail;
+    }
+
+    /** sudemi's order page as a change-feed entry. */
+    public static function changeFromDetail(array $detail)
+    {
+        $request = null;
+        if (!empty($detail['customer_request']) && is_array($detail['customer_request'])) {
+            $request = array('kind' => isset($detail['customer_request']['kind']) ? (string) $detail['customer_request']['kind'] : '',
+                'status' => 'REQUESTED');
+        }
+
+        return array(
+            'order_id' => isset($detail['order_id']) ? (string) $detail['order_id'] : (isset($detail['id']) ? (string) $detail['id'] : ''),
+            'status' => isset($detail['status']) ? (string) $detail['status'] : '',
+            'revision' => isset($detail['revision']) ? (int) $detail['revision'] : 0,
+            'refunded_minor' => isset($detail['money']['refunded_minor']) ? (int) $detail['money']['refunded_minor'] : 0,
+            'currency_code' => isset($detail['money']['currency_code']) ? (string) $detail['money']['currency_code'] : null,
+            'tracking' => isset($detail['tracking']) && is_array($detail['tracking']) ? $detail['tracking'] : null,
+            'request' => $request,
+        );
+    }
+
+    /** A row of GET /orders as a change-feed entry (the daily safety net). */
+    public static function changeFromRow(array $row)
+    {
+        $request = null;
+        if (!empty($row['customer_request']) && is_array($row['customer_request'])) {
+            $request = array('kind' => isset($row['customer_request']['kind']) ? (string) $row['customer_request']['kind'] : '',
+                'status' => 'REQUESTED');
+        }
+
+        return array(
+            'order_id' => isset($row['order_id']) ? (string) $row['order_id'] : '',
+            'status' => isset($row['status']) ? (string) $row['status'] : '',
+            'revision' => isset($row['revision']) ? (int) $row['revision'] : 0,
+            'refunded_minor' => isset($row['refunded_minor']) ? (int) $row['refunded_minor'] : 0,
+            'currency_code' => isset($row['currency_code']) ? (string) $row['currency_code'] : null,
+            'tracking' => isset($row['tracking']) && is_array($row['tracking']) ? $row['tracking'] : null,
+            'request' => $request,
+        );
+    }
+
+    /**
+     * Applies one change-feed entry (heartbeat changed_orders, the safety net, or the order page
+     * read back after an action) to this shop's copy, once: only when its revision is higher than
+     * the one held here. Local statuses are written straight to the order (with a history note),
+     * so OpenCart's status event does not fire and nothing is sent back to sudemi.
+     *
+     * @param array      $entry  order_id, status, revision, refunded_minor, tracking, request
+     * @param array|null $detail the order page, when already read (saves a call on import)
+     *
+     * @return bool whether it was newer than what this shop held
+     */
+    public function applyChange(array $entry, $detail = null)
+    {
+        $sudemiId = isset($entry['order_id']) ? strtolower((string) $entry['order_id']) : '';
+        if (!preg_match('/^' . self::UUID . '$/', $sudemiId) || !$this->hasOrderTable()) {
+            return false;
+        }
+        $revision = isset($entry['revision']) ? (int) $entry['revision'] : 0;
+        $known = $this->rowOf($sudemiId);
+        if ($known !== null && $revision <= (int) $known['revision']) {
+            return false;
+        }
+        $status = isset($entry['status']) ? strtoupper((string) $entry['status']) : '';
+        $local = $this->localRow($sudemiId);
+
+        // Accepted somewhere else (the sudemi portal, the seller API, a bulk action): booked here
+        // like an order this shop accepted itself. Only while it is not shipped yet: an older order
+        // was handled outside this extension, and booking it now would take its stock twice.
+        if ($local === null && in_array($status, self::IMPORT_STATUSES, true)) {
+            $detail = $detail !== null ? $detail : $this->detail($sudemiId);
+            if ($detail !== null) {
+                $pending = self::pendingFromDetail($detail);
+                $problem = $this->currencyProblem($pending);
+                if ($problem !== null) {
+                    $this->logger->error(sprintf('sudemi order %s was accepted on sudemi but cannot be booked here: %s.', $sudemiId, $problem));
+                } else {
+                    $orderId = $this->createLocalOrder($pending, $sudemiId);
+                    if ($orderId) {
+                        $this->note($orderId, $this->noteText('text_note_imported'), self::STATE_INCOMPLETE);
+                        $this->logger->info(sprintf('sudemi order %s was accepted on sudemi; booked here as order %d.', $sudemiId, $orderId));
+                        $local = $this->rowById($orderId);
+                    }
+                }
+            }
+        }
+
+        $tracking = self::trackingFrom(isset($entry['tracking']) ? $entry['tracking'] : null);
+        $refunded = isset($entry['refunded_minor']) ? (int) $entry['refunded_minor'] : 0;
+        // The buyer's latest request as "KIND STATUS" (RETURN REQUESTED); null: not said (an order
+        // page or list row only shows an open one), so the stored value stays.
+        $request = isset($entry['request']) && is_array($entry['request'])
+            ? strtoupper(trim((isset($entry['request']['kind']) ? (string) $entry['request']['kind'] : '') . ' '
+                . (isset($entry['request']['status']) ? (string) $entry['request']['status'] : '')))
+            : null;
+
+        $moved = '';
+        if ($local !== null) {
+            $moved = $this->applyStatus($local, $sudemiId, $status, $tracking);
+        }
+        // Notes only for an order this shop already followed: the first entries after an upgrade
+        // (the feed starts with the last 7 days) move statuses but do not repeat old news.
+        if ($local !== null && $known !== null) {
+            $orderId = $local['id'];
+            $before = (int) $known['refunded_minor'];
+            if ($refunded > $before) {
+                $currency = isset($entry['currency_code']) && $entry['currency_code'] ? $entry['currency_code'] : $this->bookedCurrency($sudemiId);
+                $this->note($orderId, $this->noteText('text_note_refunded',
+                    Currency::format($refunded - $before, $currency ?: 'EUR'), Currency::format($refunded, $currency ?: 'EUR')));
+            }
+            $knownTracking = trim($known['tracking_carrier'] . ' ' . $known['tracking_code']);
+            $newTracking = trim($tracking['carrier'] . ' ' . $tracking['code']);
+            if ($newTracking !== '' && $newTracking !== $knownTracking && $moved !== 'shipped') {
+                $this->note($orderId, $this->noteText('text_note_tracking', $tracking['carrier'], $tracking['code']));
+            }
+            if ($request !== null && $request !== '' && $request !== (string) $known['request']) {
+                $parts = explode(' ', $request, 2);
+                $this->note($orderId, $this->noteText('text_note_request',
+                    $this->label('text_note_kind_', $parts[0]), $this->label('text_note_req_', isset($parts[1]) ? $parts[1] : '')));
+            }
+        }
+
+        $fields = array('revision' => $revision, 'status' => $status, 'refunded_minor' => $refunded);
+        if ($request !== null) {
+            $fields['request'] = $request;
+        }
+        if ($local !== null) {
+            $fields['order_id'] = $local['id'];
+        }
+        if ($tracking['carrier'] !== '' || $tracking['code'] !== '') {
+            $fields['tracking_carrier'] = $tracking['carrier'];
+            $fields['tracking_code'] = $tracking['code'];
+        }
+        $this->saveRow($sudemiId, $fields);
+
+        return true;
+    }
+
+    /** ['carrier' => string, 'code' => string] from a tracking object (or null), cut to 100 characters. */
+    private static function trackingFrom($tracking)
+    {
+        $carrier = is_array($tracking) && isset($tracking['carrier']) && is_scalar($tracking['carrier']) ? trim((string) $tracking['carrier']) : '';
+        $code = is_array($tracking) && isset($tracking['code']) && is_scalar($tracking['code']) ? trim((string) $tracking['code']) : '';
+
+        return array('carrier' => self::cut($carrier, 100), 'code' => self::cut($code, 100));
+    }
+
+    private static function cut($text, $max)
+    {
+        return function_exists('mb_substr') ? mb_substr($text, 0, $max, 'UTF-8') : substr($text, 0, $max);
+    }
+
+    /**
+     * Moves the local order to what sudemi says, never backwards, with a note in its history.
+     *
+     * @return string what was written ('shipped', 'delivered', 'refunded' or '')
+     */
+    private function applyStatus(array $local, $sudemiId, $status, array $tracking)
+    {
+        $orderId = $local['id'];
+        $current = $local['status'];
+        $open = $current === self::STATE_INCOMPLETE && !$local['released'];
+        $complete = $this->statusList('config_complete_status');
+        $delivered = $this->deliveredStatus();
+
+        if (in_array($status, array('DECLINED'), true) || ($open && in_array($status, array('CANCELLED', 'REFUNDED'), true))) {
+            if ($open) {
+                $this->applyOutcome('declined', $sudemiId, $orderId, self::REPORTED);
+            }
+
+            return '';
+        }
+        if ($status === 'CANCELLED') {
+            $this->cancelledOnSudemi($orderId, $sudemiId, $current);
+
+            return '';
+        }
+        if ($local['released']) {
+            return '';
+        }
+        if ($open && in_array($status, array('PAID', 'SHIPPED', 'DELIVERED'), true)) {
+            // The money was taken (on sudemi or after the other shops answered): confirmed now.
+            $this->applyOutcome('paid', $sudemiId, $orderId, self::REPORTED);
+            $current = $this->statusOf($orderId);
+        }
+        if ($status === 'SHIPPED' && !in_array($current, array_merge(array(self::STATUS_SHIPPED, self::STATUS_CANCELED, self::STATUS_REFUNDED), $complete), true)
+            && $current !== self::STATE_INCOMPLETE) {
+            $this->setStatus($orderId, self::STATUS_SHIPPED);
+            $this->note($orderId, $tracking['carrier'] !== '' || $tracking['code'] !== ''
+                ? $this->noteText('text_note_shipped_tracking', $tracking['carrier'], $tracking['code'])
+                : $this->noteText('text_note_shipped'), self::STATUS_SHIPPED);
+
+            return 'shipped';
+        }
+        if ($status === 'DELIVERED' && $current !== self::STATE_INCOMPLETE
+            && !in_array($current, array(self::STATUS_CANCELED, self::STATUS_REFUNDED), true)
+            && !(in_array($current, $complete, true) && $current !== self::STATUS_SHIPPED)) {
+            $this->setStatus($orderId, $delivered);
+            $this->note($orderId, $this->noteText('text_note_delivered'), $delivered);
+
+            return 'delivered';
+        }
+        if ($status === 'REFUNDED' && $current !== self::STATE_INCOMPLETE && $current !== self::STATUS_REFUNDED) {
+            $this->setStatus($orderId, self::STATUS_REFUNDED);
+            $this->note($orderId, $this->noteText('text_note_refunded_full'), self::STATUS_REFUNDED);
+
+            return 'refunded';
+        }
+
+        return '';
+    }
+
+    /** The status a delivered order gets here: Complete (5) when it is a complete status, else the first one that is not Shipped. */
+    private function deliveredStatus()
+    {
+        $complete = $this->statusList('config_complete_status');
+        if (in_array(5, $complete, true) || empty($complete)) {
+            return 5;
+        }
+        foreach ($complete as $id) {
+            if ($id !== self::STATUS_SHIPPED) {
+                return $id;
+            }
+        }
+
+        return 5;
+    }
+
+    /**
+     * Whether sudemi already holds this order as cancelled or refunded in full: a Canceled or
+     * Refunded set by hand afterwards must not ask sudemi for the money a second time.
+     */
+    public function isSettledOnSudemi($orderId)
+    {
+        if ($this->isCancelledOnSudemi($orderId)) {
+            return true;
+        }
+        if (!$this->hasOrderTable()) {
+            return false;
+        }
+        $query = $this->db->query("SELECT status FROM `" . $this->prefix . "sudemi_order` WHERE order_id = '" . (int) $orderId . "' LIMIT 1");
+
+        return $query->num_rows && in_array((string) $query->row['status'], array('CANCELLED', 'REFUNDED', 'DECLINED'), true);
+    }
+
+    /** The tracking typed for (or reported by sudemi on) an order: ['carrier' => string, 'code' => string]. */
+    public function trackingOf($sudemiId)
+    {
+        $row = $this->rowOf($sudemiId);
+
+        return array('carrier' => $row !== null ? (string) $row['tracking_carrier'] : '',
+            'code' => $row !== null ? (string) $row['tracking_code'] : '');
+    }
+
+    /** Stores the carrier and tracking code typed on the order page; sent when the order ships. */
+    public function saveTracking($sudemiId, $carrier, $code)
+    {
+        $sudemiId = strtolower((string) $sudemiId);
+        if (!preg_match('/^' . self::UUID . '$/', $sudemiId) || !$this->hasOrderTable()) {
+            return false;
+        }
+        $fields = array('tracking_carrier' => self::cut(trim((string) $carrier), 100), 'tracking_code' => self::cut(trim((string) $code), 100));
+        $local = $this->findLocalOrder($sudemiId);
+        if ($local) {
+            $fields['order_id'] = $local;
+        }
+        $this->saveRow($sudemiId, $fields);
+
+        return true;
+    }
+
+    /** This shop's copy of a sudemi order (the table row), or null. */
+    public function rowOf($sudemiId)
+    {
+        if (!$this->hasOrderTable()) {
+            return null;
+        }
+        $query = $this->db->query("SELECT * FROM `" . $this->prefix . "sudemi_order` WHERE sudemi_order_id = '"
+            . $this->db->escape(strtolower((string) $sudemiId)) . "' LIMIT 1");
+
+        return $query->num_rows ? $query->row : null;
+    }
+
+    private function saveRow($sudemiId, array $fields)
+    {
+        if (!$this->hasOrderTable()) {
+            return;
+        }
+        $set = array();
+        foreach ($fields as $column => $value) {
+            $set[] = '`' . $column . "` = '" . $this->db->escape((string) $value) . "'";
+        }
+        $set[] = '`date_modified` = NOW()';
+        $this->db->query("INSERT INTO `" . $this->prefix . "sudemi_order` SET `sudemi_order_id` = '"
+            . $this->db->escape(strtolower((string) $sudemiId)) . "', " . implode(', ', $set)
+            . ' ON DUPLICATE KEY UPDATE ' . implode(', ', $set));
+    }
+
+    private $orderTable = null;
+
+    private function hasOrderTable()
+    {
+        if ($this->orderTable !== true) {
+            $this->orderTable = $this->db->query("SHOW TABLES LIKE '" . $this->db->escape($this->prefix . 'sudemi_order') . "'")->num_rows > 0;
+        }
+
+        return $this->orderTable;
+    }
+
+    /**
+     * A history note in the admin's language (this extension's language files, English when the
+     * language is not one of its twelve), HTML-escaped: OpenCart prints history comments as they
+     * are stored, and carrier names and tracking codes come from outside this shop.
+     */
+    /** A code's label from the language files ("text_note_kind_" + "return"), the code itself when there is none. */
+    private function label($prefix, $code)
+    {
+        $key = $prefix . strtolower((string) $code);
+        $strings = array_merge(self::languageFile('en-gb'), self::languageFile(strtolower((string) $this->config->get('config_language_admin'))));
+
+        return isset($strings[$key]) ? (string) $strings[$key] : (string) $code;
+    }
+
+    public function noteText($key)
+    {
+        $args = array_slice(func_get_args(), 1);
+        $code = (string) $this->config->get('config_language_admin');
+        $strings = array_merge(self::languageFile('en-gb'), self::languageFile(strtolower($code)));
+        $format = isset($strings[$key]) ? (string) $strings[$key] : $key;
+        $text = $args ? vsprintf($format, array_map('strval', $args)) : $format;
+
+        return htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
     }
 }

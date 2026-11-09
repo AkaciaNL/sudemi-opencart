@@ -1,0 +1,171 @@
+{# One sudemi order. Autoescaping on for the whole page: every value comes from sudemi or from a
+   buyer and is printed HTML-escaped. The action buttons are the ones sudemi allows now
+   (allowed_actions); sudemi still decides when one is pressed. #}
+{% autoescape 'html' %}
+{{ header|raw }}{{ column_left|raw }}
+<div id="content">
+  <div class="page-header">
+    <div class="container-fluid">
+      <div class="float-end"><a href="{{ back_href }}" class="btn btn-light"><i class="fa-solid fa-reply"></i> {{ text_orders_title }}</a></div>
+      <h1>{{ text_order_title }}{% if order %} <code>{{ order.short }}</code>{% endif %}</h1>
+    </div>
+  </div>
+  <div class="container-fluid">
+    {% if error %}<div class="alert alert-warning">{{ error }}</div>{% endif %}
+    {% if order %}
+    <div id="sudemi-order" data-order-id="{{ order.id }}" data-status="{{ order.status }}">
+    <div class="row">
+      <div class="col-lg-7">
+        <div class="card mb-3">
+          <div class="card-header"><i class="fa-solid fa-circle-info"></i> {{ order.status_label }}</div>
+          <div class="card-body">
+            <table class="table table-sm mb-0">
+              <tr><th style="width:14rem">{{ column_order }}</th><td><code>{{ order.id }}</code></td></tr>
+              <tr><th>{{ entry_placed }}</th><td>{{ order.placed }}</td></tr>
+              <tr><th>{{ column_country }}</th><td>{{ order.country }}</td></tr>
+              {% if order.customer %}<tr><th>{{ column_customer }}</th><td>{{ order.customer }}</td></tr>{% endif %}
+              {% if order.respond_by %}<tr><th>{{ column_respond_by }}</th><td>{{ order.respond_by }}</td></tr>{% endif %}
+              {% if order.declined_reason %}<tr><th>{{ entry_declined_reason }}</th><td>{{ order.declined_reason }}</td></tr>{% endif %}
+              <tr><th>{{ column_tracking }}</th><td id="sudemi-order-tracking">{{ order.tracking }}</td></tr>
+              {% if order.shipped_at %}<tr><th>{{ text_timeline_shipped }}</th><td>{{ order.shipped_at }}</td></tr>{% endif %}
+              {% if order.delivered_at %}<tr><th>{{ text_timeline_delivered }}</th><td>{{ order.delivered_at }}</td></tr>{% endif %}
+              {% if order.withdrawal_deadline %}<tr><th>{{ entry_withdrawal_deadline }}</th><td>{{ order.withdrawal_deadline }}</td></tr>{% endif %}
+              <tr><th>{{ column_local }}</th><td>{% if order.local_href %}<a id="sudemi-local-order" href="{{ order.local_href }}">#{{ order.local }}</a>{% else %}{{ text_request_no_local }}{% endif %}</td></tr>
+            </table>
+          </div>
+        </div>
+
+        <div class="card mb-3">
+          <div class="card-header"><i class="fa-solid fa-box"></i> {{ column_items }}</div>
+          <div class="card-body">
+            <table class="table table-sm" id="sudemi-order-lines">
+              <thead><tr><th>{{ column_product }}</th><th>{{ column_quantity }}</th><th>{{ column_unit_price }}</th><th>{{ column_line_total }}</th></tr></thead>
+              <tbody>
+              {% for l in order.lines %}
+                <tr><td>{% if l.product_href %}<a href="{{ l.product_href }}">{{ l.title }}</a>{% else %}{{ l.title }}{% endif %}</td><td>{{ l.quantity }}</td><td>{{ l.unit }}</td><td>{{ l.goods }}</td></tr>
+              {% endfor %}
+              </tbody>
+            </table>
+            <table class="table table-sm mb-0" id="sudemi-order-money">
+              <tr><th style="width:14rem">{{ entry_goods }}</th><td>{{ order.goods }}</td></tr>
+              <tr><th>{{ entry_shipping_cost }}</th><td>{{ order.shipping }}</td></tr>
+              <tr><th>{{ column_paid }}</th><td><strong>{{ order.total }}</strong></td></tr>
+              <tr><th>{{ entry_commission }}</th><td>{{ order.commission }}</td></tr>
+              <tr><th>{{ column_net }}</th><td>{{ order.net }}</td></tr>
+              <tr><th>{{ entry_refunded }}</th><td id="sudemi-order-refunded">{{ order.refunded }}</td></tr>
+            </table>
+          </div>
+        </div>
+
+        <div class="card mb-3">
+          <div class="card-header"><i class="fa-solid fa-clock-rotate-left"></i> {{ text_timeline_title }}</div>
+          <div class="card-body">
+            <ul class="list-unstyled mb-0" id="sudemi-order-timeline">
+              {% for t in order.timeline %}
+                <li class="mb-1"><strong>{{ t.label }}</strong> <small class="text-muted">{{ t.at }}</small>{% if t.extra %}<br><span style="overflow-wrap:anywhere">{{ t.extra }}</span>{% endif %}</li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-5">
+        <div class="card mb-3" id="sudemi-order-payout">
+          <div class="card-header"><i class="fa-solid fa-coins"></i> {{ column_payout }}</div>
+          <div class="card-body">
+            <table class="table table-sm mb-0">
+              <tr><th style="width:12rem">{{ entry_payout_state }}</th><td id="sudemi-payout-state">{{ order.payout.state }}</td></tr>
+              {% if order.payout.expected %}<tr><th>{{ entry_payout_expected }}</th><td>{{ order.payout.expected }}</td></tr>{% endif %}
+              <tr><th>{{ column_paid_out }}</th><td>{{ order.payout.paid_out }}</td></tr>
+              {% if order.payout.due %}<tr><th>{{ entry_payout_due }}</th><td>{{ order.payout.due }}</td></tr>{% endif %}
+            </table>
+          </div>
+        </div>
+
+        {% if order.request %}
+        <div class="card mb-3 border-warning" id="sudemi-order-request">
+          <div class="card-header"><i class="fa-solid fa-rotate-left"></i> {{ order.request.kind }}</div>
+          <div class="card-body">
+            <p style="white-space: pre-wrap; overflow-wrap: anywhere;">{% if order.request.reason %}{{ order.request.reason }}{% else %}<em>{{ text_request_no_reason }}</em>{% endif %}</p>
+            <p class="form-text">{{ column_request_requested }}: {{ order.request.requested_at }} &middot; {{ column_request_respond_by }}: {{ order.request.respond_by }}</p>
+            {% if order.actions.request_accept %}<button type="button" class="btn btn-success btn-sm" data-action="request_accept" onclick="sudemiAct('request_accept')">{{ button_request_accept }}</button>{% endif %}
+            {% if order.actions.request_reject %}
+              <label class="form-label small mt-2" for="sudemi-request-reason">{{ entry_request_reject_reason }}</label>
+              <textarea id="sudemi-request-reason" class="form-control form-control-sm" rows="2" maxlength="1000"></textarea>
+              <button type="button" class="btn btn-outline-danger btn-sm mt-1" data-action="request_reject" onclick="sudemiAct('request_reject', {reason: $('#sudemi-request-reason').val()}, true)">{{ button_request_reject }}</button>
+            {% endif %}
+          </div>
+        </div>
+        {% endif %}
+
+        <div class="card mb-3" id="sudemi-order-actions">
+          <div class="card-header"><i class="fa-solid fa-bolt"></i> {{ text_actions_title }}</div>
+          <div class="card-body">
+            {% if order.note %}<p class="form-text">{{ order.note }}</p>{% endif %}
+            {% if order.actions.accept %}
+              <button type="button" class="btn btn-success mb-2" data-action="accept" onclick="sudemiAct('accept')">{{ button_accept }}</button>
+            {% endif %}
+            {% if order.actions.reject %}
+              <div class="mb-3"><label class="form-label" for="sudemi-decline-reason">{{ entry_decline_reason }}</label>
+                <input type="text" id="sudemi-decline-reason" class="form-control" maxlength="500">
+                <button type="button" class="btn btn-outline-danger mt-1" data-action="reject" onclick="sudemiAct('reject', {reason: $('#sudemi-decline-reason').val()}, true)">{{ button_decline }}</button></div>
+            {% endif %}
+            {% if order.actions.shipped %}
+              <div class="mb-3 border-top pt-2"><div class="row g-2">
+                <div class="col-6"><label class="form-label" for="sudemi-ship-carrier">{{ entry_carrier }}</label><input type="text" id="sudemi-ship-carrier" class="form-control" maxlength="100" value="{{ order.carrier_prefill }}"></div>
+                <div class="col-6"><label class="form-label" for="sudemi-ship-tracking">{{ entry_tracking }}</label><input type="text" id="sudemi-ship-tracking" class="form-control" maxlength="100" value="{{ order.tracking_prefill }}"></div>
+              </div>
+              <button type="button" class="btn btn-primary mt-2" data-action="shipped" onclick="sudemiAct('shipped', {carrier: $('#sudemi-ship-carrier').val(), tracking: $('#sudemi-ship-tracking').val()})">{{ button_shipped }}</button></div>
+            {% endif %}
+            {% if order.actions.delivered %}
+              <div class="mb-3"><button type="button" class="btn btn-outline-primary" data-action="delivered" onclick="sudemiAct('delivered')">{{ button_delivered }}</button></div>
+            {% endif %}
+            {% if order.actions.refund %}
+              <div class="mb-3 border-top pt-2" id="sudemi-refund-form"><h2 class="h6">{{ text_refund_title }}</h2>
+                <div class="row g-2">
+                  <div class="col-5"><label class="form-label" for="sudemi-refund-amount">{{ entry_refund_amount }} ({{ order.currency }})</label>
+                    <input type="text" inputmode="decimal" id="sudemi-refund-amount" class="form-control" placeholder="{{ order.refundable }}"></div>
+                  <div class="col-7"><label class="form-label" for="sudemi-refund-reason">{{ entry_reason }}</label><input type="text" id="sudemi-refund-reason" class="form-control" maxlength="500"></div>
+                </div>
+                <div class="form-text">{{ help_refund_amount|format(order.refundable) }}</div>
+                <button type="button" class="btn btn-warning mt-2" data-action="refund" onclick="sudemiRefund()">{{ button_refund }}</button></div>
+            {% endif %}
+            {% if order.actions.cancel %}
+              <div class="mb-1 border-top pt-2"><label class="form-label" for="sudemi-cancel-reason">{{ entry_cancel_reason }}</label>
+                <input type="text" id="sudemi-cancel-reason" class="form-control" maxlength="500">
+                <div class="form-text">{{ help_cancel }}</div>
+                <button type="button" class="btn btn-danger mt-1" data-action="cancel" onclick="sudemiAct('cancel', {reason: $('#sudemi-cancel-reason').val()})">{{ button_cancel_order }}</button></div>
+            {% endif %}
+            {% if not order.actions %}<p class="form-text mb-0">{{ text_no_actions }}</p>{% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% if order %}
+<script type="text/javascript">
+// Guarded on the server (modify permission + user token); sudemi decides, and the page shows its answer.
+var sudemiOrderId = '{{ order.id|e('js') }}';
+// One key per page load: pressing Refund twice (or a retry) never pays the buyer back twice.
+var sudemiKey = '{{ order.action_key|e('js') }}';
+
+function sudemiAct(action, extra, needsReason) {
+    var data = $.extend({order_id: sudemiOrderId, action: action, key: sudemiKey}, extra || {});
+    if (needsReason && $.trim(data.reason || '') === '') { alert('{{ error_action_reason|e('js') }}'); return; }
+    if ((action === 'cancel' || action === 'refund') && !confirm('{{ text_confirm_money|e('js') }}')) { return; }
+    $('#sudemi-order button').prop('disabled', true);
+    $.ajax({url: 'index.php?route=extension/sudemi/module/sudemi.orderAction&user_token={{ user_token|e('js') }}', type: 'post', dataType: 'json', data: data,
+        success: function (json) { alert(json.error || json.success || ''); location.reload(); },
+        error: function () { $('#sudemi-order button').prop('disabled', false); alert('{{ error_orders_unavailable|e('js') }}'); }});
+}
+
+function sudemiRefund() {
+    sudemiAct('refund', {amount: $('#sudemi-refund-amount').val(), reason: $('#sudemi-refund-reason').val(), currency: '{{ order.currency|e('js') }}'});
+}
+</script>
+{% endif %}
+{{ footer|raw }}
+{% endautoescape %}

@@ -66,7 +66,7 @@ class FakeClient extends \Sudemi\Client {
 	public function isConnected() {
 		return true;
 	}
-	public function sendSigned( $method, $path, array $body = array() ) {
+	public function sendSigned( $method, $path, array $body = array(), array $headers = array() ) {
 		$this->calls[] = array( $method, $path, $body );
 		if ( 'GET' === $method ) {
 			return array( 'status' => 409, 'body' => array( 'error' => 'not_confirmed_yet' ) );
@@ -99,6 +99,9 @@ class FakeDb {
 	public function query( $sql ) {
 		$sql = preg_replace( '/\s+/', ' ', trim( $sql ) );
 		$m   = array();
+		if ( 0 === strpos( $sql, 'SHOW TABLES LIKE' ) ) {
+			return $this->rows( array() ); // no sudemi_order table: 1.2 behaviour
+		}
 		if ( preg_match( "/^SELECT order_id, order_status_id, comment FROM oc_order WHERE comment IN \('(.*)', '(.*)'\) ORDER BY order_id LIMIT 1$/", $sql, $m ) ) {
 			foreach ( $this->orders as $id => $o ) {
 				if ( in_array( $o['comment'], array( stripslashes( $m[1] ), stripslashes( $m[2] ) ), true ) ) {

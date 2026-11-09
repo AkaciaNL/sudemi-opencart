@@ -1,0 +1,95 @@
+{# sudemi > Shipping: this shop's shipping on sudemi (GET/POST /integration/v1/shipping).
+   Autoescaping on for the whole page. #}
+{% autoescape 'html' %}
+{{ header|raw }}{{ column_left|raw }}
+<div id="content">
+  <div class="page-header">
+    <div class="container-fluid">
+      <div class="float-end">
+        <a href="{{ orders_href }}" class="btn btn-light"><i class="fa-solid fa-list"></i> {{ text_menu_orders }}</a>
+        <a href="{{ settings_href }}" class="btn btn-light"><i class="fa-solid fa-gear"></i> {{ text_menu_settings }}</a>
+      </div>
+      <h1>{{ text_shipping_title }}</h1>
+    </div>
+  </div>
+  <div class="container-fluid">
+    {% if not connected %}
+      <div class="alert alert-warning">{{ text_orders_not_connected }} <a href="{{ settings_href }}">{{ text_menu_settings }}</a></div>
+    {% elseif error %}
+      <div class="alert alert-warning">{{ error }}</div>
+    {% else %}
+    <div class="card" id="sudemi-shipping" data-mode="{{ settings.mode }}">
+      <div class="card-body">
+        <p class="form-text">{{ text_shipping_intro }}</p>
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="sudemi-mode" id="sudemi-mode-shop" value="shop" {% if settings.mode == 'shop' %}checked{% endif %} onchange="sudemiMode()">
+          <label class="form-check-label" for="sudemi-mode-shop"><strong>{{ text_shipping_mode_shop }}</strong></label>
+          <div class="form-text">{{ help_shipping_mode_shop }}</div>
+        </div>
+        <div class="form-check mt-2">
+          <input class="form-check-input" type="radio" name="sudemi-mode" id="sudemi-mode-custom" value="custom" {% if settings.mode == 'custom' %}checked{% endif %} onchange="sudemiMode()">
+          <label class="form-check-label" for="sudemi-mode-custom"><strong>{{ text_shipping_mode_custom }}</strong></label>
+          <div class="form-text">{{ help_shipping_mode_custom|format(settings.currency, settings.max_price) }}</div>
+        </div>
+        <div class="my-3">
+          <button type="button" class="btn btn-light" id="sudemi-prefill" onclick="sudemiPrefill()">{{ button_shipping_prefill }}</button>
+          <span class="form-text ms-2">{{ help_shipping_prefill }}</span>
+        </div>
+        <div class="table-responsive">
+        <table class="table table-sm align-middle" id="sudemi-shipping-table">
+          <thead><tr><th>{{ column_country }}</th><th>{{ column_ship_enabled }}</th><th>{{ column_ship_price }} ({{ settings.currency }})</th><th>{{ column_ship_shop_price }}</th><th>{{ column_ship_effective }}</th></tr></thead>
+          <tbody>
+          {% for c in settings.countries %}
+            <tr class="sudemi-country" data-country="{{ c.country }}" data-prefill="{{ c.prefill }}">
+              <td>{{ c.name }} <small class="text-muted">{{ c.country }}</small></td>
+              <td><input type="checkbox" class="form-check-input sudemi-enabled" {% if c.enabled %}checked{% endif %}></td>
+              <td><input type="text" inputmode="decimal" class="form-control form-control-sm sudemi-price" value="{{ c.price }}" placeholder="{{ text_ship_own_price }}" style="max-width:9rem"></td>
+              <td>{{ c.shop_price }}</td>
+              <td class="sudemi-effective">{% if c.offered %}{{ c.effective }} <small class="text-muted">{{ c.source }}</small>{% else %}<span class="text-muted">{{ text_ship_not_offered }}</span>{% endif %}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        </div>
+        <button type="button" class="btn btn-primary" id="sudemi-shipping-save" onclick="sudemiShippingSave()">{{ button_shipping_save }}</button>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% if settings %}
+<script type="text/javascript">
+function sudemiMode() {
+    var custom = $('#sudemi-mode-custom').is(':checked');
+    $('#sudemi-shipping-table input, #sudemi-prefill').prop('disabled', !custom);
+}
+sudemiMode();
+
+// The shop's own prices (OpenCart's geo zones and shipping methods) as the starting point:
+// a country the shop ships to is switched on with its price, the others off.
+function sudemiPrefill() {
+    $('tr.sudemi-country').each(function () {
+        var price = String($(this).data('prefill') || '');
+        $(this).find('.sudemi-enabled').prop('checked', price !== '');
+        $(this).find('.sudemi-price').val(price);
+    });
+}
+
+function sudemiShippingSave() {
+    var data = {mode: $('input[name="sudemi-mode"]:checked').val(), currency: '{{ settings.currency|e('js') }}'};
+    if (data.mode === 'custom') {
+        $('tr.sudemi-country').each(function () {
+            var code = $(this).data('country');
+            data['countries[' + code + '][enabled]'] = $(this).find('.sudemi-enabled').is(':checked') ? '1' : '';
+            data['countries[' + code + '][price]'] = $(this).find('.sudemi-price').val();
+        });
+    }
+    $('#sudemi-shipping-save').prop('disabled', true);
+    $.ajax({url: 'index.php?route=extension/sudemi/module/sudemi.shippingSave&user_token={{ user_token|e('js') }}', type: 'post', dataType: 'json', data: data,
+        success: function (json) { alert(json.error || json.success || ''); if (json.success) { location.reload(); } else { $('#sudemi-shipping-save').prop('disabled', false); } },
+        error: function () { $('#sudemi-shipping-save').prop('disabled', false); alert('{{ error_shipping_unavailable|e('js') }}'); }});
+}
+</script>
+{% endif %}
+{{ footer|raw }}
+{% endautoescape %}

@@ -7,6 +7,12 @@
 <div id="content">
   <div class="page-header">
     <div class="container-fluid">
+      {% if connected %}
+      <div class="float-end">
+        <a href="index.php?route=extension/sudemi/module/sudemi.orders&amp;user_token={{ user_token }}" id="sudemi-orders-link" class="btn btn-primary"><i class="fa-solid fa-list"></i> {{ text_menu_orders }}</a>
+        <a href="index.php?route=extension/sudemi/module/sudemi.shipping&amp;user_token={{ user_token }}" id="sudemi-shipping-link" class="btn btn-light"><i class="fa-solid fa-truck"></i> {{ text_menu_shipping }}</a>
+      </div>
+      {% endif %}
       <h1>{{ heading_title }}</h1>
     </div>
   </div>

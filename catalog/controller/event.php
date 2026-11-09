@@ -125,11 +125,11 @@ class Event extends \Opencart\System\Engine\Controller
         $complete = $this->config->get('config_complete_status');
         $complete = is_array($complete) ? array_map('intval', $complete) : [];
 
-        // An order cancelled from sudemi's side (the buyer cancelled before shipping) was already
-        // refunded there in full: a Canceled or Refunded set on it here must not ask sudemi to
-        // cancel or refund it a second time.
+        // An order cancelled or refunded in full on sudemi's side (the buyer cancelled before
+        // shipping, or the portal refunded it; the change feed brought it here) was already paid
+        // back there: a Canceled or Refunded set on it here must not ask sudemi a second time.
         if ((self::STATUS_REFUNDED === $statusId || self::STATUS_CANCELED === $statusId)
-            && $services['orders']->isCancelledOnSudemi($orderId)) {
+            && $services['orders']->isSettledOnSudemi($orderId)) {
             return;
         }
 

@@ -497,6 +497,847 @@ class Sudemi extends \Opencart\System\Engine\Controller
         $this->response->setOutput(json_encode($json));
     }
 
+    // ------------------------------------------------------------------------------------------
+    // 1.3.0: sudemi orders, shipping and payouts inside the OpenCart admin. sudemi is the source
+    // of truth: every page reads from sudemi, every action is sent to sudemi, and sudemi's answer
+    // (the order page read back) is what the local order is brought to.
+    // ------------------------------------------------------------------------------------------
+
+    /** The portal's order statuses, in its order. */
+    const ORDER_STATUSES = ['AWAITING_SELLER', 'ACCEPTED', 'PAID', 'SHIPPED', 'DELIVERED', 'DECLINED', 'CANCELLED', 'REFUNDED'];
+    const PAGE_SIZE = 25;
+    const BULK_MAX = 100;
+
+    /** Extensions > sudemi > Orders: the portal's order table, waiting orders, payouts, bulk actions. */
+    public function orders(): void
+    {
+        $this->load->language('extension/sudemi/module/sudemi');
+        $this->document->setTitle($this->language->get('text_orders_title'));
+        $sudemi = $this->services();
+        $data = $this->shell();
+        $data['connected'] = $sudemi['client']->isConnected();
+        $data['auto_confirm'] = $sudemi['orders']->autoConfirm();
+        $filters = $this->orderFilters();
+        $data['filters'] = $filters;
+        $data['statuses'] = [];
+        foreach (self::ORDER_STATUSES as $status) {
+            $data['statuses'][] = ['value' => $status, 'label' => $this->statusLabel($status)];
+        }
+        $data['orders'] = [];
+        $data['waiting'] = [];
+        $data['error'] = '';
+        $data['payouts'] = null;
+        $data['total'] = 0;
+        $data['prev_href'] = '';
+        $data['next_href'] = '';
+        $data['export_href'] = '';
+        if ($data['connected']) {
+            $page = max(1, (int) $filters['page']);
+            $answer = $sudemi['client']->sendSigned('GET', '/integration/v1/orders' . \Sudemi\Client::query([
+                'status' => $filters['status'], 'from' => $filters['from'], 'to' => $filters['to'], 'q' => $filters['q'],
+                'sort' => $filters['sort'], 'dir' => $filters['dir'], 'limit' => self::PAGE_SIZE, 'offset' => ($page - 1) * self::PAGE_SIZE,
+            ]));
+            if (is_array($answer) && (int) $answer['status'] === 200 && isset($answer['body']['orders'])) {
+                foreach ($answer['body']['orders'] as $row) {
+                    if (is_array($row) && isset($row['order_id'])) {
+                        $data['orders'][] = $this->orderRow($sudemi, $row);
+                    }
+                }
+                $data['total'] = isset($answer['body']['total']) ? (int) $answer['body']['total'] : count($data['orders']);
+                $data['counts'] = isset($answer['body']['counts']) && is_array($answer['body']['counts']) ? $answer['body']['counts'] : [];
+                if ($page > 1) {
+                    $data['prev_href'] = $this->ordersHref(array_merge($filters, ['page' => $page - 1]));
+                }
+                if (isset($answer['body']['next_offset']) && $answer['body']['next_offset'] !== null) {
+                    $data['next_href'] = $this->ordersHref(array_merge($filters, ['page' => $page + 1]));
+                }
+            } elseif (is_array($answer) && (int) $answer['status'] === 400) {
+                $data['error'] = $this->language->get('error_orders_filter');
+            } else {
+                $data['error'] = $this->language->get('error_orders_unavailable');
+            }
+            // Orders waiting for this shop's answer, oldest first (their deadline is nearest).
+            $waiting = $sudemi['client']->sendSigned('GET', '/integration/v1/orders' . \Sudemi\Client::query([
+                'status' => 'AWAITING_SELLER', 'sort' => 'placed', 'dir' => 'asc', 'limit' => 50, 'offset' => 0]));
+            if (is_array($waiting) && (int) $waiting['status'] === 200 && isset($waiting['body']['orders'])) {
+                foreach ($waiting['body']['orders'] as $row) {
+                    if (is_array($row) && isset($row['order_id'])) {
+                        $data['waiting'][] = $this->orderRow($sudemi, $row);
+                    }
+                }
+            }
+            $data['payouts'] = $this->payoutsPanel($sudemi['client']);
+            $export = ['status' => $filters['status'], 'from' => $filters['from'], 'to' => $filters['to'], 'q' => $filters['q'],
+                'sort' => $filters['sort'], 'dir' => $filters['dir']];
+            $data['export_href'] = 'index.php?route=extension/sudemi/module/sudemi.export&user_token=' . rawurlencode((string) $this->session->data['user_token'])
+                . '&' . http_build_query(array_filter($export, 'strlen'));
+        }
+        $data['bulk_max'] = self::BULK_MAX;
+        $this->response->setOutput($this->load->view('extension/sudemi/module/sudemi_orders', $data));
+    }
+
+    /** One sudemi order: lines, money, tracking, timeline, payout, the buyer's request and the actions sudemi allows now. */
+    public function order(): void
+    {
+        $this->load->language('extension/sudemi/module/sudemi');
+        $this->document->setTitle($this->language->get('text_order_title'));
+        $sudemi = $this->services();
+        $data = $this->shell();
+        $id = strtolower(isset($this->request->get['order_id']) ? (string) $this->request->get['order_id'] : '');
+        $data['order'] = null;
+        $data['error'] = '';
+        $data['back_href'] = 'index.php?route=extension/sudemi/module/sudemi.orders&user_token=' . rawurlencode((string) $this->session->data['user_token']);
+        if (!\Sudemi\Requests::isId($id) || !$sudemi['client']->isConnected()) {
+            $data['error'] = $this->language->get('error_order_not_found');
+        } else {
+            $response = $sudemi['client']->sendSigned('GET', '/integration/v1/orders/' . rawurlencode($id));
+            if (is_array($response) && (int) $response['status'] === 200 && is_array($response['body'])) {
+                // What the page shows is what sudemi holds: brought here too, so this shop's copy
+                // never lags behind what the merchant is looking at.
+                $sudemi['orders']->applyChange(\Sudemi\Orders::changeFromDetail($response['body']), $response['body']);
+                $data['order'] = $this->orderDetail($sudemi, $response['body']);
+            } elseif (is_array($response) && in_array((int) $response['status'], [404, 409], true)) {
+                $data['error'] = $this->language->get('error_order_not_found');
+            } else {
+                $data['error'] = $this->language->get('error_orders_unavailable');
+            }
+        }
+        $this->response->setOutput($this->load->view('extension/sudemi/module/sudemi_order', $data));
+    }
+
+    /**
+     * The CSV export, signed and fetched from sudemi, handed to the browser as a download. A GET
+     * (a link), so the user token is checked here like every action, and the access permission.
+     */
+    public function export(): void
+    {
+        $this->load->language('extension/sudemi/module/sudemi');
+        $presented = isset($this->request->get['user_token']) ? (string) $this->request->get['user_token'] : '';
+        if (!$this->user->hasPermission('access', self::PERMISSION)
+            || $presented === '' || !hash_equals((string) $this->session->data['user_token'], $presented)) {
+            $this->response->addHeader('Content-Type: text/plain; charset=utf-8');
+            $this->response->setOutput($this->language->get('error_permission'));
+
+            return;
+        }
+        $sudemi = $this->services();
+        $filters = $this->orderFilters();
+        $decimal = isset($this->request->get['decimal']) && $this->request->get['decimal'] === 'comma' ? 'comma' : '';
+        $answer = $sudemi['client']->getRaw('/integration/v1/orders/export.csv' . \Sudemi\Client::query([
+            'status' => $filters['status'], 'from' => $filters['from'], 'to' => $filters['to'], 'q' => $filters['q'],
+            'sort' => $filters['sort'], 'dir' => $filters['dir'], 'lang' => $this->adminLocale() ?: 'en', 'decimal' => $decimal,
+        ]));
+        if (!is_array($answer) || (int) $answer['status'] !== 200) {
+            $this->response->addHeader('Content-Type: text/plain; charset=utf-8');
+            $this->response->setOutput($this->language->get('error_orders_unavailable'));
+
+            return;
+        }
+        $name = 'sudemi-orders.csv';
+        if (isset($answer['headers']['content-disposition'])
+            && preg_match('/filename="(sudemi-orders-[0-9-]+\.csv)"/', $answer['headers']['content-disposition'], $m)) {
+            $name = $m[1];
+        }
+        $this->response->addHeader('Content-Type: text/csv; charset=UTF-8');
+        $this->response->addHeader('Content-Disposition: attachment; filename="' . $name . '"');
+        $this->response->addHeader('Cache-Control: no-store');
+        $this->response->addHeader('X-Content-Type-Options: nosniff');
+        foreach (['x-total-count' => 'X-Total-Count', 'x-export-truncated' => 'X-Export-Truncated'] as $from => $header) {
+            if (isset($answer['headers'][$from]) && preg_match('/^[a-z0-9]+$/i', $answer['headers'][$from])) {
+                $this->response->addHeader($header . ': ' . $answer['headers'][$from]);
+            }
+        }
+        $this->response->setOutput($answer['raw']);
+    }
+
+    /** Pending orders: answered automatically (the default) or by a person on the Orders page. */
+    public function autoConfirm(): void
+    {
+        $this->load->language('extension/sudemi/module/sudemi');
+        $json = [];
+        if (!$this->guard($json)) {
+            $this->respond($json);
+
+            return;
+        }
+        $on = $this->posted('auto_confirm') === '1';
+        $this->services()['orders']->setAutoConfirm($on);
+        $json['success'] = $this->language->get($on ? 'text_auto_confirm_on' : 'text_auto_confirm_off');
+        $json['auto_confirm'] = $on;
+        $this->respond($json);
+    }
+
+    /** The carrier and tracking code typed on OpenCart's order page (the sudemi panel). */
+    public function tracking(): void
+    {
+        $this->load->language('extension/sudemi/module/sudemi');
+        $json = [];
+        if (!$this->guard($json)) {
+            $this->respond($json);
+
+            return;
+        }
+        $orders = $this->services()['orders'];
+        $id = strtolower($this->posted('order_id'));
+        if (!\Sudemi\Requests::isId($id) || !$orders->saveTracking($id, $this->posted('carrier'), $this->posted('tracking'))) {
+            $json['error'] = $this->language->get('error_order_not_found');
+        } else {
+            $json['success'] = $this->language->get('text_tracking_saved');
+        }
+        $this->respond($json);
+    }
+
+    /**
+     * One action on one order, as sudemi's allowed_actions offer it: accept, reject, shipped,
+     * delivered, refund (part or all), cancel, request_accept, request_reject. Sent to sudemi;
+     * then the order is read back and the local order brought to it.
+     */
+    public function orderAction(): void
+    {
+        $this->load->language('extension/sudemi/module/sudemi');
+        $json = [];
+        if (!$this->guard($json)) {
+            $this->respond($json);
+
+            return;
+        }
+        $sudemi = $this->services();
+        $id = strtolower($this->posted('order_id'));
+        $action = $this->posted('action');
+        $reason = trim($this->posted('reason'));
+        if (!\Sudemi\Requests::isId($id) || !$sudemi['client']->isConnected()) {
+            $json['error'] = $this->language->get('error_order_not_found');
+            $this->respond($json);
+
+            return;
+        }
+        $orders = $sudemi['orders'];
+        $path = '/integration/v1/orders/' . rawurlencode($id) . '/';
+        $key = preg_match('/^[A-Za-z0-9-]{8,64}$/', $this->posted('key')) ? 'oc-' . $this->posted('key') : null;
+        switch ($action) {
+            case 'accept':
+                $result = $orders->acceptManually($id);
+                if ($result['outcome'] === 'paid') {
+                    $json['success'] = $this->language->get('text_action_accepted');
+                } elseif ($result['outcome'] === 'waiting') {
+                    $json['success'] = $this->language->get('text_action_accepted_waiting');
+                } elseif ($result['outcome'] === 'refused' && $result['error'] === 'shortfall') {
+                    $json['error'] = sprintf($this->language->get('error_action_shortfall'), (string) $result['reason']);
+                } elseif ($result['outcome'] === 'declined' || $result['outcome'] === 'cancelled') {
+                    $json['error'] = $this->language->get('error_action_too_late');
+                } elseif ($result['outcome'] === 'refused' && $result['error'] === 'wrong_state') {
+                    $json['error'] = $this->language->get('error_action_wrong_state');
+                } else {
+                    $json['error'] = $this->language->get('error_orders_unavailable');
+                }
+                break;
+            case 'reject':
+                if ($reason === '') {
+                    $json['error'] = $this->language->get('error_action_reason');
+                    break;
+                }
+                $outcome = $orders->rejectManually($id, $reason);
+                if ($outcome === 'declined') {
+                    $json['success'] = $this->language->get('text_action_declined');
+                } elseif ($outcome === 'retry') {
+                    $json['error'] = $this->language->get('error_orders_unavailable');
+                } else {
+                    $json['error'] = $this->language->get('error_action_wrong_state');
+                }
+                break;
+            case 'shipped':
+                $carrier = $this->posted('carrier');
+                $code = $this->posted('tracking');
+                $orders->saveTracking($id, $carrier, $code);
+                $this->actionAnswer($json, $sudemi['client']->sendSigned('POST', $path . 'shipped',
+                    ['carrier' => trim($carrier) === '' ? null : trim($carrier), 'trackingCode' => trim($code) === '' ? null : trim($code)]),
+                    'text_action_shipped');
+                break;
+            case 'delivered':
+                $this->actionAnswer($json, $sudemi['client']->sendSigned('POST', $path . 'delivered', []), 'text_action_delivered');
+                break;
+            case 'refund':
+                $currency = $this->posted('currency');
+                $amount = str_replace(',', '.', trim($this->posted('amount')));
+                $minor = null;
+                if ($amount !== '') {
+                    if (!preg_match('/^\d+(\.\d{1,3})?$/', $amount) || ($minor = \Sudemi\Currency::toMinor($amount, $currency)) <= 0) {
+                        $json['error'] = $this->language->get('error_action_amount');
+                        break;
+                    }
+                }
+                $orders->refund($id, $minor, $reason === '' ? 'Refunded by the shop' : $reason, $currency !== '' ? $currency : null, $key);
+                $this->actionAnswer($json, $orders->lastResponse, 'text_action_refunded');
+                break;
+            case 'cancel':
+                $orders->cancel($id, $reason === '' ? 'Cancelled by the shop' : $reason, $key);
+                $this->actionAnswer($json, $orders->lastResponse, 'text_action_cancelled');
+                break;
+            case 'request_accept':
+            case 'request_reject':
+                $result = $action === 'request_accept' ? $sudemi['requests']->accept($id) : $sudemi['requests']->reject($id, $reason);
+                if ($result['outcome'] === \Sudemi\Requests::OUTCOME_OK) {
+                    $json['success'] = $this->language->get($action === 'request_accept' ? 'text_request_accepted' : 'text_request_rejected');
+                    $local = $orders->localOrderOf($id);
+                    if ($local) {
+                        $orders->note($local, htmlspecialchars($action === 'request_accept'
+                            ? $this->language->get('text_request_note_accepted')
+                            : sprintf($this->language->get('text_request_note_rejected'), $reason), ENT_QUOTES, 'UTF-8'));
+                    }
+                } elseif ($result['outcome'] === \Sudemi\Requests::OUTCOME_ALREADY) {
+                    $json['success'] = $this->language->get('text_request_already');
+                } elseif ($result['outcome'] === \Sudemi\Requests::OUTCOME_REASON_REQUIRED || $result['outcome'] === \Sudemi\Requests::OUTCOME_INVALID) {
+                    $json['error'] = $this->language->get('error_request_reason');
+                } elseif ($result['outcome'] === \Sudemi\Requests::OUTCOME_NOT_FOUND) {
+                    $json['error'] = $this->language->get('error_request_not_found');
+                } else {
+                    $json['error'] = $this->language->get('error_request_unavailable');
+                }
+                break;
+            default:
+                $json['error'] = $this->language->get('error_action_unknown');
+        }
+        if (!in_array($action, ['accept', 'reject'], true) && empty($json['error'])) {
+            // sudemi's answer, applied here (accept and reject read it back themselves).
+            $orders->refresh($id);
+        }
+        $this->respond($json);
+    }
+
+    /** Fills $json from sudemi's answer to an action: success, or sudemi's refusal in its own words. */
+    private function actionAnswer(array &$json, $response, string $successKey): void
+    {
+        if (is_array($response) && (int) $response['status'] === 200) {
+            $already = isset($response['body']['status']) && $response['body']['status'] === 'already_resolved';
+            $json['success'] = $this->language->get($already ? 'text_action_already' : $successKey);
+
+            return;
+        }
+        if (!is_array($response) || (int) $response['status'] >= 500 || (int) $response['status'] === 429) {
+            $json['error'] = $this->language->get('error_orders_unavailable');
+
+            return;
+        }
+        $message = isset($response['body']['message']) ? (string) $response['body']['message']
+            : (isset($response['body']['error']) ? (string) $response['body']['error'] : (string) $response['status']);
+        $json['error'] = sprintf($this->language->get('error_action_refused'), $message);
+    }
+
+    /**
+     * Several orders at once, as the portal's bulk action: accept, reject (one reason for all),
+     * shipped (a carrier, a tracking code per order) or delivered; at most 100.
+     */
+    public function bulk(): void
+    {
+        $this->load->language('extension/sudemi/module/sudemi');
+        $json = [];
+        if (!$this->guard($json)) {
+            $this->respond($json);
+
+            return;
+        }
+        $sudemi = $this->services();
+        $action = $this->posted('action');
+        $reason = trim($this->posted('reason'));
+        $ids = [];
+        foreach ((isset($this->request->post['ids']) && is_array($this->request->post['ids']) ? $this->request->post['ids'] : []) as $raw) {
+            $id = strtolower(trim((string) $raw));
+            if (\Sudemi\Requests::isId($id) && !in_array($id, $ids, true)) {
+                $ids[] = $id;
+            }
+        }
+        if (!in_array($action, ['accept', 'reject', 'shipped', 'delivered'], true) || empty($ids) || count($ids) > self::BULK_MAX) {
+            $json['error'] = $this->language->get('error_bulk_choose');
+            $this->respond($json);
+
+            return;
+        }
+        if ($action === 'reject' && $reason === '') {
+            $json['error'] = $this->language->get('error_action_reason');
+            $this->respond($json);
+
+            return;
+        }
+        $orders = $sudemi['orders'];
+        $tracking = isset($this->request->post['tracking']) && is_array($this->request->post['tracking']) ? $this->request->post['tracking'] : [];
+        $carrier = trim($this->posted('carrier'));
+        $items = [];
+        $local = [];
+        $skipped = [];
+        foreach ($ids as $id) {
+            $item = ['orderId' => $id];
+            if ($action === 'accept') {
+                // Booked here first, as a single accept is, so the stock is taken before the money.
+                $ready = $orders->prepareAccept($id);
+                if (!$ready['ok']) {
+                    $skipped[] = substr($id, 0, 8) . ': ' . ($ready['error'] === 'shortfall' ? (string) $ready['reason'] : $this->language->get('error_action_wrong_state'));
+                    continue;
+                }
+                $local[$id] = $ready['order_id'];
+            }
+            if ($action === 'shipped') {
+                $code = isset($tracking[$id]) && is_string($tracking[$id]) ? trim(html_entity_decode($tracking[$id], ENT_QUOTES | ENT_HTML5, 'UTF-8')) : '';
+                $item['carrier'] = $carrier === '' ? null : $carrier;
+                $item['trackingCode'] = $code === '' ? null : $code;
+                $orders->saveTracking($id, $carrier, $code);
+            }
+            $items[] = $item;
+        }
+        $done = 0;
+        $refused = 0;
+        $messages = $skipped;
+        if (!empty($items)) {
+            $body = ['action' => $action, 'items' => $items];
+            if ($action === 'reject') {
+                $body['reason'] = $reason;
+            }
+            $response = $sudemi['client']->sendSigned('POST', '/integration/v1/orders/bulk', $body);
+            if (!is_array($response) || (int) $response['status'] !== 200 || !isset($response['body']['results'])) {
+                $json['error'] = is_array($response) && (int) $response['status'] === 403
+                    ? $this->language->get('error_bulk_suspended') : $this->language->get('error_orders_unavailable');
+                $this->respond($json);
+
+                return;
+            }
+            foreach ($response['body']['results'] as $result) {
+                if (!is_array($result) || !isset($result['order_id'])) {
+                    continue;
+                }
+                $oid = strtolower((string) $result['order_id']);
+                if ($action === 'accept' && isset($local[$oid])) {
+                    $orders->applyBulkAccept($result, $local[$oid]);
+                } else {
+                    $orders->refresh($oid);
+                }
+                if (isset($result['result']) && $result['result'] === 'done') {
+                    ++$done;
+                } else {
+                    ++$refused;
+                    $messages[] = substr($oid, 0, 8) . ': ' . (isset($result['message']) ? (string) $result['message']
+                        : (isset($result['error']) ? (string) $result['error'] : ''));
+                }
+            }
+        }
+        $json['done'] = $done;
+        $json['refused'] = $refused + count($skipped);
+        $json['messages'] = $messages;
+        $json['success'] = sprintf($this->language->get('text_bulk_result'), $done, $refused + count($skipped));
+        $this->respond($json);
+    }
+
+    /** Extensions > sudemi > Shipping: where this shop delivers sudemi buyers to, and at what price. */
+    public function shipping(): void
+    {
+        $this->load->language('extension/sudemi/module/sudemi');
+        $this->document->setTitle($this->language->get('text_shipping_title'));
+        $sudemi = $this->services();
+        $data = $this->shell();
+        $data['connected'] = $sudemi['client']->isConnected();
+        $data['settings'] = null;
+        $data['error'] = '';
+        if ($data['connected']) {
+            $response = $sudemi['client']->sendSigned('GET', '/integration/v1/shipping');
+            if (is_array($response) && (int) $response['status'] === 200 && is_array($response['body'])) {
+                $data['settings'] = $this->shippingView($response['body']);
+            } else {
+                $data['error'] = $this->language->get('error_shipping_unavailable');
+            }
+        }
+        $this->response->setOutput($this->load->view('extension/sudemi/module/sudemi_shipping', $data));
+    }
+
+    /** Saves the shipping settings on sudemi (POST /shipping), with sudemi's checks. */
+    public function shippingSave(): void
+    {
+        $this->load->language('extension/sudemi/module/sudemi');
+        $json = [];
+        if (!$this->guard($json)) {
+            $this->respond($json);
+
+            return;
+        }
+        $sudemi = $this->services();
+        $mode = $this->posted('mode') === 'custom' ? 'custom' : 'shop';
+        $currency = \Sudemi\Currency::normalise($this->posted('currency')) ?: (string) $this->config->get('config_currency');
+        $body = ['mode' => $mode];
+        if ($mode === 'custom') {
+            $countries = [];
+            foreach ((isset($this->request->post['countries']) && is_array($this->request->post['countries']) ? $this->request->post['countries'] : []) as $code => $row) {
+                $code = strtoupper((string) $code);
+                if (!preg_match('/^[A-Z]{2}$/', $code) || !is_array($row)) {
+                    continue;
+                }
+                $price = isset($row['price']) && is_string($row['price']) ? str_replace(',', '.', trim($row['price'])) : '';
+                if ($price !== '' && !preg_match('/^\d+(\.\d{1,3})?$/', $price)) {
+                    $json['error'] = sprintf($this->language->get('error_shipping_price'), $code);
+                    $this->respond($json);
+
+                    return;
+                }
+                $countries[] = ['country' => $code, 'enabled' => !empty($row['enabled']),
+                    'priceMinor' => $price === '' ? null : \Sudemi\Currency::toMinor($price, $currency)];
+            }
+            $body['countries'] = $countries;
+        }
+        $response = $sudemi['client']->sendSigned('POST', '/integration/v1/shipping', $body);
+        if (is_array($response) && (int) $response['status'] === 200) {
+            $json['success'] = $this->language->get('text_shipping_saved');
+        } elseif (is_array($response) && (int) $response['status'] === 400) {
+            $json['error'] = sprintf($this->language->get('error_action_refused'),
+                isset($response['body']['message']) ? (string) $response['body']['message'] : 'invalid_request');
+        } else {
+            $json['error'] = $this->language->get('error_shipping_unavailable');
+        }
+        $this->respond($json);
+    }
+
+    /** GET /shipping for the page: rows per country, with the shop's own price as the prefill. */
+    private function shippingView(array $body): array
+    {
+        $currency = isset($body['currency']) && $body['currency'] ? (string) $body['currency'] : (string) $this->config->get('config_currency');
+        $effective = [];
+        foreach ((isset($body['effective']) && is_array($body['effective']) ? $body['effective'] : []) as $e) {
+            if (is_array($e) && isset($e['country'])) {
+                $effective[(string) $e['country']] = $e;
+            }
+        }
+        // The shop's own price per country (OpenCart's geo zones and shipping methods, one item of
+        // the first product), as the catalogue sync sends it: the "fill in from my shop" values.
+        $prefill = [];
+        foreach ($this->shippingRates() as $rate) {
+            $prefill[$rate['country']] = $this->decimal($rate['costMinor'], $currency);
+        }
+        $names = $this->countryNames();
+        $rows = [];
+        foreach ((isset($body['countries']) && is_array($body['countries']) ? $body['countries'] : []) as $c) {
+            if (!is_array($c) || !isset($c['country'])) {
+                continue;
+            }
+            $code = (string) $c['country'];
+            $e = isset($effective[$code]) ? $effective[$code] : [];
+            $range = function ($low, $high) use ($currency) {
+                if ($low === null) {
+                    return '';
+                }
+                $text = \Sudemi\Currency::format((int) $low, $currency);
+
+                return $high !== null && (int) $high !== (int) $low ? $text . ' - ' . \Sudemi\Currency::format((int) $high, $currency) : $text;
+            };
+            $source = isset($e['source']) ? (string) $e['source'] : '';
+            $rows[] = [
+                'country' => $code,
+                'name' => isset($names[$code]) ? $names[$code] : $code,
+                'enabled' => !empty($c['enabled']),
+                'price' => isset($c['price_minor']) && $c['price_minor'] !== null ? $this->decimal((int) $c['price_minor'], $currency) : '',
+                'shop_price' => $range(isset($c['shop_price_min_minor']) ? $c['shop_price_min_minor'] : null, isset($c['shop_price_max_minor']) ? $c['shop_price_max_minor'] : null),
+                'prefill' => isset($prefill[$code]) ? $prefill[$code] : '',
+                'offered' => !empty($e['offered']),
+                'effective' => !empty($e['offered']) ? $range(isset($e['min_minor']) ? $e['min_minor'] : null, isset($e['max_minor']) ? $e['max_minor'] : null) : '',
+                'source' => $source === 'sudemi_price' ? $this->language->get('text_shipping_source_sudemi')
+                    : ($source === 'shop_price' ? $this->language->get('text_shipping_source_shop') : ''),
+            ];
+        }
+
+        return [
+            'mode' => isset($body['mode']) && $body['mode'] === 'custom' ? 'custom' : 'shop',
+            'currency' => $currency,
+            'max_price' => isset($body['max_price_minor']) ? \Sudemi\Currency::format((int) $body['max_price_minor'], $currency) : '',
+            'countries' => $rows,
+        ];
+    }
+
+    /** The shop's own shipping price per country, for one item of the first product. */
+    private function shippingRates(): array
+    {
+        $catalogue = new \Sudemi\Catalogue($this->db, $this->config);
+        $first = $catalogue->products(0, 1);
+
+        return empty($first) || empty($first[0]['shipping']) ? [] : $first[0]['shipping'];
+    }
+
+    /** ISO code => the country's name in the admin's language (English names as a fallback). */
+    private function countryNames(): array
+    {
+        $this->load->model('localisation/country');
+        $names = [];
+        foreach ($this->model_localisation_country->getCountries() as $country) {
+            if (isset($country['iso_code_2'], $country['name'])) {
+                $names[(string) $country['iso_code_2']] = html_entity_decode((string) $country['name'], ENT_QUOTES, 'UTF-8');
+            }
+        }
+
+        return $names;
+    }
+
+    private function decimal(int $minor, string $currency): string
+    {
+        $decimals = \Sudemi\Currency::decimals($currency);
+
+        return number_format(\Sudemi\Currency::fromMinor($minor, $currency), $decimals, '.', '');
+    }
+
+    /** The payouts panel (GET /payouts): the payout account's state and this shop's money per currency. */
+    private function payoutsPanel($client): ?array
+    {
+        $response = $client->sendSigned('GET', '/integration/v1/payouts');
+        if (!is_array($response) || (int) $response['status'] !== 200 || !is_array($response['body'])) {
+            return null;
+        }
+        $body = $response['body'];
+        $state = isset($body['account']['state']) ? (string) $body['account']['state'] : '';
+        $currencies = [];
+        foreach ((isset($body['currencies']) && is_array($body['currencies']) ? $body['currencies'] : []) as $c) {
+            if (!is_array($c) || !isset($c['currency_code'])) {
+                continue;
+            }
+            $code = (string) $c['currency_code'];
+            $money = function ($key) use ($c, $code) {
+                return \Sudemi\Currency::format(isset($c[$key]) ? (int) $c[$key] : 0, $code);
+            };
+            $currencies[] = [
+                'currency' => $code,
+                'orders' => isset($c['orders']) ? (int) $c['orders'] : 0,
+                'paid_out' => $money('paid_out_minor'),
+                'outstanding' => $money('outstanding_minor'),
+                'waiting' => $money('waiting_for_shipment_minor'),
+                'scheduled' => $money('scheduled_minor'),
+                'processing' => $money('processing_minor'),
+                'held' => $money('held_minor'),
+                'next_due' => $this->supportDate(isset($c['next_due_at']) ? $c['next_due_at'] : ''),
+            ];
+        }
+        $key = 'text_account_' . strtolower($state);
+        $label = $this->language->get($key);
+
+        return [
+            'state' => $state,
+            'state_label' => $label !== $key ? $label : $state,
+            'active' => $state === 'ACTIVE',
+            'delay_days' => isset($body['payout_delay_days']) ? (int) $body['payout_delay_days'] : 0,
+            'currencies' => $currencies,
+        ];
+    }
+
+    /** One row of the order table. */
+    private function orderRow(array $sudemi, array $row): array
+    {
+        $id = (string) $row['order_id'];
+        $currency = isset($row['currency_code']) ? (string) $row['currency_code'] : 'EUR';
+        $items = [];
+        foreach ((isset($row['lines']) && is_array($row['lines']) ? $row['lines'] : []) as $line) {
+            $qty = isset($line['quantity']) ? (int) $line['quantity'] : 1;
+            $items[] = (isset($line['title']) ? (string) $line['title'] : '') . ($qty > 1 ? ' x ' . $qty : '');
+        }
+        $local = $sudemi['orders']->localOrderOf($id);
+        $status = isset($row['status']) ? (string) $row['status'] : '';
+        $payout = isset($row['payout']) && is_array($row['payout']) ? $row['payout'] : null;
+        $tracking = isset($row['tracking']) && is_array($row['tracking']) ? $row['tracking'] : null;
+
+        return [
+            'order_id' => $id,
+            'short' => substr($id, 0, 8),
+            'href' => 'index.php?route=extension/sudemi/module/sudemi.order&user_token=' . rawurlencode((string) $this->session->data['user_token']) . '&order_id=' . rawurlencode($id),
+            'placed' => $this->supportDate(isset($row['placed_at']) ? $row['placed_at'] : ''),
+            'items' => implode(', ', $items),
+            'country' => isset($row['destination_country']) ? (string) $row['destination_country'] : '',
+            'status' => $status,
+            'status_label' => $this->statusLabel($status),
+            'request' => !empty($row['customer_request']),
+            'total' => \Sudemi\Currency::format(isset($row['total_minor']) ? (int) $row['total_minor'] : 0, $currency),
+            'net' => \Sudemi\Currency::format(isset($row['your_net_minor']) ? (int) $row['your_net_minor'] : 0, $currency),
+            'refunded' => !empty($row['refunded_minor']) ? \Sudemi\Currency::format((int) $row['refunded_minor'], $currency) : '',
+            'payout' => $payout !== null ? $this->payoutLabel(isset($payout['state']) ? (string) $payout['state'] : '') : '',
+            'tracking' => $tracking !== null ? trim((isset($tracking['carrier']) ? (string) $tracking['carrier'] : '') . ' ' . (isset($tracking['code']) ? (string) $tracking['code'] : '')) : '',
+            'customer' => isset($row['customer_name']) ? (string) $row['customer_name'] : '',
+            'respond_by' => $this->supportDate(isset($row['respond_by']) ? $row['respond_by'] : ''),
+            'local' => $local ? (int) $local : 0,
+            'local_href' => $local ? 'index.php?route=sale/order.info&order_id=' . (int) $local . '&user_token=' . rawurlencode((string) $this->session->data['user_token']) : '',
+        ];
+    }
+
+    /** sudemi's order page, ready for the template. */
+    private function orderDetail(array $sudemi, array $d): array
+    {
+        $id = isset($d['order_id']) ? (string) $d['order_id'] : (string) $d['id'];
+        $money = isset($d['money']) && is_array($d['money']) ? $d['money'] : [];
+        $currency = isset($money['currency_code']) ? (string) $money['currency_code'] : 'EUR';
+        $format = function ($minor, $code = null) use ($currency) {
+            return $minor === null ? '' : \Sudemi\Currency::format((int) $minor, $code ?: $currency);
+        };
+        $token = rawurlencode((string) $this->session->data['user_token']);
+        $lines = [];
+        foreach ((isset($d['lines']) && is_array($d['lines']) ? $d['lines'] : []) as $line) {
+            $external = isset($line['external_id']) ? (string) $line['external_id'] : '';
+            $lines[] = [
+                'title' => isset($line['title']) ? (string) $line['title'] : '',
+                'quantity' => isset($line['quantity']) ? (int) $line['quantity'] : 1,
+                'unit' => $format(isset($line['unit_price_minor']) ? $line['unit_price_minor'] : null),
+                'goods' => $format(isset($line['goods_minor']) ? $line['goods_minor'] : null),
+                'external' => $external,
+                'product_href' => ctype_digit($external) ? 'index.php?route=catalog/product.form&product_id=' . $external . '&user_token=' . $token : '',
+            ];
+        }
+        $timeline = [];
+        foreach ((isset($d['timeline']) && is_array($d['timeline']) ? $d['timeline'] : []) as $event) {
+            if (!is_array($event) || !isset($event['type'])) {
+                continue;
+            }
+            $type = (string) $event['type'];
+            $key = 'text_timeline_' . strtolower($type);
+            $label = $this->language->get($key);
+            $extra = [];
+            if (!empty($event['carrier']) || !empty($event['tracking_code'])) {
+                $extra[] = trim((isset($event['carrier']) ? (string) $event['carrier'] : '') . ' ' . (isset($event['tracking_code']) ? (string) $event['tracking_code'] : ''));
+            }
+            if (isset($event['amount_minor'])) {
+                $extra[] = $format($event['amount_minor']);
+            }
+            if (!empty($event['kind'])) {
+                $extra[] = $this->requestKind((string) $event['kind']) . (!empty($event['outcome']) ? ': ' . $this->requestOutcome((string) $event['outcome']) : '');
+            }
+            if (!empty($event['reason'])) {
+                $extra[] = '"' . (string) $event['reason'] . '"';
+            }
+            $timeline[] = ['label' => $label !== $key ? $label : $type, 'at' => $this->supportDate(isset($event['at']) ? $event['at'] : ''),
+                'extra' => implode('; ', array_filter($extra, 'strlen'))];
+        }
+        $payout = isset($d['payout']) && is_array($d['payout']) ? $d['payout'] : [];
+        $payoutCurrency = isset($payout['currency_code']) && $payout['currency_code'] ? (string) $payout['currency_code'] : $currency;
+        $actions = isset($d['allowed_actions']) && is_array($d['allowed_actions']) ? array_values(array_filter($d['allowed_actions'], 'is_string')) : [];
+        $tracking = isset($d['tracking']) && is_array($d['tracking']) ? $d['tracking'] : null;
+        $typed = $sudemi['orders']->trackingOf($id);
+        $local = $sudemi['orders']->localOrderOf($id);
+        $request = isset($d['customer_request']) && is_array($d['customer_request']) ? $d['customer_request'] : null;
+        $refunded = isset($money['refunded_minor']) ? (int) $money['refunded_minor'] : 0;
+        $total = isset($money['total_minor']) ? (int) $money['total_minor'] : 0;
+
+        return [
+            'id' => $id,
+            'short' => substr($id, 0, 8),
+            'status' => isset($d['status']) ? (string) $d['status'] : '',
+            'status_label' => $this->statusLabel(isset($d['status']) ? (string) $d['status'] : ''),
+            'placed' => $this->supportDate(isset($d['placed_at']) ? $d['placed_at'] : ''),
+            'country' => isset($d['destination_country']) ? (string) $d['destination_country'] : '',
+            'customer' => isset($d['customer_name']) ? (string) $d['customer_name'] : '',
+            'respond_by' => $this->supportDate(isset($d['respond_by']) ? $d['respond_by'] : ''),
+            'note' => isset($d['note']) ? (string) $d['note'] : '',
+            'declined_reason' => isset($d['declined_reason']) ? (string) $d['declined_reason'] : '',
+            'shipped_at' => $this->supportDate(isset($d['shipped_at']) ? $d['shipped_at'] : ''),
+            'delivered_at' => $this->supportDate(isset($d['delivered_at']) ? $d['delivered_at'] : ''),
+            'withdrawal_deadline' => $this->supportDate(isset($d['withdrawal_deadline']) ? $d['withdrawal_deadline'] : ''),
+            'tracking' => $tracking !== null ? trim((isset($tracking['carrier']) ? (string) $tracking['carrier'] : '') . ' ' . (isset($tracking['code']) ? (string) $tracking['code'] : '')) : '',
+            'carrier_prefill' => $tracking !== null && !empty($tracking['carrier']) ? (string) $tracking['carrier'] : $typed['carrier'],
+            'tracking_prefill' => $tracking !== null && !empty($tracking['code']) ? (string) $tracking['code'] : $typed['code'],
+            'lines' => $lines,
+            'currency' => $currency,
+            'decimals' => \Sudemi\Currency::decimals($currency),
+            'goods' => $format(isset($money['goods_minor']) ? $money['goods_minor'] : null),
+            'shipping' => $format(isset($money['shipping_minor']) ? $money['shipping_minor'] : null),
+            'total' => $format($total),
+            'commission' => $format(isset($money['commission_minor']) ? $money['commission_minor'] : null),
+            'net' => $format(isset($money['your_net_minor']) ? $money['your_net_minor'] : null),
+            'refunded' => $format($refunded),
+            'refundable' => $format(max(0, $total - $refunded)),
+            'timeline' => $timeline,
+            'payout' => [
+                'state' => $this->payoutLabel(isset($payout['state']) ? (string) $payout['state'] : ''),
+                'expected' => isset($payout['expected_minor']) && $payout['expected_minor'] !== null ? $format($payout['expected_minor'], $payoutCurrency) : '',
+                'paid_out' => $format(isset($payout['paid_out_minor']) ? $payout['paid_out_minor'] : 0, $payoutCurrency),
+                'due' => $this->supportDate(isset($payout['due_at']) ? $payout['due_at'] : ''),
+            ],
+            'request' => $request === null ? null : [
+                'kind' => $this->requestKind(isset($request['kind']) ? (string) $request['kind'] : ''),
+                'reason' => isset($request['reason']) ? (string) $request['reason'] : '',
+                'requested_at' => $this->supportDate(isset($request['requested_at']) ? $request['requested_at'] : ''),
+                'respond_by' => $this->supportDate(isset($request['respond_by']) ? $request['respond_by'] : ''),
+            ],
+            'actions' => array_fill_keys($actions, true),
+            'local' => $local ? (int) $local : 0,
+            'local_href' => $local ? 'index.php?route=sale/order.info&order_id=' . (int) $local . '&user_token=' . $token : '',
+            'action_key' => bin2hex(random_bytes(12)),
+        ];
+    }
+
+    private function statusLabel(string $status): string
+    {
+        $key = 'text_status_' . strtolower($status);
+        $label = $this->language->get($key);
+
+        return $label !== $key ? $label : $status;
+    }
+
+    private function payoutLabel(string $state): string
+    {
+        $key = 'text_payout_' . strtolower($state);
+        $label = $this->language->get($key);
+
+        return $label !== $key ? $label : $state;
+    }
+
+    private function requestKind(string $kind): string
+    {
+        $key = 'text_note_kind_' . strtolower($kind);
+        $label = $this->language->get($key);
+
+        return $label !== $key ? $label : $kind;
+    }
+
+    private function requestOutcome(string $outcome): string
+    {
+        $key = 'text_note_req_' . strtolower($outcome);
+        $label = $this->language->get($key);
+
+        return $label !== $key ? $label : $outcome;
+    }
+
+    /** The filters of the order table from the query string, each checked. */
+    private function orderFilters(): array
+    {
+        $get = $this->request->get;
+        $text = function ($key) use ($get) {
+            return isset($get[$key]) && is_string($get[$key]) ? trim(html_entity_decode($get[$key], ENT_QUOTES | ENT_HTML5, 'UTF-8')) : '';
+        };
+        $date = function ($value) {
+            return preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) ? $value : '';
+        };
+        $status = strtoupper($text('status'));
+        $sort = $text('sort');
+        $dir = $text('dir');
+        $q = $text('q');
+
+        return [
+            'status' => in_array($status, self::ORDER_STATUSES, true) ? $status : '',
+            'from' => $date($text('from')),
+            'to' => $date($text('to')),
+            'q' => function_exists('mb_substr') ? mb_substr($q, 0, 100, 'UTF-8') : substr($q, 0, 100),
+            'sort' => in_array($sort, ['placed', 'total', 'status'], true) ? $sort : 'placed',
+            'dir' => $dir === 'asc' ? 'asc' : 'desc',
+            'page' => isset($get['page']) && ctype_digit((string) $get['page']) ? max(1, (int) $get['page']) : 1,
+        ];
+    }
+
+    private function ordersHref(array $filters): string
+    {
+        return 'index.php?route=extension/sudemi/module/sudemi.orders&user_token=' . rawurlencode((string) $this->session->data['user_token'])
+            . '&' . http_build_query(array_filter($filters, function ($v) { return $v !== '' && $v !== null; }));
+    }
+
+    /** What every page of the extension has: OpenCart's header, menu and footer, the token, the links. */
+    private function shell(): array
+    {
+        $token = rawurlencode((string) $this->session->data['user_token']);
+
+        return [
+            'user_token' => $this->session->data['user_token'],
+            'header' => $this->load->controller('common/header'),
+            'column_left' => $this->load->controller('common/column_left'),
+            'footer' => $this->load->controller('common/footer'),
+            'orders_href' => 'index.php?route=extension/sudemi/module/sudemi.orders&user_token=' . $token,
+            'shipping_href' => 'index.php?route=extension/sudemi/module/sudemi.shipping&user_token=' . $token,
+            'settings_href' => 'index.php?route=extension/sudemi/module/sudemi&user_token=' . $token,
+        ];
+    }
+
     /**
      * Registers the change events, so a price edit reaches sudemi as it happens.
      *
@@ -816,6 +1657,7 @@ class Sudemi extends \Opencart\System\Engine\Controller
         require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/withdrawal.php';
         require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/support.php';
         require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/requests.php';
+        require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/changes.php';
 
         $this->load->model('setting/setting');
         $store = new \Sudemi\SettingStore($this->db);

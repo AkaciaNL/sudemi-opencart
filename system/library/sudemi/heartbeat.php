@@ -25,6 +25,7 @@ namespace Sudemi;
 
 require_once __DIR__ . '/withdrawal.php';
 require_once __DIR__ . '/requests.php';
+require_once __DIR__ . '/changes.php';
 
 class Heartbeat
 {
@@ -44,6 +45,7 @@ class Heartbeat
     private $pairing;
     private $sync;
     private $orders;
+    private $changes = null;
 
     public function __construct($store, Client $client, Logger $logger, Queue $queue,
                                 $catalogue, Pairing $pairing, Sync $sync, $orders = null)
@@ -56,6 +58,15 @@ class Heartbeat
         $this->catalogue = $catalogue;
         $this->pairing = $pairing;
         $this->sync = $sync;
+        if ($orders instanceof Orders) {
+            $this->changes = new Changes($store, $client, $logger, $orders);
+        }
+    }
+
+    /** The order change feed (null without orders), for the admin page and the daily check. */
+    public function changeFeed()
+    {
+        return $this->changes;
     }
 
     /**
@@ -67,7 +78,7 @@ class Heartbeat
      *
      * @return bool whether sudemi answered
      */
-    public function run()
+    public function run($round = 0)
     {
         if (!$this->client->isConnected()) {
             return false;
@@ -75,12 +86,17 @@ class Heartbeat
 
         $drained = $this->queue->drain();
 
-        $response = $this->client->postSigned('/integration/v1/heartbeat', [
+        $beat = [
             'catalogueRevision' => $this->catalogue->revision($this->changes()),
             'productCount' => $this->catalogue->productCount(),
             'intervalSeconds' => self::DEFAULT_INTERVAL,
             'pluginVersion' => Client::VERSION,
-        ]);
+        ];
+        if ($this->changes !== null) {
+            // The order change feed (core 2026-11-09): '' to start, then the last answer's cursor.
+            $beat['changesCursor'] = $this->changes->cursor();
+        }
+        $response = $this->client->postSigned('/integration/v1/heartbeat', $beat);
 
         if ($response === null) {
             $this->remember(['reachable' => false, 'checked' => time()]);
@@ -187,6 +203,15 @@ class Heartbeat
             $this->orders->drainCalls();
         }
 
+        // Everything else that changed on this shop's orders (shipped, delivered, refunded,
+        // cancelled, tracking, return requests), wherever it was changed. More waiting: another
+        // beat right away, a few at most.
+        $more = false;
+        if ($this->changes !== null) {
+            $more = $this->changes->apply($body);
+            $this->changes->safetyNet();
+        }
+
         // sudemi and this shop disagree about what the catalogue is, so something did not
         // arrive. A full sync is the only answer that does not involve guessing which product.
         // Asked for here, never run here: a full sync of a large catalogue takes minutes, and a
@@ -198,6 +223,10 @@ class Heartbeat
                 $this->logger->info('sudemi asked for a full sync.');
             }
             $this->store->write(Withdrawal::SETTING_RESYNC_DUE, 1);
+        }
+
+        if ($more && $round < Changes::MAX_ROUNDS) {
+            return $this->run($round + 1);
         }
 
         return true;
@@ -284,6 +313,9 @@ class Heartbeat
         // (which does nothing while the shop is not connected), so keeping it means the line the
         // shop owner set up keeps working after Disconnect and a new Connect.
         Requests::forget($this->store);
+        // The change feed's cursor belongs to this connection; a new one starts with ''.
+        $this->store->delete(Changes::SETTING_CURSOR);
+        $this->store->delete(Changes::SETTING_SAFETY);
     }
 
     private function remember(array $status)

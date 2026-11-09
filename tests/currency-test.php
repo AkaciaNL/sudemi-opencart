@@ -69,6 +69,10 @@ class FakeClient extends \Sudemi\Client {
 		$this->calls[] = array( 'POST', $path, $body );
 		return array_shift( $this->answers );
 	}
+	public function sendSigned( $method, $path, array $body = array(), array $headers = array() ) {
+		$this->calls[] = array( $method, $path, $body, $headers );
+		return 'GET' === $method ? null : array_shift( $this->answers );
+	}
 	public function getSigned( $path ) {
 		$this->calls[] = array( 'GET', $path, array() );
 		return null;

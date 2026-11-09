@@ -1,0 +1,225 @@
+{# sudemi > Orders. Autoescaping is switched on for the whole page (OpenCart 4 switches it off):
+   every value comes from sudemi or from buyers and is printed HTML-escaped. #}
+{% autoescape 'html' %}
+{{ header|raw }}{{ column_left|raw }}
+<div id="content">
+  <div class="page-header">
+    <div class="container-fluid">
+      <div class="float-end">
+        <a href="{{ shipping_href }}" class="btn btn-light"><i class="fa-solid fa-truck"></i> {{ text_menu_shipping }}</a>
+        <a href="{{ settings_href }}" class="btn btn-light"><i class="fa-solid fa-gear"></i> {{ text_menu_settings }}</a>
+      </div>
+      <h1>{{ text_orders_title }}</h1>
+    </div>
+  </div>
+  <div class="container-fluid">
+    {% if not connected %}
+      <div class="alert alert-warning">{{ text_orders_not_connected }} <a href="{{ settings_href }}">{{ text_menu_settings }}</a></div>
+    {% else %}
+    <p class="form-text">{{ text_orders_intro }}</p>
+    {% if error %}<div class="alert alert-warning" id="sudemi-orders-error">{{ error }}</div>{% endif %}
+
+    {# Answering waiting orders: automatically (as before 1.3.0) or by a person. #}
+    <div class="card mb-3" id="sudemi-auto-confirm">
+      <div class="card-body">
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" role="switch" id="sudemi-auto-confirm-switch" {% if auto_confirm %}checked{% endif %}>
+          <label class="form-check-label" for="sudemi-auto-confirm-switch"><strong>{{ entry_auto_confirm }}</strong></label>
+        </div>
+        <div class="form-text">{{ help_auto_confirm }}</div>
+      </div>
+    </div>
+
+    {% if waiting %}
+    <div class="card mb-3 border-warning" id="sudemi-waiting">
+      <div class="card-header"><i class="fa-solid fa-hourglass-half"></i> {{ text_waiting_title }}</div>
+      <div class="card-body">
+        <p class="form-text">{{ text_waiting_intro }}</p>
+        <table class="table table-sm align-middle">
+          <thead><tr><th>{{ column_order }}</th><th>{{ column_items }}</th><th>{{ column_country }}</th><th>{{ column_paid }}</th><th>{{ column_respond_by }}</th><th style="width:22rem">{{ column_request_answer }}</th></tr></thead>
+          <tbody>
+          {% for o in waiting %}
+            <tr class="sudemi-waiting-row" data-order-id="{{ o.order_id }}">
+              <td><a href="{{ o.href }}"><code>{{ o.short }}</code></a><br><small>{{ o.placed }}</small></td>
+              <td>{{ o.items }}</td><td>{{ o.country }}</td><td>{{ o.total }}</td><td>{{ o.respond_by }}</td>
+              <td>
+                <button type="button" class="btn btn-success btn-sm mb-1" onclick="sudemiRowAction(this, 'accept')">{{ button_accept }}</button>
+                <input type="text" class="form-control form-control-sm sudemi-row-reason" maxlength="500" placeholder="{{ entry_decline_reason }}">
+                <button type="button" class="btn btn-outline-danger btn-sm mt-1" onclick="sudemiRowAction(this, 'reject')">{{ button_decline }}</button>
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if payouts %}
+    <div class="card mb-3" id="sudemi-payouts">
+      <div class="card-header"><i class="fa-solid fa-coins"></i> {{ text_payouts_title }}</div>
+      <div class="card-body">
+        <p>{{ entry_payout_account }}: <span class="badge {% if payouts.active %}bg-success{% else %}bg-warning text-dark{% endif %}" id="sudemi-payout-account" data-state="{{ payouts.state }}">{{ payouts.state_label }}</span>
+          <span class="form-text ms-2">{{ text_payouts_delay|format(payouts.delay_days) }}</span></p>
+        {% if payouts.currencies %}
+        <table class="table table-sm" id="sudemi-payouts-table">
+          <thead><tr><th>{{ column_currency }}</th><th>{{ column_paid_out }}</th><th>{{ column_outstanding }}</th><th>{{ column_waiting_shipment }}</th><th>{{ column_scheduled }}</th><th>{{ column_processing }}</th><th>{{ column_held }}</th></tr></thead>
+          <tbody>
+          {% for c in payouts.currencies %}
+            <tr data-currency="{{ c.currency }}"><td>{{ c.currency }}</td><td>{{ c.paid_out }}</td><td>{{ c.outstanding }}</td><td>{{ c.waiting }}</td><td>{{ c.scheduled }}{% if c.next_due %}<br><small>{{ text_next_due }} {{ c.next_due }}</small>{% endif %}</td><td>{{ c.processing }}</td><td>{{ c.held }}</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+          <p class="form-text mb-0">{{ text_payouts_empty }}</p>
+        {% endif %}
+        <div class="form-text">{{ text_payouts_portal }}</div>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card mb-3">
+      <div class="card-header"><i class="fa-solid fa-filter"></i> {{ text_filter }}</div>
+      <div class="card-body">
+        <form method="get" action="index.php" id="sudemi-filter" class="row g-2 align-items-end">
+          <input type="hidden" name="route" value="extension/sudemi/module/sudemi.orders">
+          <input type="hidden" name="user_token" value="{{ user_token }}">
+          <div class="col-md-2"><label class="form-label" for="sudemi-f-status">{{ column_status }}</label>
+            <select name="status" id="sudemi-f-status" class="form-select"><option value="">{{ text_all }}</option>
+              {% for s in statuses %}<option value="{{ s.value }}" {% if filters.status == s.value %}selected{% endif %}>{{ s.label }}</option>{% endfor %}
+            </select></div>
+          <div class="col-md-2"><label class="form-label" for="sudemi-f-from">{{ entry_from }}</label><input type="date" name="from" id="sudemi-f-from" class="form-control" value="{{ filters.from }}"></div>
+          <div class="col-md-2"><label class="form-label" for="sudemi-f-to">{{ entry_to }}</label><input type="date" name="to" id="sudemi-f-to" class="form-control" value="{{ filters.to }}"></div>
+          <div class="col-md-3"><label class="form-label" for="sudemi-f-q">{{ entry_search }}</label><input type="text" name="q" id="sudemi-f-q" class="form-control" maxlength="100" value="{{ filters.q }}" placeholder="{{ help_search }}"></div>
+          <div class="col-md-1"><label class="form-label" for="sudemi-f-sort">{{ entry_sort }}</label>
+            <select name="sort" id="sudemi-f-sort" class="form-select">
+              <option value="placed" {% if filters.sort == 'placed' %}selected{% endif %}>{{ text_sort_placed }}</option>
+              <option value="total" {% if filters.sort == 'total' %}selected{% endif %}>{{ text_sort_total }}</option>
+              <option value="status" {% if filters.sort == 'status' %}selected{% endif %}>{{ text_sort_status }}</option>
+            </select></div>
+          <div class="col-md-1"><label class="form-label" for="sudemi-f-dir">&nbsp;</label>
+            <select name="dir" id="sudemi-f-dir" class="form-select">
+              <option value="desc" {% if filters.dir == 'desc' %}selected{% endif %}>{{ text_dir_desc }}</option>
+              <option value="asc" {% if filters.dir == 'asc' %}selected{% endif %}>{{ text_dir_asc }}</option>
+            </select></div>
+          <div class="col-md-1"><button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-magnifying-glass"></i> {{ button_filter }}</button></div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <i class="fa-solid fa-list"></i> {{ text_orders_found|format(total) }}
+        <span class="float-end">
+          <a class="btn btn-sm btn-light" id="sudemi-export" href="{{ export_href }}">{{ button_export }}</a>
+          <a class="btn btn-sm btn-light" id="sudemi-export-comma" href="{{ export_href }}&amp;decimal=comma">{{ button_export_comma }}</a>
+        </span>
+      </div>
+      <div class="card-body">
+        <div class="row g-2 align-items-end mb-3" id="sudemi-bulk">
+          <div class="col-md-3"><label class="form-label" for="sudemi-bulk-action">{{ entry_bulk_action }}</label>
+            <select id="sudemi-bulk-action" class="form-select" onchange="sudemiBulkMode()">
+              <option value="">{{ text_bulk_choose }}</option>
+              <option value="accept">{{ button_accept }}</option>
+              <option value="reject">{{ button_decline }}</option>
+              <option value="shipped">{{ button_shipped }}</option>
+              <option value="delivered">{{ button_delivered }}</option>
+            </select></div>
+          <div class="col-md-3 sudemi-bulk-reject" hidden><label class="form-label" for="sudemi-bulk-reason">{{ entry_decline_reason }}</label><input type="text" id="sudemi-bulk-reason" class="form-control" maxlength="500"></div>
+          <div class="col-md-3 sudemi-bulk-shipped" hidden><label class="form-label" for="sudemi-bulk-carrier">{{ entry_carrier }}</label><input type="text" id="sudemi-bulk-carrier" class="form-control" maxlength="100"></div>
+          <div class="col-md-2"><button type="button" class="btn btn-primary" id="sudemi-bulk-run" onclick="sudemiBulk()">{{ button_bulk_run }}</button></div>
+          <div class="col-12 form-text">{{ help_bulk|format(bulk_max) }}</div>
+        </div>
+
+        {% if orders %}
+        <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle" id="sudemi-orders-table">
+          <thead><tr>
+            <th><input type="checkbox" class="form-check-input" id="sudemi-check-all" onclick="$('.sudemi-check').prop('checked', this.checked)"></th>
+            <th>{{ column_order }}</th><th>{{ column_items }}</th><th>{{ column_country }}</th><th>{{ column_status }}</th>
+            <th>{{ column_paid }}</th><th>{{ column_net }}</th><th>{{ column_payout }}</th><th>{{ column_tracking }}</th><th>{{ column_customer }}</th><th>{{ column_local }}</th>
+          </tr></thead>
+          <tbody>
+          {% for o in orders %}
+            <tr class="sudemi-order-row" data-order-id="{{ o.order_id }}" data-status="{{ o.status }}">
+              <td><input type="checkbox" class="form-check-input sudemi-check" value="{{ o.order_id }}"></td>
+              <td><a href="{{ o.href }}"><code>{{ o.short }}</code></a><br><small>{{ o.placed }}</small></td>
+              <td>{{ o.items }}</td>
+              <td>{{ o.country }}</td>
+              <td>{{ o.status_label }}{% if o.request %}<br><span class="badge bg-warning text-dark">{{ text_history_return_requested }}</span>{% endif %}</td>
+              <td>{{ o.total }}{% if o.refunded %}<br><small class="text-danger">{{ text_refunded_short }} {{ o.refunded }}</small>{% endif %}</td>
+              <td>{{ o.net }}</td>
+              <td>{{ o.payout }}</td>
+              <td>{{ o.tracking }}<input type="text" class="form-control form-control-sm sudemi-row-tracking mt-1" maxlength="100" placeholder="{{ entry_tracking }}" hidden></td>
+              <td>{{ o.customer }}</td>
+              <td>{% if o.local_href %}<a href="{{ o.local_href }}">#{{ o.local }}</a>{% endif %}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        </div>
+        <nav class="d-flex justify-content-between">
+          <span>{% if prev_href %}<a class="btn btn-light" href="{{ prev_href }}">&laquo; {{ button_prev }}</a>{% endif %}</span>
+          <span>{% if next_href %}<a class="btn btn-light" id="sudemi-next" href="{{ next_href }}">{{ button_next }} &raquo;</a>{% endif %}</span>
+        </nav>
+        {% else %}
+          <p class="form-text" id="sudemi-orders-empty">{{ text_history_empty }}</p>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+<script type="text/javascript">
+// Every action is guarded on the server (modify permission + user token) and sent to sudemi.
+var sudemiBase = 'index.php?route=extension/sudemi/module/sudemi.';
+var sudemiToken = '&user_token={{ user_token|e('js') }}';
+
+function sudemiAnswer(json) {
+    var text = json.error || json.success || '';
+    if (json.messages && json.messages.length) { text += '\n' + json.messages.join('\n'); }
+    if (text) { alert(text); }
+    location.reload();
+}
+
+$('#sudemi-auto-confirm-switch').on('change', function () {
+    $.post(sudemiBase + 'autoConfirm' + sudemiToken, {auto_confirm: this.checked ? '1' : '0'}, function (json) {
+        if (json.error) { alert(json.error); location.reload(); }
+    }, 'json');
+});
+
+function sudemiRowAction(button, action) {
+    var row = $(button).closest('tr');
+    var reason = $.trim(row.find('.sudemi-row-reason').val() || '');
+    if (action === 'reject' && reason === '') { alert('{{ error_action_reason|e('js') }}'); return; }
+    $(button).prop('disabled', true);
+    $.ajax({url: sudemiBase + 'orderAction' + sudemiToken, type: 'post', dataType: 'json',
+        data: {order_id: row.data('order-id'), action: action, reason: reason},
+        success: sudemiAnswer,
+        error: function () { $(button).prop('disabled', false); alert('{{ error_orders_unavailable|e('js') }}'); }});
+}
+
+function sudemiBulkMode() {
+    var action = $('#sudemi-bulk-action').val();
+    $('.sudemi-bulk-reject').prop('hidden', action !== 'reject');
+    $('.sudemi-bulk-shipped').prop('hidden', action !== 'shipped');
+    $('.sudemi-row-tracking').prop('hidden', action !== 'shipped');
+}
+
+function sudemiBulk() {
+    var action = $('#sudemi-bulk-action').val();
+    var ids = $('.sudemi-check:checked').map(function () { return this.value; }).get();
+    if (!action || !ids.length) { alert('{{ error_bulk_choose|e('js') }}'); return; }
+    var data = {action: action, ids: ids, reason: $('#sudemi-bulk-reason').val(), carrier: $('#sudemi-bulk-carrier').val()};
+    if (action === 'reject' && $.trim(data.reason) === '') { alert('{{ error_action_reason|e('js') }}'); return; }
+    ids.forEach(function (id) {
+        data['tracking[' + id + ']'] = $('tr[data-order-id="' + id + '"] .sudemi-row-tracking').val() || '';
+    });
+    $('#sudemi-bulk-run').prop('disabled', true);
+    $.ajax({url: sudemiBase + 'bulk' + sudemiToken, type: 'post', dataType: 'json', data: data,
+        success: sudemiAnswer,
+        error: function () { $('#sudemi-bulk-run').prop('disabled', false); alert('{{ error_orders_unavailable|e('js') }}'); }});
+}
+</script>
+{{ footer|raw }}
+{% endautoescape %}
