@@ -47,6 +47,17 @@ class Orders
         '' => 'text_note_cancelled',
     );
 
+    /**
+     * The note per cancelled_by on a DECLINED order (never charged): the shop declined it, sudemi
+     * declined it (no answer in time, the shop removed) or the buyer cancelled before the shop
+     * confirmed. Not said (an older core): no note, as before.
+     */
+    const NOTE_DECLINED_KEYS = array(
+        'buyer' => 'text_note_declined_buyer',
+        'shop' => 'text_note_declined_shop',
+        'sudemi' => 'text_note_declined_sudemi',
+    );
+
     /** Shipped/delivered/tracking (and shop cancellations) that did not get through, retried each beat. */
     const SETTING_CALLS = 'sudemi_order_calls';
     const CALLS_MAX = 500;
@@ -1058,6 +1069,9 @@ class Orders
                 $by !== '' ? ' (' . ($state === 'DECLINED' ? 'declined' : 'cancelled') . ' ' . self::byWhom($by) . ')' : '',
                 $reason
             ));
+            if ($state === 'DECLINED') {
+                $this->declinedNote($orderId, $by);
+            }
             return;
         }
 
@@ -1143,20 +1157,67 @@ class Orders
     {
         static $notes = null;
         if ($notes === null) {
-            $notes = array(self::NOTE_CANCELLED_BY_BUYER);
-            $files = glob(__DIR__ . '/../../../admin/language/*/module/sudemi.php') ?: array();
-            foreach ($files as $file) {
-                $strings = self::languageFile(basename(dirname(dirname($file))));
-                foreach (self::NOTE_CANCELLED_KEYS as $key) {
-                    if (isset($strings[$key]) && $strings[$key] !== '') {
-                        $notes[] = htmlspecialchars((string) $strings[$key], ENT_QUOTES, 'UTF-8');
-                    }
-                }
-            }
-            $notes = array_values(array_unique($notes));
+            $notes = array_values(array_unique(array_merge(array(self::NOTE_CANCELLED_BY_BUYER),
+                self::notesInAllLanguages(self::NOTE_CANCELLED_KEYS))));
         }
 
         return $notes;
+    }
+
+    /** Every text the decline note can have (each key in each of the 12 languages, as stored). */
+    public static function declineNotes()
+    {
+        static $notes = null;
+        if ($notes === null) {
+            $notes = self::notesInAllLanguages(self::NOTE_DECLINED_KEYS);
+        }
+
+        return $notes;
+    }
+
+    /** @return string[] the texts of these language keys in every language file, HTML-escaped as stored */
+    private static function notesInAllLanguages(array $keys)
+    {
+        $notes = array();
+        $files = glob(__DIR__ . '/../../../admin/language/*/module/sudemi.php') ?: array();
+        foreach ($files as $file) {
+            $strings = self::languageFile(basename(dirname(dirname($file))));
+            foreach ($keys as $key) {
+                if (isset($strings[$key]) && $strings[$key] !== '') {
+                    $notes[] = htmlspecialchars((string) $strings[$key], ENT_QUOTES, 'UTF-8');
+                }
+            }
+        }
+
+        return array_values(array_unique($notes));
+    }
+
+    /**
+     * The history note on a local order whose sudemi order was DECLINED (never charged): who
+     * declined it (the shop, sudemi automatically, or the buyer before it was confirmed). Once per
+     * order: settled_orders and the change feed can both report it. Nothing when sudemi did not
+     * say who (an older core), as before.
+     *
+     * @param string $by buyer, shop, sudemi or '' (not said)
+     */
+    private function declinedNote($orderId, $by)
+    {
+        $by = self::cancelledBy($by);
+        if ($by === '') {
+            return;
+        }
+        $db = $this->db;
+        $query = $this->db->query(
+            "SELECT COUNT(*) AS n FROM " . $this->prefix . "order_history
+              WHERE order_id = '" . (int) $orderId . "'
+                AND comment IN ('" . implode("', '", array_map(function ($note) use ($db) {
+                    return $db->escape($note);
+                }, self::declineNotes())) . "')"
+        );
+        if ($query->num_rows && (int) $query->row['n'] > 0) {
+            return;
+        }
+        $this->note($orderId, $this->noteText(self::NOTE_DECLINED_KEYS[$by]));
     }
 
     /**
@@ -2062,14 +2123,18 @@ class Orders
             : null;
 
         $moved = '';
+        $cancelledBy = self::cancelledBy(isset($entry['cancelled_by']) ? $entry['cancelled_by'] : null);
         if ($local !== null) {
-            $moved = $this->applyStatus($local, $sudemiId, $status, $tracking,
-                self::cancelledBy(isset($entry['cancelled_by']) ? $entry['cancelled_by'] : null));
+            $moved = $this->applyStatus($local, $sudemiId, $status, $tracking, $cancelledBy);
         }
         // Notes only for an order this shop already followed: the first entries after an upgrade
         // (the feed starts with the last 7 days) move statuses but do not repeat old news.
         if ($local !== null && $known !== null) {
             $orderId = $local['id'];
+            if ($status === 'DECLINED' && strtoupper((string) $known['status']) !== 'DECLINED') {
+                // Released by now (here or by an earlier answer in this beat): say who declined.
+                $this->declinedNote($orderId, $cancelledBy);
+            }
             $before = (int) $known['refunded_minor'];
             if ($refunded > $before) {
                 $currency = isset($entry['currency_code']) && $entry['currency_code'] ? $entry['currency_code'] : $this->bookedCurrency($sudemiId);

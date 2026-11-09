@@ -360,3 +360,6 @@ $_['text_note_cancelled_buyer'] = 'בוטלה על ידי הקונה ב-sudemi �
 $_['text_note_cancelled_shop'] = 'בוטלה על ידי החנות ב-sudemi לפני המשלוח; הקונה קיבל החזר מלא';
 $_['text_note_cancelled_sudemi'] = 'בוטלה על ידי sudemi לפני המשלוח; הקונה קיבל החזר מלא';
 $_['text_note_cancelled'] = 'בוטלה ב-sudemi לפני המשלוח; הקונה קיבל החזר מלא';
+$_['text_note_declined_buyer'] = 'בוטלה על ידי הקונה ב-sudemi לפני שההזמנה אושרה; הקונה לא חויב';
+$_['text_note_declined_shop'] = 'נדחתה על ידי החנות שלך ב-sudemi; הקונה לא חויב';
+$_['text_note_declined_sudemi'] = 'נדחתה אוטומטית על ידי sudemi (למשל כי לא ניתנה תשובה להזמנה בזמן); הקונה לא חויב';

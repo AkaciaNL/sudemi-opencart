@@ -360,3 +360,6 @@ $_['text_note_cancelled_buyer'] = 'Vor dem Versand vom Käufer auf sudemi storni
 $_['text_note_cancelled_shop'] = 'Vor dem Versand vom Shop auf sudemi storniert; der Käufer hat alles zurückerhalten';
 $_['text_note_cancelled_sudemi'] = 'Vor dem Versand von sudemi storniert; der Käufer hat alles zurückerhalten';
 $_['text_note_cancelled'] = 'Vor dem Versand auf sudemi storniert; der Käufer hat alles zurückerhalten';
+$_['text_note_declined_buyer'] = 'Vom Käufer auf sudemi storniert, bevor die Bestellung bestätigt wurde; dem Käufer wurde nichts berechnet';
+$_['text_note_declined_shop'] = 'Von Ihrem Shop auf sudemi abgelehnt; dem Käufer wurde nichts berechnet';
+$_['text_note_declined_sudemi'] = 'Automatisch von sudemi abgelehnt (zum Beispiel, weil die Bestellung nicht rechtzeitig beantwortet wurde); dem Käufer wurde nichts berechnet';

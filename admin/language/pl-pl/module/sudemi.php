@@ -360,3 +360,6 @@ $_['text_note_cancelled_buyer'] = 'Anulowane przez kupującego w sudemi przed wy
 $_['text_note_cancelled_shop'] = 'Anulowane przez sklep w sudemi przed wysyłką; kupujący otrzymał zwrot całej kwoty';
 $_['text_note_cancelled_sudemi'] = 'Anulowane przez sudemi przed wysyłką; kupujący otrzymał zwrot całej kwoty';
 $_['text_note_cancelled'] = 'Anulowane w sudemi przed wysyłką; kupujący otrzymał zwrot całej kwoty';
+$_['text_note_declined_buyer'] = 'Anulowane przez kupującego w sudemi przed potwierdzeniem zamówienia; kupujący nie został obciążony';
+$_['text_note_declined_shop'] = 'Odrzucone przez Twój sklep w sudemi; kupujący nie został obciążony';
+$_['text_note_declined_sudemi'] = 'Odrzucone automatycznie przez sudemi (na przykład dlatego, że na zamówienie nie odpowiedziano na czas); kupujący nie został obciążony';

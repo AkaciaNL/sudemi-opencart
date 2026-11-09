@@ -360,3 +360,6 @@ $_['text_note_cancelled_buyer'] = '买家在发货前于 sudemi 上取消；已�
 $_['text_note_cancelled_shop'] = '店铺在发货前于 sudemi 上取消；已向买家全额退款';
 $_['text_note_cancelled_sudemi'] = 'sudemi 在发货前取消；已向买家全额退款';
 $_['text_note_cancelled'] = '发货前已在 sudemi 上取消；已向买家全额退款';
+$_['text_note_declined_buyer'] = '买家在订单确认前于 sudemi 上取消；未向买家扣款';
+$_['text_note_declined_shop'] = '您的店铺在 sudemi 上拒绝了该订单；未向买家扣款';
+$_['text_note_declined_sudemi'] = 'sudemi 已自动拒绝（例如因为未及时答复该订单）；未向买家扣款';

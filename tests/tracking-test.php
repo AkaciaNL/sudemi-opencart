@@ -9,7 +9,8 @@
  *    cancelled or refunded is final. Not answered: queued and retried on the heartbeat, with the
  *    same verdicts.
  * 4. No loop: tracking that comes from sudemi (the change feed) is stored and never sent back.
- * 5. changed_orders' cancelled_by: the note says who cancelled.
+ * 5. changed_orders' cancelled_by: the note says who cancelled; on a DECLINED order (changed_orders
+ *    and settled_orders) who declined, once, and nothing from an older core.
  *
  * Runs without OpenCart: the database, the config and sudemi are faked here.
  */
@@ -128,6 +129,14 @@ class FakeDb {
 				}
 			}
 			return $this->rows( array() );
+		}
+		if ( preg_match( "/^SELECT order_id, order_status_id, comment FROM oc_order WHERE order_id = '(\d+)' LIMIT 1$/", $sql, $m ) ) {
+			$o = isset( $this->orders[ $m[1] ] ) ? $this->orders[ $m[1] ] : null;
+			return $this->rows( $o ? array( array( 'order_id' => $m[1], 'order_status_id' => $o['status'], 'comment' => $o['comment'] ) ) : array() );
+		}
+		if ( preg_match( "/^UPDATE oc_order SET comment = CONCAT\(comment, ' \(released\)'\), date_modified = NOW\(\) WHERE order_id = '(\d+)'$/", $sql, $m ) ) {
+			$this->orders[ $m[1] ]['comment'] .= ' (released)';
+			return true;
 		}
 		if ( preg_match( "/^SELECT order_status_id FROM oc_order WHERE order_id = '(\d+)'$/", $sql, $m ) ) {
 			return $this->rows( isset( $this->orders[ $m[1] ] ) ? array( array( 'order_status_id' => $this->orders[ $m[1] ]['status'] ) ) : array() );
@@ -354,10 +363,83 @@ check( 'changeFromRow / changeFromDetail carry cancelled_by when sudemi sends it
 	'buyer' === \Sudemi\Orders::changeFromRow( array( 'order_id' => O1, 'status' => 'CANCELLED', 'cancelled_by' => 'buyer' ) )['cancelled_by']
 	&& null === \Sudemi\Orders::changeFromDetail( array( 'order_id' => O1, 'status' => 'CANCELLED' ) )['cancelled_by'] );
 
+// ---- 5b. who declined (never charged), from the change feed and settled_orders --------------------
+const DECLINED_NOTES = array(
+	'buyer'  => 'Cancelled by the buyer on sudemi before the order was confirmed; the buyer was not charged',
+	'shop'   => 'Declined by your shop on sudemi; the buyer was not charged',
+	'sudemi' => 'Declined automatically by sudemi (for example because the order was not answered in time); the buyer was not charged',
+);
+function declined( $by, $revision = 4 ) {
+	$entry = array( 'order_id' => O1, 'status' => 'DECLINED', 'revision' => $revision, 'refunded_minor' => 0, 'tracking' => null, 'request' => null );
+	if ( null !== $by ) {
+		$entry['cancelled_by'] = $by;
+	}
+	return $entry;
+}
+foreach ( array( 'buyer', 'shop', 'sudemi', null, 'someone' ) as $by ) {
+	list( $orders, $db, $client ) = shop( 0, 'AWAITING_SELLER' );
+	$orders->applyChange( declined( $by ) );
+	$notes = array_column( $db->history, 'comment' );
+	$want  = isset( DECLINED_NOTES[ (string) $by ] ) ? array( DECLINED_NOTES[ $by ] ) : array();
+	check( 'feed DECLINED, cancelled_by ' . json_encode( $by ) . ': released, stock back once, ' . ( $want ? 'the note says who declined' : 'no note (as before)' ),
+		0 === $db->orders[42]['status'] && 'sudemi:' . O1 . ' (released)' === $db->orders[42]['comment'] && 6 === $db->products[7]
+		&& $want === $notes && array() === $client->calls );
+	$orders->applyChange( declined( $by, 5 ) );
+	check( 'feed DECLINED, cancelled_by ' . json_encode( $by ) . ': a later entry adds nothing', $want === array_column( $db->history, 'comment' ) && 6 === $db->products[7] );
+}
+
+// Released by an earlier answer in the same beat (reconcile's accept: already_resolved DECLINED),
+// then the feed says sudemi declined it: the note still comes, once.
+list( $orders, $db, $client ) = shop( 0, 'AWAITING_SELLER' );
+$db->orders[42]['comment'] .= ' (released)';
+$orders->applyChange( declined( 'sudemi' ) );
+check( 'already released here, feed DECLINED by sudemi: the note says sudemi declined it, nothing restocked again',
+	array( DECLINED_NOTES['sudemi'] ) === array_column( $db->history, 'comment' ) && 5 === $db->products[7] );
+list( $orders, $db, $client ) = shop( 0, 'DECLINED' );
+$orders->applyChange( declined( 'shop', 5 ) );
+check( 'already DECLINED in this shop\'s copy: no note repeated', array() === $db->history );
+list( $orders, $db, $client ) = shop( 0, null );
+$db->orders[42]['comment'] .= ' (released)';
+$orders->applyChange( declined( 'shop' ) );
+check( 'an order this shop did not follow yet (first feed after an upgrade): no old news', array() === $db->history );
+
+// settled_orders: an accepted order released after all, then the same order on the feed.
+list( $orders, $db, $client, $store ) = shop( 0, 'ACCEPTED' );
+$orders->handleSettled( array( array( 'order_id' => O1, 'status' => 'DECLINED', 'declined_reason' => 'Out of stock in DE', 'cancelled_by' => 'shop' ) ) );
+check( 'settled DECLINED by the shop: released, stock back, the note says your shop declined it',
+	'sudemi:' . O1 . ' (released)' === $db->orders[42]['comment'] && 6 === $db->products[7]
+	&& array( DECLINED_NOTES['shop'] ) === array_column( $db->history, 'comment' ) );
+check( 'the log line keeps the declined reason and says who', false !== strpos( (string) $store->read( 'sudemi_log' ), 'declined by the shop' )
+	&& false !== strpos( (string) $store->read( 'sudemi_log' ), 'Out of stock in DE' ) );
+$orders->handleSettled( array( array( 'order_id' => O1, 'status' => 'DECLINED', 'declined_reason' => 'Out of stock in DE', 'cancelled_by' => 'shop' ) ) );
+$orders->applyChange( declined( 'shop' ) );
+check( 'the next beat (settled again, then the feed): still one note, stock back once',
+	array( DECLINED_NOTES['shop'] ) === array_column( $db->history, 'comment' ) && 6 === $db->products[7] );
+list( $orders, $db, $client, $store ) = shop( 0, 'ACCEPTED' );
+$orders->handleSettled( array( array( 'order_id' => O1, 'status' => 'DECLINED', 'declined_reason' => 'authorisation lapsed' ) ) );
+check( 'settled DECLINED from an older core (no cancelled_by): released, no note, the reason logged as before',
+	6 === $db->products[7] && array() === $db->history && false !== strpos( (string) $store->read( 'sudemi_log' ), 'released after all: authorisation lapsed' ) );
+
+// The note in the admin's language; a note written in another language still counts as written.
+list( $orders, $db, $client ) = shop( 0, 'AWAITING_SELLER' );
+$db->history[] = array( 'order_id' => 42, 'status' => 0, 'comment' => 'x' );
+$config = new FakeConfig();
+$config->values['config_language_admin'] = 'de-de';
+$orders = new \Sudemi\Orders( $db, $config, $client, new \Sudemi\Logger( new ArrayStore() ), new ArrayStore() );
+$orders->applyChange( declined( 'sudemi' ) );
+check( 'German admin: the note in German', 'Automatisch von sudemi abgelehnt (zum Beispiel, weil die Bestellung nicht rechtzeitig beantwortet wurde); dem Käufer wurde nichts berechnet'
+	=== $db->history[1]['comment'] );
+$config->values['config_language_admin'] = 'en-gb';
+$orders->applyChange( declined( 'sudemi', 5 ) );
+check( 'the admin language changed afterwards: no second note in English', 2 === count( $db->history ) );
+check( 'declineNotes: three per language, twelve languages, HTML-escaped as stored',
+	36 === count( \Sudemi\Orders::declineNotes() ) && in_array( 'Annulée par l’acheteur sur sudemi avant la confirmation de la commande ; l’acheteur n’a pas été débité', \Sudemi\Orders::declineNotes(), true ) );
+
 // ---- 6. the texts in every language ---------------------------------------------------------------
 $keys = array( 'text_tracking_saved', 'text_tracking_sent', 'text_tracking_unchanged', 'text_tracking_retry', 'error_tracking_final',
 	'error_tracking_failed', 'error_tracking_code_required', 'button_update_tracking', 'help_update_tracking', 'text_action_tracking_updated',
-	'help_tracking', 'text_note_cancelled_buyer', 'text_note_cancelled_shop', 'text_note_cancelled_sudemi', 'text_note_cancelled' );
+	'help_tracking', 'text_note_cancelled_buyer', 'text_note_cancelled_shop', 'text_note_cancelled_sudemi', 'text_note_cancelled',
+	'text_note_declined_buyer', 'text_note_declined_shop', 'text_note_declined_sudemi' );
 $_ = array();
 include __DIR__ . '/../admin/language/en-gb/module/sudemi.php';
 $english = $_;
@@ -373,7 +455,9 @@ foreach ( glob( __DIR__ . '/../admin/language/*/module/sudemi.php' ) as $file ) 
 	}
 	check( "no long dash in the new texts in $code", ! $dash );
 	if ( 'en-gb' !== $code ) {
-		check( "the new texts are translated in $code", $_['text_tracking_sent'] !== $english['text_tracking_sent'] && $_['text_note_cancelled_shop'] !== $english['text_note_cancelled_shop'] );
+		check( "the new texts are translated in $code", $_['text_tracking_sent'] !== $english['text_tracking_sent'] && $_['text_note_cancelled_shop'] !== $english['text_note_cancelled_shop']
+			&& $_['text_note_declined_shop'] !== $english['text_note_declined_shop'] && $_['text_note_declined_sudemi'] !== $english['text_note_declined_sudemi']
+			&& $_['text_note_declined_buyer'] !== $english['text_note_declined_buyer'] );
 	}
 }
 check( 'twelve languages', 12 === count( glob( __DIR__ . '/../admin/language/*/module/sudemi.php' ) ) );

@@ -360,3 +360,6 @@ $_['text_note_cancelled_buyer'] = 'Annulée par l’acheteur sur sudemi avant l�
 $_['text_note_cancelled_shop'] = 'Annulée par la boutique sur sudemi avant l’expédition ; l’acheteur a été remboursé en totalité';
 $_['text_note_cancelled_sudemi'] = 'Annulée par sudemi avant l’expédition ; l’acheteur a été remboursé en totalité';
 $_['text_note_cancelled'] = 'Annulée sur sudemi avant l’expédition ; l’acheteur a été remboursé en totalité';
+$_['text_note_declined_buyer'] = 'Annulée par l’acheteur sur sudemi avant la confirmation de la commande ; l’acheteur n’a pas été débité';
+$_['text_note_declined_shop'] = 'Refusée par votre boutique sur sudemi ; l’acheteur n’a pas été débité';
+$_['text_note_declined_sudemi'] = 'Refusée automatiquement par sudemi (par exemple parce que la commande n’a pas reçu de réponse à temps) ; l’acheteur n’a pas été débité';

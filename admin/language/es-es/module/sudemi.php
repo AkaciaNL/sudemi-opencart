@@ -360,3 +360,6 @@ $_['text_note_cancelled_buyer'] = 'Cancelado por el comprador en sudemi antes de
 $_['text_note_cancelled_shop'] = 'Cancelado por la tienda en sudemi antes del envío; se ha reembolsado todo al comprador';
 $_['text_note_cancelled_sudemi'] = 'Cancelado por sudemi antes del envío; se ha reembolsado todo al comprador';
 $_['text_note_cancelled'] = 'Cancelado en sudemi antes del envío; se ha reembolsado todo al comprador';
+$_['text_note_declined_buyer'] = 'Cancelado por el comprador en sudemi antes de que se confirmara el pedido; no se ha cobrado nada al comprador';
+$_['text_note_declined_shop'] = 'Rechazado por su tienda en sudemi; no se ha cobrado nada al comprador';
+$_['text_note_declined_sudemi'] = 'Rechazado automáticamente por sudemi (por ejemplo, porque el pedido no se respondió a tiempo); no se ha cobrado nada al comprador';

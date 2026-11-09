@@ -360,3 +360,6 @@ $_['text_note_cancelled_buyer'] = 'Kargolanmadan önce alıcı tarafından sudem
 $_['text_note_cancelled_shop'] = 'Kargolanmadan önce mağaza tarafından sudemi’de iptal edildi; alıcıya tamamı iade edildi';
 $_['text_note_cancelled_sudemi'] = 'Kargolanmadan önce sudemi tarafından iptal edildi; alıcıya tamamı iade edildi';
 $_['text_note_cancelled'] = 'Kargolanmadan önce sudemi’de iptal edildi; alıcıya tamamı iade edildi';
+$_['text_note_declined_buyer'] = 'Sipariş onaylanmadan önce alıcı tarafından sudemi’de iptal edildi; alıcıdan ücret alınmadı';
+$_['text_note_declined_shop'] = 'Mağazanız tarafından sudemi’de reddedildi; alıcıdan ücret alınmadı';
+$_['text_note_declined_sudemi'] = 'sudemi tarafından otomatik olarak reddedildi (örneğin sipariş zamanında yanıtlanmadığı için); alıcıdan ücret alınmadı';

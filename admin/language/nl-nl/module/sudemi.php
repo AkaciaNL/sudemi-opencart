@@ -360,3 +360,6 @@ $_['text_note_cancelled_buyer'] = 'Geannuleerd door de koper op sudemi vóór ve
 $_['text_note_cancelled_shop'] = 'Geannuleerd door de winkel op sudemi vóór verzending; de koper heeft alles terugbetaald gekregen';
 $_['text_note_cancelled_sudemi'] = 'Geannuleerd door sudemi vóór verzending; de koper heeft alles terugbetaald gekregen';
 $_['text_note_cancelled'] = 'Geannuleerd op sudemi vóór verzending; de koper heeft alles terugbetaald gekregen';
+$_['text_note_declined_buyer'] = 'Geannuleerd door de koper op sudemi voordat de bestelling was bevestigd; de koper heeft niets betaald';
+$_['text_note_declined_shop'] = 'Afgewezen door je winkel op sudemi; de koper heeft niets betaald';
+$_['text_note_declined_sudemi'] = 'Automatisch afgewezen door sudemi (bijvoorbeeld omdat de bestelling niet op tijd is beantwoord); de koper heeft niets betaald';

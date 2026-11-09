@@ -360,3 +360,6 @@ $_['text_note_cancelled_buyer'] = 'ألغاه المشتري على sudemi قب�
 $_['text_note_cancelled_shop'] = 'ألغاه المتجر على sudemi قبل الشحن؛ استُرد للمشتري المبلغ كاملاً';
 $_['text_note_cancelled_sudemi'] = 'ألغاه sudemi قبل الشحن؛ استُرد للمشتري المبلغ كاملاً';
 $_['text_note_cancelled'] = 'أُلغي على sudemi قبل الشحن؛ استُرد للمشتري المبلغ كاملاً';
+$_['text_note_declined_buyer'] = 'ألغاه المشتري على sudemi قبل تأكيد الطلب؛ لم يُخصم من المشتري أي مبلغ';
+$_['text_note_declined_shop'] = 'رفضه متجرك على sudemi؛ لم يُخصم من المشتري أي مبلغ';
+$_['text_note_declined_sudemi'] = 'رفضه sudemi تلقائيًا (مثلًا لأنه لم يُردّ على الطلب في الوقت المحدد)؛ لم يُخصم من المشتري أي مبلغ';

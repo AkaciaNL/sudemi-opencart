@@ -40,6 +40,10 @@ core the extension works as 1.2 did.
   shipping say who did it (the buyer, the shop or sudemi; `cancelled_by`, core 2026-11-09), in the
   admin's language. Before, every such note said the buyer cancelled; with an older core the note
   is neutral.
+- **Who declined**: a local order whose sudemi order was declined (the buyer never charged) gets a
+  note saying who: your shop declined it on sudemi, sudemi declined it automatically (for example
+  not answered in time), or the buyer cancelled before it was confirmed. Once per order, from
+  `settled_orders` or the change feed; with an older core no note, as before.
 - **sudemi shipping page**: ship to the shop's own prices, or choose countries and a price per
   country on sudemi; "Fill in from my shop" takes the countries and prices from your geo zones and
   shipping methods; the page shows what buyers pay now per country.
