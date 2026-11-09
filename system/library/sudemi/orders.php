@@ -2,6 +2,7 @@
 namespace Sudemi;
 
 require_once __DIR__ . '/currency.php';
+require_once __DIR__ . '/shipping.php';
 
 /**
  * Answering sudemi's question: can this shop actually fulfil the order?
@@ -674,12 +675,25 @@ class Orders
         }
 
         if ($paid !== null) {
+            // The shipping as OpenCart's own checkout books it: without tax, its VAT in the tax
+            // rows at the rates of the shipping method's tax class for the destination (the
+            // shipping price sudemi charged was synced with that tax in it).
+            $shippingNet = $paid['shipping'];
+            if ($paid['shipping'] > 0 && $countryId) {
+                $shipping = new Shipping($this->db, $this->config);
+                $taxClassId = $shipping->taxClassFor($countryId, Currency::fromMinor($paid['shipping'], $currency));
+                $split = self::splitTax($paid['shipping'], $this->classRates($taxClassId, $countryId));
+                $shippingNet = $split['net'];
+                foreach ($split['taxes'] as $rateId => $tax) {
+                    $taxes[$rateId] = (isset($taxes[$rateId]) ? $taxes[$rateId] : 0) + $tax;
+                }
+            }
             // The order's totals, as OpenCart's own checkout writes them: without them the order
             // page shows no shipping and the shop's books miss what the buyer paid for it. The
             // total row is total_minor whatever the parts add up to.
             $text = $this->text();
             $rows = [['sub_total', $text['text_order_sub_total'], $goodsNet, 1]];
-            $rows[] = ['shipping', $text['text_order_shipping'], $paid['shipping'], 3];
+            $rows[] = ['shipping', $text['text_order_shipping'], $shippingNet, 3];
             foreach ($taxes as $rateId => $tax) {
                 $rows[] = ['tax', $this->rateName($rateId), $tax, 5];
             }
@@ -777,8 +791,18 @@ class Orders
         $product = $this->db->query(
             "SELECT tax_class_id FROM " . $this->prefix . "product WHERE product_id = '" . (int) $productId . "' LIMIT 1"
         );
-        $taxClassId = $product->num_rows ? (int) $product->row['tax_class_id'] : 0;
-        if (!$taxClassId) {
+
+        return $this->classRates($product->num_rows ? (int) $product->row['tax_class_id'] : 0, $countryId);
+    }
+
+    /**
+     * A tax class's percentage rates for a country. Fixed-amount rates are left in the price.
+     *
+     * @return array<int, float> tax_rate_id => percentage
+     */
+    private function classRates($taxClassId, $countryId)
+    {
+        if (!$taxClassId || !$countryId) {
             return [];
         }
         $query = $this->db->query(

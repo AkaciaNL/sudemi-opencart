@@ -93,6 +93,48 @@ class Shipping
         return (float) $price + $this->tax((float) $price, (int) $taxClassId, (int) $this->config->get('config_country_id'));
     }
 
+    /**
+     * The tax class of the shop's shipping method a shipping price with tax came from, for a
+     * country: the one class when every method that delivers there uses the same, else the
+     * method (or weight band) whose price with tax is this price. 0 when none matches.
+     *
+     * @param float $grossMajor the shipping price with tax, in the store's currency
+     */
+    public function taxClassFor($countryId, $grossMajor)
+    {
+        $methods = [];
+        if ($this->config->get('shipping_flat_status') && $this->covers((int) $this->config->get('shipping_flat_geo_zone_id'), $countryId)) {
+            $methods[] = [(float) $this->config->get('shipping_flat_cost'), (int) $this->config->get('shipping_flat_tax_class_id')];
+        }
+        if ($this->config->get('shipping_item_status') && $this->covers((int) $this->config->get('shipping_item_geo_zone_id'), $countryId)) {
+            $methods[] = [(float) $this->config->get('shipping_item_cost'), (int) $this->config->get('shipping_item_tax_class_id')];
+        }
+        if ($this->config->get('shipping_weight_status')) {
+            foreach ($this->geoZonesCovering($countryId) as $geoZoneId) {
+                if (!$this->config->get('shipping_weight_' . $geoZoneId . '_status')) {
+                    continue;
+                }
+                foreach (explode(',', (string) $this->config->get('shipping_weight_' . $geoZoneId . '_rate')) as $band) {
+                    $parts = explode(':', trim($band));
+                    if (count($parts) === 2 && is_numeric($parts[1])) {
+                        $methods[] = [(float) $parts[1], (int) $this->config->get('shipping_weight_tax_class_id')];
+                    }
+                }
+            }
+        }
+        $classes = array_unique(array_map(function ($m) { return $m[1]; }, $methods));
+        if (count($classes) === 1) {
+            return (int) reset($classes);
+        }
+        foreach ($methods as $m) {
+            if (abs($m[0] + $this->tax($m[0], $m[1], $countryId) - (float) $grossMajor) < 0.006) {
+                return $m[1];
+            }
+        }
+
+        return 0;
+    }
+
     private function candidates($countryId, $weightKg)
     {
         $out = [];
