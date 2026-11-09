@@ -16,7 +16,7 @@
 - **The settings page shows the shop currency sudemi sees**, that buyers pay in it, and for a
   currency other than EUR that Stripe's conversion fee (about 2%) is taken from the payout (which
   is in EUR). A warning shows when sudemi cannot take payments in the shop's default currency
-  (supported: EUR, PLN, CZK, HUF, RON, SEK, DKK, CHF, GBP, NOK, TRY) or still has an older one.
+  (supported: EUR and every ECB currency except ISK) or still has an older one.
 - The order list on the settings page shows what the buyer paid next to what you receive, both in
   the currency charged and with that currency's decimals. The delivery cost preview too.
 

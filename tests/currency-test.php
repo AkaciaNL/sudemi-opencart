@@ -188,7 +188,7 @@ check( 'toMinor: 19.99 rounds to 1999, not 1998', 1999 === Currency::toMinor( 19
 check( 'toMinor: no price stays null', null === Currency::toMinor( '', 'EUR' ) && null === Currency::toMinor( null, 'EUR' ) );
 check( 'fromMinor: 1345 PLN -> 13.45, 1500 JPY -> 1500', abs( Currency::fromMinor( 1345, 'PLN' ) - 13.45 ) < 1e-9 && 1500.0 === (float) Currency::fromMinor( 1500, 'JPY' ) );
 check( 'format: 1345 PLN, 1500 JPY, 123456 EUR', '13.45 PLN' === Currency::format( 1345, 'PLN' ) && '1500 JPY' === Currency::format( 1500, 'JPY' ) && '1234.56 EUR' === Currency::format( 123456, 'EUR' ) );
-check( 'supported shop currencies (contract 4c)', Currency::isSupported( 'PLN' ) && Currency::isSupported( 'try' ) && Currency::isSupported( 'EUR' ) && ! Currency::isSupported( 'USD' ) && ! Currency::isSupported( 'JPY' ) && ! Currency::isSupported( null ) );
+check( 'supported shop currencies (contract 4c)', Currency::isSupported( 'PLN' ) && Currency::isSupported( 'try' ) && Currency::isSupported( 'EUR' ) && Currency::isSupported( 'JPY' ) && Currency::isSupported( 'USD' ) && ! Currency::isSupported( 'ISK' ) && ! Currency::isSupported( null ) );
 check( 'normalise refuses what is not a code', null === Currency::normalise( 'euro' ) && null === Currency::normalise( "EU'R" ) && 'EUR' === Currency::normalise( ' eur ' ) );
 
 // ---- 2. which orders are declined ----------------------------------------------------------------
@@ -282,11 +282,11 @@ $send->setAccessible( true );
 $client->answers   = array( array( 'status' => 200, 'body' => array( 'status' => 'ok', 'currency' => 'PLN' ) ) );
 $send->invoke( $sync );
 check( 'POST /shop answered PLN: remembered for the settings page', 'PLN' === $store->read( Currency::SETTING_SHOP_CURRENCY ) && null === $store->read( Currency::SETTING_REFUSED ) );
-$catalogue->currency = 'USD';
-$client->answers     = array( array( 'status' => 400, 'body' => array( 'error' => 'bad_request', 'message' => 'currency USD is not supported for shops' ) ) );
+$catalogue->currency = 'ISK';
+$client->answers     = array( array( 'status' => 400, 'body' => array( 'error' => 'bad_request', 'message' => 'currency ISK is not supported for shops' ) ) );
 $send->invoke( $sync );
-check( 'POST /shop refused USD: noted and logged, the last confirmed currency kept',
-	'USD' === $store->read( Currency::SETTING_REFUSED ) && 'PLN' === $store->read( Currency::SETTING_SHOP_CURRENCY ) && logged( $logger, 'USD' ) );
+check( 'POST /shop refused ISK: noted and logged, the last confirmed currency kept',
+	'ISK' === $store->read( Currency::SETTING_REFUSED ) && 'PLN' === $store->read( Currency::SETTING_SHOP_CURRENCY ) && logged( $logger, 'ISK' ) );
 $catalogue->currency = 'PLN';
 $client->answers     = array( array( 'status' => 200, 'body' => array( 'status' => 'ok', 'currency' => 'PLN' ) ) );
 $send->invoke( $sync );
@@ -308,7 +308,7 @@ foreach ( $files as $file ) {
 	// The texts filled in with sprintf take exactly the arguments the page passes.
 	check( "currency texts in $code format cleanly",
 		false !== strpos( sprintf( $_['text_currency_seen'], 'PLN' ), 'PLN' )
-		&& false !== strpos( sprintf( $_['text_currency_unsupported'], 'USD', 'EUR, PLN' ), 'EUR, PLN' )
+		&& false !== strpos( sprintf( $_['text_currency_unsupported'], 'ISK', 'EUR, PLN' ), 'EUR, PLN' )
 		&& false !== strpos( sprintf( $_['text_currency_changed'], 'PLN', 'EUR' ), 'EUR' ) );
 }
 

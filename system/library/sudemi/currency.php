@@ -14,8 +14,8 @@ namespace Sudemi;
 
 class Currency
 {
-    /** The shop currencies sudemi takes payments in (PROTOCOL.md, "Currency"). */
-    const SUPPORTED = ['EUR', 'PLN', 'CZK', 'HUF', 'RON', 'SEK', 'DKK', 'CHF', 'GBP', 'NOK', 'TRY'];
+    /** Shop currencies sudemi takes: EUR and every ECB currency except ISK (owner 2026-11-09, PROTOCOL.md). */
+    const SUPPORTED = ['EUR', 'AUD', 'BRL', 'CAD', 'CHF', 'CNY', 'CZK', 'DKK', 'GBP', 'HKD', 'HUF', 'IDR', 'ILS', 'INR', 'JPY', 'KRW', 'MXN', 'MYR', 'NOK', 'NZD', 'PHP', 'PLN', 'RON', 'SEK', 'SGD', 'THB', 'TRY', 'USD', 'ZAR'];
 
     /** The shop currency as sudemi last confirmed it on POST /shop. */
     const SETTING_SHOP_CURRENCY = 'sudemi_shop_currency';
