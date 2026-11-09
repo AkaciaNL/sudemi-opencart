@@ -117,6 +117,14 @@
               </div>
               <button type="button" class="btn btn-primary mt-2" data-action="shipped" onclick="sudemiAct('shipped', {carrier: $('#sudemi-ship-carrier').val(), tracking: $('#sudemi-ship-tracking').val()})">{{ button_shipped }}</button></div>
             {% endif %}
+            {% if order.actions.update_tracking %}
+              <div class="mb-3 border-top pt-2" id="sudemi-update-tracking"><div class="row g-2">
+                <div class="col-6"><label class="form-label" for="sudemi-update-carrier">{{ entry_carrier }}</label><input type="text" id="sudemi-update-carrier" class="form-control" maxlength="100" value="{{ order.carrier_prefill }}"></div>
+                <div class="col-6"><label class="form-label" for="sudemi-update-tracking-code">{{ entry_tracking }}</label><input type="text" id="sudemi-update-tracking-code" class="form-control" maxlength="100" value="{{ order.tracking_prefill }}"></div>
+              </div>
+              <div class="form-text">{{ help_update_tracking }}</div>
+              <button type="button" class="btn btn-outline-primary mt-2" data-action="update_tracking" onclick="sudemiAct('update_tracking', {carrier: $('#sudemi-update-carrier').val(), tracking: $('#sudemi-update-tracking-code').val()})">{{ button_update_tracking }}</button></div>
+            {% endif %}
             {% if order.actions.delivered %}
               <div class="mb-3"><button type="button" class="btn btn-outline-primary" data-action="delivered" onclick="sudemiAct('delivered')">{{ button_delivered }}</button></div>
             {% endif %}

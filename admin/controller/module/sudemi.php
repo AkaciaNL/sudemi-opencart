@@ -677,19 +677,35 @@ class Sudemi extends \Opencart\System\Engine\Controller
 
             return;
         }
-        $orders = $this->services()['orders'];
+        $sudemi = $this->services();
+        $orders = $sudemi['orders'];
         $id = strtolower($this->posted('order_id'));
-        if (!\Sudemi\Requests::isId($id) || !$orders->saveTracking($id, $this->posted('carrier'), $this->posted('tracking'))) {
-            $json['error'] = $this->language->get('error_order_not_found');
-        } else {
-            $json['success'] = $this->language->get('text_tracking_saved');
+        $result = \Sudemi\Requests::isId($id) ? $orders->updateTracking($id, $this->posted('carrier'), $this->posted('tracking')) : 'invalid';
+        // Saved here in every case but invalid; sent to sudemi at once when the order was already
+        // reported shipped (tracking added or corrected after shipping).
+        $messages = [
+            'saved' => ['success', 'text_tracking_saved'],
+            'sent' => ['success', 'text_tracking_sent'],
+            'unchanged' => ['success', 'text_tracking_unchanged'],
+            'retry' => ['success', 'text_tracking_retry'],
+            'final' => ['error', 'error_tracking_final'],
+            'failed' => ['error', 'error_tracking_failed'],
+            'code_required' => ['error', 'error_tracking_code_required'],
+            'invalid' => ['error', 'error_order_not_found'],
+        ];
+        list($kind, $key) = isset($messages[$result]) ? $messages[$result] : $messages['invalid'];
+        $json[$kind] = $this->language->get($key);
+        $json['result'] = $result;
+        if (in_array($result, ['sent', 'unchanged'], true)) {
+            // sudemi's answer, applied here (new revision; the tracking it now holds).
+            $orders->refresh($id);
         }
         $this->respond($json);
     }
 
     /**
      * One action on one order, as sudemi's allowed_actions offer it: accept, reject, shipped,
-     * delivered, refund (part or all), cancel, request_accept, request_reject. Sent to sudemi;
+     * update_tracking, delivered, refund (part or all), cancel, request_accept, request_reject. Sent to sudemi;
      * then the order is read back and the local order brought to it.
      */
     public function orderAction(): void
@@ -753,6 +769,18 @@ class Sudemi extends \Opencart\System\Engine\Controller
                     ['carrier' => trim($carrier) === '' ? null : trim($carrier), 'trackingCode' => trim($code) === '' ? null : trim($code)]),
                     'text_action_shipped');
                 break;
+            case 'update_tracking':
+                // Tracking added or corrected after shipping (sudemi offers it while SHIPPED).
+                $carrier = trim($this->posted('carrier'));
+                $code = trim($this->posted('tracking'));
+                if ($code === '') {
+                    $json['error'] = $this->language->get('error_tracking_code_required');
+                    break;
+                }
+                $orders->saveTracking($id, $carrier, $code);
+                $this->actionAnswer($json, $sudemi['client']->sendSigned('POST', $path . 'tracking',
+                    ['carrier' => $carrier === '' ? null : $carrier, 'trackingCode' => $code]), 'text_action_tracking_updated');
+                break;
             case 'delivered':
                 $this->actionAnswer($json, $sudemi['client']->sendSigned('POST', $path . 'delivered', []), 'text_action_delivered');
                 break;
@@ -798,8 +826,9 @@ class Sudemi extends \Opencart\System\Engine\Controller
                 $json['error'] = $this->language->get('error_action_unknown');
         }
         if (!in_array($action, ['accept', 'reject'], true) && empty($json['error'])) {
-            // sudemi's answer, applied here (accept and reject read it back themselves).
-            $orders->refresh($id);
+            // sudemi's answer, applied here (accept and reject read it back themselves). The order
+            // page does not say who cancelled; a cancel pressed here was the shop's.
+            $orders->refresh($id, $action === 'cancel' ? 'shop' : null);
         }
         $this->respond($json);
     }

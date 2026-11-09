@@ -30,10 +30,24 @@ class Orders
     const STATUS_CANCELED = 7;
     const STATUS_REFUNDED = 11;
 
-    /** The history note on a local order cancelled because the buyer cancelled it on sudemi. */
+    /**
+     * The history note on a local order cancelled because the buyer cancelled it on sudemi (the
+     * English text; before 1.3.0 every cancellation from sudemi got this note).
+     */
     const NOTE_CANCELLED_BY_BUYER = 'Cancelled by the buyer on sudemi before shipping; the buyer has been refunded in full';
 
-    /** Shipped/delivered (and shop cancellations) that did not get through, retried each beat. */
+    /**
+     * The note per cancelled_by (core 2026-11-09: buyer, shop or sudemi; '' when not said, an older
+     * core). Written in the admin's language; the English texts are in admin/language/en-gb.
+     */
+    const NOTE_CANCELLED_KEYS = array(
+        'buyer' => 'text_note_cancelled_buyer',
+        'shop' => 'text_note_cancelled_shop',
+        'sudemi' => 'text_note_cancelled_sudemi',
+        '' => 'text_note_cancelled',
+    );
+
+    /** Shipped/delivered/tracking (and shop cancellations) that did not get through, retried each beat. */
     const SETTING_CALLS = 'sudemi_order_calls';
     const CALLS_MAX = 500;
     const CALLS_PER_BEAT = 25;
@@ -1013,11 +1027,12 @@ class Orders
         }
         $current = $this->statusOf($orderId);
 
-        // The buyer cancelled before shipping (or the order was cancelled on sudemi another way):
-        // sudemi already refunded the buyer in full. An order confirmed here would otherwise stay
-        // Pending/Processing and could still be shipped.
+        // Cancelled before shipping (by the buyer, the shop on the portal or sudemi; cancelled_by
+        // says who): sudemi already refunded the buyer in full. An order confirmed here would
+        // otherwise stay Pending/Processing and could still be shipped.
+        $by = self::cancelledBy(isset($settled['cancelled_by']) ? $settled['cancelled_by'] : null);
         if ($state === 'CANCELLED' && $current !== self::STATE_INCOMPLETE) {
-            $this->cancelledOnSudemi($orderId, $sudemiId, $current);
+            $this->cancelledOnSudemi($orderId, $sudemiId, $current, $by);
 
             return;
         }
@@ -1038,8 +1053,9 @@ class Orders
             // Marked released, so a second beat does not restock again.
             $this->release($orderId);
             $this->logger->warn(sprintf(
-                'sudemi order %s was released after all: %s. Stock restored; do not ship it.',
+                'sudemi order %s was released after all%s: %s. Stock restored; do not ship it.',
                 $sudemiId,
+                $by !== '' ? ' (' . ($state === 'DECLINED' ? 'declined' : 'cancelled') . ' ' . self::byWhom($by) . ')' : '',
                 $reason
             ));
             return;
@@ -1052,17 +1068,22 @@ class Orders
     }
 
     /**
-     * A confirmed local order whose sudemi order was cancelled (by the buyer, before shipping):
-     * moved to Canceled with stock restored the way OpenCart's own cancel restores it, and a note
-     * in the order history. Written straight to the tables, so OpenCart's addHistory event does
-     * not fire and this extension does not send sudemi a cancel (or refund) for a cancellation
-     * that came from sudemi; isCancelledOnSudemi() guards the event for later manual changes.
+     * A confirmed local order whose sudemi order was cancelled before shipping (by the buyer, by
+     * the shop on the portal or the seller API, or by sudemi): moved to Canceled with stock
+     * restored the way OpenCart's own cancel restores it, and a note in the order history that
+     * says who cancelled (neutral when sudemi did not say). Written straight to the tables, so
+     * OpenCart's addHistory event does not fire and this extension does not send sudemi a cancel
+     * (or refund) for a cancellation that came from sudemi; isCancelledOnSudemi() guards the
+     * event for later manual changes.
      *
      * Left alone: an order already Canceled or Refunded here, one already shipped or complete,
      * and anything not in an open (processing) status. sudemi repeats the entry for 7 days.
+     *
+     * @param string $by buyer, shop, sudemi or '' (not said)
      */
-    private function cancelledOnSudemi($orderId, $sudemiId, $current)
+    private function cancelledOnSudemi($orderId, $sudemiId, $current, $by = '')
     {
+        $by = self::cancelledBy($by);
         $processing = $this->statusList('config_processing_status');
         $complete = $this->statusList('config_complete_status');
         $confirmed = (int) $this->config->get('config_order_status_id');
@@ -1088,25 +1109,70 @@ class Orders
             $this->restockOrder($orderId);
         }
         $this->setStatus($orderId, self::STATUS_CANCELED);
-        $this->note($orderId, self::NOTE_CANCELLED_BY_BUYER, self::STATUS_CANCELED);
+        $this->note($orderId, $this->noteText(self::NOTE_CANCELLED_KEYS[$by]), self::STATUS_CANCELED);
         $this->logger->info(sprintf(
-            'sudemi order %s was cancelled by the buyer before shipping; order %d is now Canceled and its stock restored. The buyer was refunded in full by sudemi. Do not ship it.',
+            'sudemi order %s was cancelled%s before shipping; order %d is now Canceled and its stock restored. The buyer was refunded in full by sudemi. Do not ship it.',
             $sudemiId,
+            $by !== '' ? ' ' . self::byWhom($by) : ' on sudemi',
             $orderId
         ));
     }
 
+    /** cancelled_by as sent (buyer, shop, sudemi), '' for anything else (not said, an older core). */
+    public static function cancelledBy($value)
+    {
+        $value = is_string($value) ? strtolower(trim($value)) : '';
+
+        return in_array($value, array('buyer', 'shop', 'sudemi'), true) ? $value : '';
+    }
+
+    /** "by the buyer", "by the shop", "by sudemi" for log lines (English, as every log line). */
+    private static function byWhom($by)
+    {
+        return array('buyer' => 'by the buyer', 'shop' => 'by the shop', 'sudemi' => 'by sudemi')[$by];
+    }
+
     /**
-     * Whether this local order was cancelled from sudemi's side (the note above is in its
+     * Every text the cancellation note can have: the four notes in each of the 12 languages, as
+     * stored (HTML-escaped, see noteText), and the 1.2 note. The admin's language can change
+     * between the note and a later check, so all of them count.
+     *
+     * @return string[]
+     */
+    public static function cancelNotes()
+    {
+        static $notes = null;
+        if ($notes === null) {
+            $notes = array(self::NOTE_CANCELLED_BY_BUYER);
+            $files = glob(__DIR__ . '/../../../admin/language/*/module/sudemi.php') ?: array();
+            foreach ($files as $file) {
+                $strings = self::languageFile(basename(dirname(dirname($file))));
+                foreach (self::NOTE_CANCELLED_KEYS as $key) {
+                    if (isset($strings[$key]) && $strings[$key] !== '') {
+                        $notes[] = htmlspecialchars((string) $strings[$key], ENT_QUOTES, 'UTF-8');
+                    }
+                }
+            }
+            $notes = array_values(array_unique($notes));
+        }
+
+        return $notes;
+    }
+
+    /**
+     * Whether this local order was cancelled from sudemi's side (one of the notes above is in its
      * history). The order-status event uses it so a later Canceled/Refunded set by hand on such an
      * order does not ask sudemi to cancel or refund a second time.
      */
     public function isCancelledOnSudemi($orderId)
     {
+        $db = $this->db;
         $query = $this->db->query(
             "SELECT COUNT(*) AS n FROM " . $this->prefix . "order_history
               WHERE order_id = '" . (int) $orderId . "'
-                AND comment = '" . $this->db->escape(self::NOTE_CANCELLED_BY_BUYER) . "'"
+                AND comment IN ('" . implode("', '", array_map(function ($note) use ($db) {
+                    return $db->escape($note);
+                }, self::cancelNotes())) . "')"
         );
 
         return $query->num_rows && (int) $query->row['n'] > 0;
@@ -1217,8 +1283,11 @@ class Orders
      * @param string $sudemiId the sudemi order id
      * @param string $event    'shipped' or 'delivered'
      * @param int    $orderId  the local order, for reading tracking details
+     * @param bool   $queue    whether a call that did not get through is queued for a retry
+     *
+     * @return string 'ok', 'retry' or 'failed'
      */
-    public function report($sudemiId, $event, $orderId)
+    public function report($sudemiId, $event, $orderId, $queue = true)
     {
         $body = array();
         if ('shipped' === $event) {
@@ -1238,7 +1307,115 @@ class Orders
                 'trackingCode' => $tracking['code'] === '' ? null : $tracking['code']);
         }
 
-        $this->sendReport($sudemiId, $event, $body, true);
+        return $this->sendReport($sudemiId, $event, $body, $queue);
+    }
+
+    /**
+     * The carrier and tracking code typed on the order (the sudemi panel), saved and, when the
+     * order was already reported shipped, sent to sudemi at once: `tracking` while sudemi has it
+     * SHIPPED, `shipped` (with the tracking) while it is still PAID there (PROTOCOL.md 4d). Only
+     * what the merchant typed is sent; tracking that came from sudemi (the change feed, an order
+     * page) is stored by applyChange and never sent back. Nothing is sent when sudemi already has
+     * this carrier and code.
+     *
+     * @return string saved (sent with Shipped later), sent, unchanged, retry (queued), final
+     *                (sudemi no longer changes it: delivered, cancelled, refunded), failed,
+     *                code_required (a shipped order needs a code) or invalid
+     */
+    public function updateTracking($sudemiId, $carrier, $code)
+    {
+        $sudemiId = strtolower((string) $sudemiId);
+        if (!preg_match('/^' . self::UUID . '$/', $sudemiId) || !$this->hasOrderTable()) {
+            return 'invalid';
+        }
+        $carrier = self::cut(trim((string) $carrier), 100);
+        $code = self::cut(trim((string) $code), 100);
+        $before = $this->rowOf($sudemiId);
+        $this->saveTracking($sudemiId, $carrier, $code);
+
+        $status = $before !== null ? strtoupper((string) $before['status']) : '';
+        if (in_array($status, array('DELIVERED', 'CANCELLED', 'REFUNDED', 'DECLINED'), true)) {
+            return 'final';
+        }
+        $orderId = $this->findLocalOrder($sudemiId);
+        $shippedHere = $orderId && $this->statusOf($orderId) === self::STATUS_SHIPPED;
+        if ($status !== 'SHIPPED' && !$shippedHere) {
+            // Not reported shipped yet: Shipped sends it (report() reads what was saved).
+            return 'saved';
+        }
+        if ($code === '') {
+            return 'code_required';
+        }
+        if ($status === 'SHIPPED' && $before !== null && $code === (string) $before['tracking_code']
+            && ($carrier === '' || $carrier === (string) $before['tracking_carrier'])
+            && !isset($this->calls()[$sudemiId . '|tracking'])) {
+            // What sudemi already has (the change feed brought it, or it was sent before).
+            return 'unchanged';
+        }
+
+        return $this->sendTracking($sudemiId, array('carrier' => $carrier === '' ? null : $carrier, 'trackingCode' => $code), true);
+    }
+
+    /**
+     * POST /orders/{id}/tracking. A 409 not_shipped is looked up: still PAID on sudemi (the
+     * shipped report did not get through yet) sends `shipped` with this tracking instead;
+     * delivered, cancelled or refunded is final. Not answered: queued like shipped.
+     *
+     * @return string sent, unchanged, retry, final or failed
+     */
+    public function sendTracking($sudemiId, array $body, $queue = true)
+    {
+        $response = $this->client->sendSigned('POST', '/integration/v1/orders/' . rawurlencode($sudemiId) . '/tracking', $body);
+        if (is_array($response) && (int) $response['status'] === 200) {
+            $already = isset($response['body']['status']) && $response['body']['status'] === 'already_resolved';
+            $this->logger->info($already ? 'sudemi order ' . $sudemiId . ' already has this tracking code.'
+                : 'Sent the new tracking code for sudemi order ' . $sudemiId . '; sudemi tells the buyer.');
+            if ($queue) {
+                $this->dropCall($sudemiId, 'tracking');
+            }
+
+            return $already ? 'unchanged' : 'sent';
+        }
+        $error = is_array($response) && isset($response['body']['error']) ? (string) $response['body']['error'] : '';
+        if (is_array($response) && (int) $response['status'] === 409 && $error === 'not_shipped') {
+            $detail = $this->detail($sudemiId);
+            $now = $detail !== null && isset($detail['status']) ? (string) $detail['status'] : '';
+            if ($now === 'PAID') {
+                // Shipped here, but sudemi has not heard it yet: shipped carries the tracking.
+                $orderId = $this->findLocalOrder($sudemiId);
+                $result = $orderId ? $this->report($sudemiId, 'shipped', $orderId, $queue)
+                    : $this->sendReport($sudemiId, 'shipped', $body, $queue);
+                if ($result === 'ok' && $queue) {
+                    $this->dropCall($sudemiId, 'tracking');
+                }
+
+                return $result === 'ok' ? 'sent' : $result;
+            }
+            if ($now !== '' && $now !== 'SHIPPED') {
+                $this->logger->error('sudemi no longer changes the tracking of order ' . $sudemiId . ' (it is ' . $now
+                    . '). The tracking code is kept in this shop only.');
+                if ($queue) {
+                    $this->dropCall($sudemiId, 'tracking');
+                }
+
+                return 'final';
+            }
+            // Could not be looked up, or it changed in between: asked again on the next beat.
+            $response = null;
+        }
+        if (self::shouldRetry($response)) {
+            $this->logger->warn('Could not send the tracking code for sudemi order ' . $sudemiId . ' ('
+                . self::describe($response) . '). Will try again on the next heartbeat.');
+            if ($queue) {
+                $this->enqueueCall($sudemiId, 'tracking', $body);
+            }
+
+            return 'retry';
+        }
+        $this->logger->error('sudemi refused the tracking code for order ' . $sudemiId . ' ('
+            . self::describe($response) . ').');
+
+        return 'failed';
     }
 
     /**
@@ -1349,6 +1526,16 @@ class Orders
         $this->saveCalls($calls);
     }
 
+    /** Forgets a queued call that is no longer needed (sent another way). */
+    private function dropCall($sudemiId, $call)
+    {
+        $calls = $this->calls();
+        if (isset($calls[$sudemiId . '|' . $call])) {
+            unset($calls[$sudemiId . '|' . $call]);
+            $this->saveCalls($calls);
+        }
+    }
+
     /** @return array the order calls waiting for a retry (for the admin page and tests) */
     public function pendingCalls()
     {
@@ -1385,6 +1572,12 @@ class Orders
                 $orderId = isset($body['order']) ? (int) $body['order'] : 0;
                 $reason = isset($body['reason']) ? (string) $body['reason'] : 'Cancelled by the shop';
                 if ($this->cancelFromShop($sudemiId, $orderId, $reason, false)) {
+                    unset($calls[$key]);
+                }
+                continue;
+            }
+            if ($call === 'tracking') {
+                if ($this->sendTracking($sudemiId, $body, false) !== 'retry') {
                     unset($calls[$key]);
                 }
                 continue;
@@ -1750,14 +1943,23 @@ class Orders
         $this->refresh($sudemiId);
     }
 
-    /** Reads the order back from sudemi and applies it here: the answer to every action. */
-    public function refresh($sudemiId)
+    /**
+     * Reads the order back from sudemi and applies it here: the answer to every action.
+     *
+     * @param string|null $cancelledBy who ended the order when the caller knows it (the order page
+     *                                 does not say; 'shop' after a cancel pressed in this shop)
+     */
+    public function refresh($sudemiId, $cancelledBy = null)
     {
         $detail = $this->detail($sudemiId);
         if ($detail === null) {
             return null;
         }
-        $this->applyChange(self::changeFromDetail($detail), $detail);
+        $entry = self::changeFromDetail($detail);
+        if ($entry['cancelled_by'] === null && $cancelledBy !== null) {
+            $entry['cancelled_by'] = $cancelledBy;
+        }
+        $this->applyChange($entry, $detail);
 
         return $detail;
     }
@@ -1778,6 +1980,7 @@ class Orders
             'refunded_minor' => isset($detail['money']['refunded_minor']) ? (int) $detail['money']['refunded_minor'] : 0,
             'currency_code' => isset($detail['money']['currency_code']) ? (string) $detail['money']['currency_code'] : null,
             'tracking' => isset($detail['tracking']) && is_array($detail['tracking']) ? $detail['tracking'] : null,
+            'cancelled_by' => isset($detail['cancelled_by']) && is_string($detail['cancelled_by']) ? $detail['cancelled_by'] : null,
             'request' => $request,
         );
     }
@@ -1798,6 +2001,7 @@ class Orders
             'refunded_minor' => isset($row['refunded_minor']) ? (int) $row['refunded_minor'] : 0,
             'currency_code' => isset($row['currency_code']) ? (string) $row['currency_code'] : null,
             'tracking' => isset($row['tracking']) && is_array($row['tracking']) ? $row['tracking'] : null,
+            'cancelled_by' => isset($row['cancelled_by']) && is_string($row['cancelled_by']) ? $row['cancelled_by'] : null,
             'request' => $request,
         );
     }
@@ -1808,7 +2012,7 @@ class Orders
      * the one held here. Local statuses are written straight to the order (with a history note),
      * so OpenCart's status event does not fire and nothing is sent back to sudemi.
      *
-     * @param array      $entry  order_id, status, revision, refunded_minor, tracking, request
+     * @param array      $entry  order_id, status, revision, refunded_minor, tracking, cancelled_by, request
      * @param array|null $detail the order page, when already read (saves a call on import)
      *
      * @return bool whether it was newer than what this shop held
@@ -1859,7 +2063,8 @@ class Orders
 
         $moved = '';
         if ($local !== null) {
-            $moved = $this->applyStatus($local, $sudemiId, $status, $tracking);
+            $moved = $this->applyStatus($local, $sudemiId, $status, $tracking,
+                self::cancelledBy(isset($entry['cancelled_by']) ? $entry['cancelled_by'] : null));
         }
         // Notes only for an order this shop already followed: the first entries after an upgrade
         // (the feed starts with the last 7 days) move statuses but do not repeat old news.
@@ -1918,7 +2123,7 @@ class Orders
      *
      * @return string what was written ('shipped', 'delivered', 'refunded' or '')
      */
-    private function applyStatus(array $local, $sudemiId, $status, array $tracking)
+    private function applyStatus(array $local, $sudemiId, $status, array $tracking, $cancelledBy = '')
     {
         $orderId = $local['id'];
         $current = $local['status'];
@@ -1934,7 +2139,7 @@ class Orders
             return '';
         }
         if ($status === 'CANCELLED') {
-            $this->cancelledOnSudemi($orderId, $sudemiId, $current);
+            $this->cancelledOnSudemi($orderId, $sudemiId, $current, $cancelledBy);
 
             return '';
         }

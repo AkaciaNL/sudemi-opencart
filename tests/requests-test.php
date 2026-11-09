@@ -5,9 +5,10 @@
  * 1. The heartbeat's open_requests replace the stored list on every successful beat (and clear it
  *    when absent); the admin's answers are signed POSTs to /orders/{id}/request/accept|reject, a
  *    rejection needs a reason, and every answer of sudemi's maps to an outcome.
- * 2. A buyer's cancellation of a paid order (settled_orders CANCELLED) cancels the confirmed local
- *    order: Canceled, stock back, a history note, no call to sudemi, idempotent; shipped, complete,
- *    cancelled or refunded orders are left alone.
+ * 2. A cancellation of a paid order on sudemi (settled_orders CANCELLED) cancels the confirmed
+ *    local order: Canceled, stock back, a history note that says who cancelled (cancelled_by: the
+ *    buyer, the shop, sudemi; neutral when not said), in the admin's language, no call to sudemi,
+ *    idempotent; shipped, complete, cancelled or refunded orders are left alone.
  *
  * Runs without OpenCart: the database, the config and sudemi are faked here.
  */
@@ -233,10 +234,12 @@ class FakeDb {
 		if ( preg_match( "/^SELECT order_status_id FROM oc_order WHERE order_id = '(\d+)'$/", $sql, $m ) ) {
 			return $this->rows( isset( $this->orders[ $m[1] ] ) ? array( array( 'order_status_id' => $this->orders[ $m[1] ]['status'] ) ) : array() );
 		}
-		if ( preg_match( "/^SELECT COUNT\(\*\) AS n FROM oc_order_history WHERE order_id = '(\d+)' AND comment = '(.*)'$/", $sql, $m ) ) {
-			$n = 0;
+		if ( preg_match( "/^SELECT COUNT\(\*\) AS n FROM oc_order_history WHERE order_id = '(\d+)' AND comment IN \((.*)\)$/", $sql, $m ) ) {
+			preg_match_all( "/'((?:[^'\\\\]|\\\\.)*)'/", $m[2], $values );
+			$texts = array_map( 'stripslashes', $values[1] );
+			$n     = 0;
 			foreach ( $this->history as $h ) {
-				$n += ( $h['order_id'] === (int) $m[1] && $h['comment'] === stripslashes( $m[2] ) ) ? 1 : 0;
+				$n += ( $h['order_id'] === (int) $m[1] && in_array( $h['comment'], $texts, true ) ) ? 1 : 0;
 			}
 			return $this->rows( array( array( 'n' => $n ) ) );
 		}
@@ -267,6 +270,7 @@ class FakeDb {
 }
 class FakeConfig {
 	public $values = array(
+		'config_language_admin'    => 'en-gb',
 		'config_order_status_id'   => 1,
 		'config_processing_status' => array( '5', '1', '2', '12', '3' ),
 		'config_complete_status'   => array( '5', '3' ),
@@ -276,32 +280,87 @@ class FakeConfig {
 	}
 }
 
-function shop( $status ) {
+function shop( $status, $language = 'en-gb' ) {
 	$db           = new FakeDb();
 	$db->orders   = array( 42 => array( 'status' => $status, 'comment' => 'sudemi:' . O1 ) );
 	$db->lines    = array( 42 => array( array( 'product_id' => 7, 'quantity' => 2 ) ) );
 	$db->products = array( 7 => 6 );
 	$store        = new ArrayStore();
 	$client       = new FakeClient( $store );
-	$orders       = new \Sudemi\Orders( $db, new FakeConfig(), $client, new \Sudemi\Logger( $store ) );
-	return array( $orders, $db, $client );
+	$config       = new FakeConfig();
+	$config->values['config_language_admin'] = $language;
+	$orders       = new \Sudemi\Orders( $db, $config, $client, new \Sudemi\Logger( $store ) );
+	return array( $orders, $db, $client, $store );
 }
-$cancelled = array( array( 'order_id' => O1, 'status' => 'CANCELLED' ) );
+/** The note text for cancelled_by in one of the extension's languages, as stored (escaped). */
+function cancel_note( $by, $language = 'en-gb' ) {
+	$_ = array();
+	include __DIR__ . '/../admin/language/' . $language . '/module/sudemi.php';
+	return htmlspecialchars( $_[ \Sudemi\Orders::NOTE_CANCELLED_KEYS[ $by ] ], ENT_QUOTES, 'UTF-8' );
+}
+$cancelled = array( array( 'order_id' => O1, 'status' => 'CANCELLED', 'cancelled_by' => 'buyer' ) );
 
 foreach ( array( 1 => 'Pending', 2 => 'Processing' ) as $status => $name ) {
-	list( $orders, $db, $client ) = shop( $status );
+	list( $orders, $db, $client, $store ) = shop( $status );
 	$orders->handleSettled( $cancelled );
 	check( "buyer cancel of a paid order ($name): local order Canceled", 7 === $db->orders[42]['status'] );
 	check( "buyer cancel ($name): stock restored (6 + 2)", 8 === $db->products[7] );
 	check( "buyer cancel ($name): history note added with status Canceled", 1 === count( $db->history )
 		&& 7 === $db->history[0]['status'] && \Sudemi\Orders::NOTE_CANCELLED_BY_BUYER === $db->history[0]['comment'] );
+	check( "buyer cancel ($name): the log says the buyer cancelled", false !== strpos( (string) $store->read( 'sudemi_log' ), 'cancelled by the buyer before shipping' ) );
 	check( "buyer cancel ($name): nothing sent to sudemi (no /cancel, no /refund)", array() === $client->calls );
 	check( "buyer cancel ($name): the event guard sees it", $orders->isCancelledOnSudemi( 42 ) );
 	$orders->handleSettled( $cancelled );
 	check( "buyer cancel ($name): the next beat (repeated for 7 days) changes nothing",
 		7 === $db->orders[42]['status'] && 8 === $db->products[7] && 1 === count( $db->history ) && array() === $client->calls );
 }
-check( 'the note is the agreed text', 'Cancelled by the buyer on sudemi before shipping; the buyer has been refunded in full' === \Sudemi\Orders::NOTE_CANCELLED_BY_BUYER );
+check( 'the note is the agreed text', 'Cancelled by the buyer on sudemi before shipping; the buyer has been refunded in full' === \Sudemi\Orders::NOTE_CANCELLED_BY_BUYER
+	&& \Sudemi\Orders::NOTE_CANCELLED_BY_BUYER === cancel_note( 'buyer' ) );
+
+// Who cancelled (cancelled_by, core 2026-11-09): the note and the log line say it; neutral when
+// sudemi does not say (an older core), never "the buyer" for a shop's cancellation.
+foreach ( array(
+	'shop'   => array( 'Cancelled by the shop on sudemi before shipping; the buyer has been refunded in full', 'cancelled by the shop before shipping' ),
+	'sudemi' => array( 'Cancelled by sudemi before shipping; the buyer has been refunded in full', 'cancelled by sudemi before shipping' ),
+	'buyer'  => array( 'Cancelled by the buyer on sudemi before shipping; the buyer has been refunded in full', 'cancelled by the buyer before shipping' ),
+	''       => array( 'Cancelled on sudemi before shipping; the buyer has been refunded in full', 'cancelled on sudemi before shipping' ),
+	'SHOP '  => array( 'Cancelled by the shop on sudemi before shipping; the buyer has been refunded in full', 'cancelled by the shop before shipping' ),
+	'robot'  => array( 'Cancelled on sudemi before shipping; the buyer has been refunded in full', 'cancelled on sudemi before shipping' ),
+) as $by => $expected ) {
+	list( $orders, $db, $client, $store ) = shop( 1 );
+	$entry = array( 'order_id' => O1, 'status' => 'CANCELLED' );
+	if ( '' !== $by ) {
+		$entry['cancelled_by'] = $by;
+	}
+	$orders->handleSettled( array( $entry ) );
+	$log = (string) $store->read( 'sudemi_log' );
+	check( "cancelled_by " . json_encode( $by ) . ": the note says who (" . $expected[0] . ")", 1 === count( $db->history ) && $expected[0] === $db->history[0]['comment'] );
+	check( "cancelled_by " . json_encode( $by ) . ": the log line says who", false !== strpos( $log, $expected[1] ) );
+	check( "cancelled_by " . json_encode( $by ) . ": a shop or sudemi cancellation never says the buyer",
+		in_array( trim( strtolower( $by ) ), array( 'buyer' ), true ) || ( false === strpos( $db->history[0]['comment'], 'buyer on sudemi' ) && false === strpos( $log, 'by the buyer' ) ) );
+	check( "cancelled_by " . json_encode( $by ) . ": the event guard sees it, nothing sent", $orders->isCancelledOnSudemi( 42 ) && array() === $client->calls );
+	$orders->handleSettled( array( $entry ) );
+	check( "cancelled_by " . json_encode( $by ) . ": repeated, one note", 1 === count( $db->history ) );
+}
+// In the admin's language; the guard recognises the note in every language (and the 1.2 note).
+foreach ( array( 'de-de', 'fr-fr', 'zh-cn', 'ar', 'he-il', 'tr-tr' ) as $language ) {
+	list( $orders, $db, $client ) = shop( 1, $language );
+	$orders->handleSettled( array( array( 'order_id' => O1, 'status' => 'CANCELLED', 'cancelled_by' => 'shop' ) ) );
+	check( "shop cancel in $language: the note in that language", 1 === count( $db->history ) && cancel_note( 'shop', $language ) === $db->history[0]['comment']
+		&& cancel_note( 'shop', $language ) !== cancel_note( 'shop' ) );
+	check( "shop cancel in $language: the guard sees it", $orders->isCancelledOnSudemi( 42 ) );
+}
+foreach ( glob( __DIR__ . '/../admin/language/*/module/sudemi.php' ) as $file ) {
+	$language = basename( dirname( dirname( $file ) ) );
+	$notes    = array_map( function ( $by ) use ( $language ) {
+		return cancel_note( $by, $language );
+	}, array( 'buyer', 'shop', 'sudemi', '' ) );
+	check( "the four cancellation notes in $language are there, differ, and are all recognised",
+		4 === count( array_unique( array_filter( $notes ) ) ) && array() === array_diff( $notes, \Sudemi\Orders::cancelNotes() ) );
+}
+list( $orders, $db, $client ) = shop( 7 );
+$db->history[] = array( 'order_id' => 42, 'status' => 7, 'comment' => \Sudemi\Orders::NOTE_CANCELLED_BY_BUYER );
+check( 'a 1.2 note (before cancelled_by) still counts for the guard', $orders->isCancelledOnSudemi( 42 ) );
 
 foreach ( array( 3 => 'Shipped', 5 => 'Complete', 7 => 'Canceled', 11 => 'Refunded', 8 => 'Denied' ) as $status => $name ) {
 	list( $orders, $db, $client ) = shop( $status );

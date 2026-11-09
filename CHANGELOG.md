@@ -29,6 +29,17 @@ core the extension works as 1.2 did.
 - **Tracking code on the order**: OpenCart's order page has a sudemi panel with a carrier and
   tracking code field. Setting the order to Shipped sends them (before, only the shipping method's
   name was sent as the carrier).
+- **Tracking after shipping** (core 2026-11-09): a tracking code added or corrected in the panel
+  after the order was set to Shipped is sent to sudemi at once (`tracking` while sudemi has the
+  order as shipped, `shipped` with the tracking while it is still paid there), and sudemi tells the
+  buyer. Nothing is sent when sudemi already has that code, and tracking that came from sudemi is
+  never sent back. Not answered: tried again on the next heartbeat; delivered, cancelled or
+  refunded orders keep their tracking. The sudemi order page has **Change tracking** when sudemi
+  allows it.
+- **Who cancelled**: the order note and the log line for an order cancelled on sudemi before
+  shipping say who did it (the buyer, the shop or sudemi; `cancelled_by`, core 2026-11-09), in the
+  admin's language. Before, every such note said the buyer cancelled; with an older core the note
+  is neutral.
 - **sudemi shipping page**: ship to the shop's own prices, or choose countries and a price per
   country on sudemi; "Fill in from my shop" takes the countries and prices from your geo zones and
   shipping methods; the page shows what buyers pay now per country.
