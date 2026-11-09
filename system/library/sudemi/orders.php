@@ -1,6 +1,8 @@
 <?php
 namespace Sudemi;
 
+require_once __DIR__ . '/currency.php';
+
 /**
  * Answering sudemi's question: can this shop actually fulfil the order?
  *
@@ -204,6 +206,24 @@ class Orders
             // A previous run got this far and the answer was lost in transit. Re-sending is safe:
             // sudemi answers already_resolved with how the order ended if it landed the first time.
             $this->accept($sudemiId, $local['id']);
+
+            return;
+        }
+
+        // The currency first: an order this shop cannot book in the currency the buyer paid must
+        // not become a local order in another one (a PLN order written as EUR misstates every
+        // amount on it). Declined with the reason, which is not a failure of stock.
+        $currencyProblem = $this->currencyProblem($pending);
+        if ($currencyProblem !== null) {
+            $this->client->postSigned(
+                '/integration/v1/orders/' . rawurlencode($sudemiId) . '/reject',
+                array('reason' => $currencyProblem)
+            );
+            $this->logger->error(sprintf(
+                'Declined sudemi order %s: %s. Nothing was charged. Check the default currency under System > Settings > Store > Local and that it is enabled under System > Localisation > Currencies.',
+                $sudemiId,
+                $currencyProblem
+            ));
 
             return;
         }
@@ -438,6 +458,65 @@ class Orders
     }
 
     /**
+     * Why this shop cannot book the order in its currency, or null when it can.
+     *
+     * An order from a core that sends no currency_code (older than currency step 2, EUR only)
+     * is booked as before.
+     *
+     * @return string|null
+     */
+    private function currencyProblem(array $pending)
+    {
+        if (!isset($pending['currency_code'])) {
+            return null;
+        }
+
+        return self::currencyRefusal(
+            $pending['currency_code'],
+            $this->config->get('config_currency'),
+            $this->currencyRow(Currency::normalise($pending['currency_code']))
+        );
+    }
+
+    /**
+     * The reason an order in $orderCode cannot be booked by a shop whose default currency is
+     * $shopCode, or null. $row is the shop's currency row for $orderCode (null when the shop
+     * has none). Plain words: sudemi passes the reason on.
+     *
+     * @return string|null
+     */
+    public static function currencyRefusal($orderCode, $shopCode, $row)
+    {
+        $order = Currency::normalise($orderCode);
+        $shop = Currency::normalise($shopCode);
+        if ($order === null) {
+            return 'the order did not say which currency it was paid in';
+        }
+        if ($shop !== null && $order !== $shop) {
+            return sprintf('this shop sells in %s, not in %s', $shop, $order);
+        }
+        if ($row === null || empty($row['status'])) {
+            return sprintf('this shop cannot take payments in %s right now', $order);
+        }
+
+        return null;
+    }
+
+    /** The shop's currency row for a code (currency_id, code, value, status), or null. */
+    private function currencyRow($code)
+    {
+        if ($code === null) {
+            return null;
+        }
+        $query = $this->db->query(
+            "SELECT currency_id, code, value, status FROM " . $this->prefix . "currency
+              WHERE code = '" . $this->db->escape($code) . "' LIMIT 1"
+        );
+
+        return $query->num_rows ? $query->row : null;
+    }
+
+    /**
      * The first line this shop cannot supply, or null when it can supply all of them.
      *
      * Checked against live stock rather than against anything this extension last pushed: what
@@ -491,8 +570,19 @@ class Orders
      */
     private function createLocalOrder(array $pending, $sudemiId)
     {
-        $currency = isset($pending['currency_code']) ? (string) $pending['currency_code'] : 'EUR';
-        $total = isset($pending['total_minor']) ? ((int) $pending['total_minor']) / 100 : 0.0;
+        // Checked by currencyProblem() already: the order's currency is the shop's own and is
+        // enabled. EUR from a core that does not send one (it charged in EUR only).
+        $currency = isset($pending['currency_code']) ? (string) Currency::normalise($pending['currency_code']) : 'EUR';
+        $currencyRow = $this->currencyRow($currency);
+        $currencyId = $currencyRow !== null ? (int) $currencyRow['currency_id'] : 0;
+        // OpenCart keeps an order's amounts in the default currency and shows them times
+        // currency_value. The order is in the default currency, so the value is 1 in a sound
+        // shop; dividing by it keeps what the order page shows equal to what the buyer paid.
+        $value = $currencyRow !== null && (float) $currencyRow['value'] > 0 ? (float) $currencyRow['value'] : 1.0;
+        $amount = function ($minor) use ($currency, $value) {
+            return Currency::fromMinor($minor, $currency) / $value;
+        };
+        $total = isset($pending['total_minor']) ? $amount($pending['total_minor']) : 0.0;
         $country = isset($pending['destination_country']) ? (string) $pending['destination_country'] : '';
 
         // The comment is how this order is found again, which is what makes a retry safe. No
@@ -504,11 +594,6 @@ class Orders
         // every insert failed and no sudemi order could be created.)
         list($countryId, $countryName) = $this->country($country);
         $method = json_encode(['name' => 'sudemi', 'code' => 'sudemi.sudemi']);
-        $currencyRow = $this->db->query(
-            "SELECT currency_id FROM " . $this->prefix . "currency
-              WHERE code = '" . $this->db->escape($currency) . "' LIMIT 1"
-        );
-        $currencyId = $currencyRow->num_rows ? (int) $currencyRow->row['currency_id'] : 0;
 
         $this->db->query(
             "INSERT INTO " . $this->prefix . "order SET
@@ -529,7 +614,7 @@ class Orders
                 total = '" . (float) $total . "',
                 order_status_id = '" . (int) self::STATE_INCOMPLETE . "',
                 currency_code = '" . $this->db->escape($currency) . "',
-                currency_value = '1.0',
+                currency_value = '" . (float) $value . "',
                 date_added = NOW(),
                 date_modified = NOW()"
         );
@@ -562,9 +647,9 @@ class Orders
                     $taxes[$rateId] = (isset($taxes[$rateId]) ? $taxes[$rateId] : 0) + $tax;
                 }
                 $qty = max(1, $quantity);
-                $price = round($split['net'] / 100 / $qty, 4);
-                $lineTotal = $split['net'] / 100;
-                $unitTax = round(array_sum($split['taxes']) / 100 / $qty, 4);
+                $price = round($amount($split['net']) / $qty, 4);
+                $lineTotal = $amount($split['net']);
+                $unitTax = round($amount(array_sum($split['taxes'])) / $qty, 4);
             }
             $this->db->query(
                 "INSERT INTO " . $this->prefix . "order_product SET
@@ -609,7 +694,7 @@ class Orders
                         . ($hasExtension ? " extension = 'opencart'," : '') . "
                         code = '" . $this->db->escape($row[0]) . "',
                         title = '" . $this->db->escape($row[1]) . "',
-                        value = '" . (float) ($row[2] / 100) . "',
+                        value = '" . (float) $amount($row[2]) . "',
                         sort_order = '" . (int) $row[3] . "'"
                 );
             }
@@ -1359,14 +1444,44 @@ class Orders
      * A refund made in the shop (status Refunded), passed to sudemi, which holds the buyer's
      * payment and pays it back; null amount = in full. The outcome is logged either way.
      */
-    public function refund($sudemiId, $amountMinor, $reason)
+    public function refund($sudemiId, $amountMinor, $reason, $currency = null)
     {
+        // A refund is in the order's currency (the one the buyer paid in). One in another
+        // currency would pay back a different amount than meant: refused here, never sent.
+        $booked = $this->bookedCurrency($sudemiId);
+        $currency = $currency !== null ? Currency::normalise($currency) : $booked;
+        if ($booked !== null && $currency !== $booked) {
+            $this->logger->error(sprintf(
+                'sudemi order %s: not refunded. The refund is in %s but the buyer paid in %s; a refund has to be in the currency the buyer paid in. Nothing was sent to sudemi.',
+                $sudemiId,
+                $currency === null ? '?' : $currency,
+                $booked
+            ));
+
+            return false;
+        }
         $body = ['reason' => $reason];
         if ($amountMinor !== null) {
             $body['amountMinor'] = (int) $amountMinor;
         }
+        if ($currency !== null) {
+            $body['currency'] = $currency;
+        }
 
         return $this->moneyResult($sudemiId, $this->client->postSigned('/integration/v1/orders/' . rawurlencode($sudemiId) . '/refund', $body));
+    }
+
+    /** The currency the local order for a sudemi order was booked in, or null when there is none. */
+    private function bookedCurrency($sudemiId)
+    {
+        $query = $this->db->query(
+            "SELECT currency_code FROM " . $this->prefix . "order
+              WHERE comment IN ('" . $this->db->escape(self::COMMENT_PREFIX . $sudemiId) . "', '"
+                . $this->db->escape(self::COMMENT_PREFIX . $sudemiId . ' (released)') . "')
+              ORDER BY order_id LIMIT 1"
+        );
+
+        return $query->num_rows ? Currency::normalise($query->row['currency_code']) : null;
     }
 
     /** A paid order cancelled in the shop: refunded in full and cancelled on sudemi. */

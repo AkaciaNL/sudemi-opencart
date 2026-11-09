@@ -663,6 +663,7 @@ class Sudemi extends \Opencart\System\Engine\Controller
             'handling_days' => (new \Sudemi\Shipping($this->db, $this->config))->handlingDays(),
             'transit_days' => (new \Sudemi\Shipping($this->db, $this->config))->transitDays(),
             'shipping_preview' => $this->shippingPreview(),
+            'currency' => $this->currencyInfo($sudemi['store']),
             'options_skipped' => (new \Sudemi\Catalogue($this->db, $this->config))->withRequiredOptions(),
             // Printed for the shop owner to paste into their crontab. The token is in it, so
             // the template must not put it anywhere a non-admin can read.
@@ -693,14 +694,16 @@ class Sudemi extends \Opencart\System\Engine\Controller
                 $items[] = (isset($line['title']) ? (string) $line['title'] : '') . ($qty > 1 ? ' × ' . $qty : '');
             }
             $status = isset($order['status']) ? (string) $order['status'] : '';
+            $currency = isset($order['currency_code']) ? (string) $order['currency_code'] : 'EUR';
             $label = $this->language->get('text_status_' . strtolower($status));
             $rows[] = [
                 'id' => substr((string) $order['order_id'], 0, 8),
                 'date' => isset($order['placed_at']) ? substr((string) $order['placed_at'], 0, 10) : '',
                 'items' => implode(', ', $items),
                 'status' => $label !== 'text_status_' . strtolower($status) ? $label : $status,
-                'net' => number_format((isset($order['your_net_minor']) ? (int) $order['your_net_minor'] : 0) / 100, 2)
-                    . ' ' . (isset($order['currency_code']) ? (string) $order['currency_code'] : 'EUR'),
+                // In the currency the buyer was charged in, with that currency's own decimals.
+                'paid' => \Sudemi\Currency::format(isset($order['total_minor']) ? (int) $order['total_minor'] : 0, $currency),
+                'net' => \Sudemi\Currency::format(isset($order['your_net_minor']) ? (int) $order['your_net_minor'] : 0, $currency),
                 // Only present once sudemi has released it, which is only after this shop confirmed.
                 'customer' => isset($order['customer_name']) ? (string) $order['customer_name'] : ' - ',
                 // An open return request on this order (answered in the list above).
@@ -722,8 +725,38 @@ class Sudemi extends \Opencart\System\Engine\Controller
         require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/catalogue.php';
         $catalogue = new \Sudemi\Catalogue($this->db, $this->config);
         $first = $catalogue->products(0, 1);
+        $currency = (string) $this->config->get('config_currency');
+        $rates = [];
+        foreach (empty($first) ? [] : $first[0]['shipping'] as $rate) {
+            $rates[] = ['country' => $rate['country'], 'amount' => \Sudemi\Currency::format($rate['costMinor'], $currency)];
+        }
 
-        return empty($first) ? [] : $first[0]['shipping'];
+        return $rates;
+    }
+
+    /**
+     * The shop currency as sudemi sees it, for the settings page: what buyers are charged in,
+     * and a warning when sudemi cannot take payments in it or still has an older one.
+     */
+    private function currencyInfo($store): array
+    {
+        $shop = \Sudemi\Currency::normalise($this->config->get('config_currency'));
+        $seen = \Sudemi\Currency::normalise($store->read(\Sudemi\Currency::SETTING_SHOP_CURRENCY)) ?: $shop;
+        $refused = (string) $store->read(\Sudemi\Currency::SETTING_REFUSED);
+        $info = [
+            'code' => (string) $seen,
+            'text' => $seen ? sprintf($this->language->get('text_currency_seen'), $seen) : '',
+            'fee' => $seen && $seen !== 'EUR' ? $this->language->get('text_currency_fee') : '',
+            'warning' => '',
+            'changed' => '',
+        ];
+        if (!\Sudemi\Currency::isSupported($shop) || ($refused !== '' && $refused === $shop)) {
+            $info['warning'] = sprintf($this->language->get('text_currency_unsupported'), $shop ?: '?', implode(', ', \Sudemi\Currency::SUPPORTED));
+        } elseif ($seen !== $shop) {
+            $info['changed'] = sprintf($this->language->get('text_currency_changed'), $shop, $seen);
+        }
+
+        return $info;
     }
 
     private function shopUrl(): string

@@ -167,3 +167,10 @@ $_['text_history_return_requested'] = 'طُلب الإرجاع';
 $_['text_order_sub_total'] = 'المجموع الفرعي';
 $_['text_order_shipping'] = 'شحن sudemi';
 $_['text_order_total'] = 'الإجمالي';
+// The shop currency sudemi charges buyers in (1.2.12).
+$_['entry_currency'] = 'العملة';
+$_['text_currency_seen'] = 'يدفع المشترون على sudemi بعملة %s، وهي العملة الافتراضية لهذا المتجر. تُرسل أسعارك بهذه العملة كما هي، دون تحويل.';
+$_['text_currency_fee'] = 'يدفع لك sudemi باليورو (EUR): تقوم شركة الدفع بالبطاقات Stripe بتحويل المبلغ، وتُخصم رسوم التحويل (نحو 2%) من المبلغ المحوّل إليك.';
+$_['text_currency_unsupported'] = 'لا يستطيع sudemi قبول المدفوعات بعملة %s، لذا لا يمكن للمشترين الطلب من هذا المتجر. اجعل العملة الافتراضية (System > Settings، تبويب Local) واحدة من: %s. ثم أرسل الكتالوج مرة أخرى.';
+$_['text_currency_changed'] = 'يبيع هذا المتجر الآن بعملة %1$s، لكن sudemi ما زال يستخدم %2$s. اضغط "إرسال الكتالوج الآن" ليدفع المشترون بعملة %1$s.';
+$_['column_paid'] = 'دفع المشتري';

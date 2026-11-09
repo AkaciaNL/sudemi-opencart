@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.2.12
+
+- **Orders are booked in the currency the buyer paid in.** A sudemi order carries the shop's
+  currency (the buyer's card is charged in it). The order is now written with that currency
+  (its OpenCart currency id and rate) instead of currency id 0. An order in a currency that is
+  not this shop's default currency, or that is switched off in the shop, is declined with the
+  reason ("this shop sells in PLN, not in EUR") and an error line in the extension log, instead of
+  being booked in the wrong currency. Nothing is charged for a declined order.
+- **Amounts use each currency's own decimals.** Prices, shipping costs and order amounts were
+  converted with a fixed x 100; they now follow ISO 4217 (two decimals for EUR, PLN, HUF, TRY;
+  none for JPY; three for KWD).
+- **Refunds name their currency.** A refund sent to sudemi carries the order's currency. A refund
+  in another currency than the one the buyer paid in is refused here, logged, and not sent.
+- **The settings page shows the shop currency sudemi sees**, that buyers pay in it, and for a
+  currency other than EUR that Stripe's conversion fee (about 2%) is taken from the payout (which
+  is in EUR). A warning shows when sudemi cannot take payments in the shop's default currency
+  (supported: EUR, PLN, CZK, HUF, RON, SEK, DKK, CHF, GBP, NOK, TRY) or still has an older one.
+- The order list on the settings page shows what the buyer paid next to what you receive, both in
+  the currency charged and with that currency's decimals. The delivery cost preview too.
+
 ## 1.2.11
 
 - **A confirmed connection is collected by cron.** While a connection is started and not yet

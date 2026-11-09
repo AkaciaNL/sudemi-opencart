@@ -167,3 +167,10 @@ $_['text_history_return_requested'] = 'Reso richiesto';
 $_['text_order_sub_total'] = 'Subtotale';
 $_['text_order_shipping'] = 'Spedizione sudemi';
 $_['text_order_total'] = 'Totale';
+// The shop currency sudemi charges buyers in (1.2.12).
+$_['entry_currency'] = 'Valuta';
+$_['text_currency_seen'] = 'Gli acquirenti su sudemi pagano in %s, la valuta predefinita di questo negozio. I tuoi prezzi vengono inviati in questa valuta così come sono, senza conversione.';
+$_['text_currency_fee'] = 'sudemi ti paga in EUR: la società di pagamenti con carta Stripe converte il pagamento e la sua commissione di conversione (circa il 2%) viene trattenuta dal tuo pagamento.';
+$_['text_currency_unsupported'] = 'sudemi non può accettare pagamenti in %s, quindi gli acquirenti non possono ordinare da questo negozio. Imposta come valuta predefinita (System > Settings, scheda Local) una di queste: %s. Poi invia di nuovo il catalogo.';
+$_['text_currency_changed'] = 'Questo negozio ora vende in %1$s, ma sudemi ha ancora %2$s. Premi "Invia ora il catalogo" perché gli acquirenti paghino in %1$s.';
+$_['column_paid'] = 'Pagato dall\'acquirente';

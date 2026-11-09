@@ -7,6 +7,9 @@
 
 namespace Sudemi;
 
+// Loaded with the client so every place that talks to sudemi counts money the same way.
+require_once __DIR__ . '/currency.php';
+
 class Client
 {
     const SETTING_INSTALL_ID = 'sudemi_install_id';
@@ -24,7 +27,7 @@ class Client
 
     /** A cap, so a strange Retry-After cannot park a cron run for an hour. */
     const RATE_LIMIT_MAX_WAIT = 90;
-    const VERSION = '1.2.11';
+    const VERSION = '1.2.12';
 
     /**
      * Test seam, null in production. When set (only by PHP code running in this same process,

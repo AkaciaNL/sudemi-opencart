@@ -167,3 +167,10 @@ $_['text_history_return_requested'] = 'İade talep edildi';
 $_['text_order_sub_total'] = 'Ara toplam';
 $_['text_order_shipping'] = 'sudemi kargo';
 $_['text_order_total'] = 'Toplam';
+// The shop currency sudemi charges buyers in (1.2.12).
+$_['entry_currency'] = 'Para birimi';
+$_['text_currency_seen'] = 'sudemi üzerindeki alıcılar bu mağazanın varsayılan para birimi olan %s ile öder. Fiyatlarınız dönüştürülmeden bu para biriminde gönderilir.';
+$_['text_currency_fee'] = 'sudemi size EUR olarak ödeme yapar: kart ödeme şirketi Stripe ödemeyi çevirir ve çevirme ücreti (yaklaşık %2) ödemenizden düşülür.';
+$_['text_currency_unsupported'] = 'sudemi %s ile ödeme alamıyor, bu yüzden alıcılar bu mağazadan sipariş veremez. Varsayılan para birimini (System > Settings, Local sekmesi) şunlardan birine ayarlayın: %s. Ardından kataloğu yeniden gönderin.';
+$_['text_currency_changed'] = 'Bu mağaza artık %1$s ile satıyor, ancak sudemi hâlâ %2$s kullanıyor. Alıcılardan %1$s ile ödeme alınması için "Kataloğu şimdi gönder" düğmesine basın.';
+$_['column_paid'] = 'Alıcının ödediği';

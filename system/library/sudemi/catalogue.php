@@ -11,6 +11,8 @@
 
 namespace Sudemi;
 
+require_once __DIR__ . '/currency.php';
+
 require_once __DIR__ . '/withdrawal.php';
 
 class Catalogue
@@ -458,7 +460,8 @@ class Catalogue
             return null;
         }
 
-        return (int) round((float) $price * 100);
+        // In the shop currency's own minor units (no fixed * 100: JPY has none, KWD has three).
+        return Currency::toMinor($price, $this->config->get('config_currency'));
     }
 
     /**

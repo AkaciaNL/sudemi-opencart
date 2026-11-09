@@ -18,6 +18,8 @@
 
 namespace Sudemi;
 
+require_once __DIR__ . '/currency.php';
+
 class Shipping
 {
     const HANDLING_DAYS = 'sudemi_handling_days';
@@ -78,7 +80,7 @@ class Shipping
                 }
             }
             if ($best !== null) {
-                $rates[] = ['country' => $iso, 'costMinor' => (int) round($best * 100)];
+                $rates[] = ['country' => $iso, 'costMinor' => Currency::toMinor($best, $this->config->get('config_currency'))];
             }
         }
 

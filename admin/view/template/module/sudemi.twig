@@ -17,6 +17,9 @@
     {% if not supported %}
       <div class="alert alert-danger">{{ text_sodium_missing }}</div>
     {% endif %}
+    {% if currency.warning %}
+      <div class="alert alert-danger" id="sudemi-currency-warning">{{ currency.warning }}</div>
+    {% endif %}
 
     <div class="card">
       <div class="card-header"><i class="fa-solid fa-store"></i> sudemi</div>
@@ -29,6 +32,11 @@
             <tr>
               <th style="width:14rem">{{ entry_shop_url }}</th>
               <td><code>{{ shop_url }}</code><div class="form-text">{{ text_shop_url_fixed }}</div></td>
+            </tr>
+            <tr>
+              <th>{{ entry_currency }}</th>
+              <td><code id="sudemi-currency">{{ currency.code }}</code><div class="form-text">{{ currency.text }}{% if currency.fee %} {{ currency.fee }}{% endif %}</div>
+                {% if currency.changed %}<div class="alert alert-warning mt-2 mb-0">{{ currency.changed }}</div>{% endif %}</td>
             </tr>
             <tr>
               <th>{{ entry_install }}</th>
@@ -81,10 +89,10 @@
             {% if history.awaiting %}<div class="alert alert-warning">{{ history.awaiting }}</div>{% endif %}
             {% if history.rows %}
               <table class="table table-sm" id="sudemi-order-history">
-                <thead><tr><th>{{ column_order }}</th><th>{{ column_items }}</th><th>{{ column_status }}</th><th>{{ column_net }}</th><th>{{ column_customer }}</th></tr></thead>
+                <thead><tr><th>{{ column_order }}</th><th>{{ column_items }}</th><th>{{ column_status }}</th><th>{{ column_paid }}</th><th>{{ column_net }}</th><th>{{ column_customer }}</th></tr></thead>
                 <tbody>
                 {% for row in history.rows %}
-                  <tr><td><code>{{ row.id }}</code><br><small>{{ row.date }}</small></td><td>{{ row.items }}</td><td>{{ row.status }}{% if row.return_requested %}<br><span class="badge bg-warning text-dark">{{ text_history_return_requested }}</span>{% endif %}</td><td>{{ row.net }}</td><td>{{ row.customer }}</td></tr>
+                  <tr><td><code>{{ row.id }}</code><br><small>{{ row.date }}</small></td><td>{{ row.items }}</td><td>{{ row.status }}{% if row.return_requested %}<br><span class="badge bg-warning text-dark">{{ text_history_return_requested }}</span>{% endif %}</td><td>{{ row.paid }}</td><td>{{ row.net }}</td><td>{{ row.customer }}</td></tr>
                 {% endfor %}
                 </tbody>
               </table>
@@ -99,7 +107,7 @@
 
           <h5 class="mt-4">{{ text_delivery_title }}</h5>
           {% if shipping_preview %}
-            <p>{{ text_delivery_preview }} {% for rate in shipping_preview %}{{ rate.country }} {{ (rate.costMinor / 100)|number_format(2) }}{% if not loop.last %}, {% endif %}{% endfor %}</p>
+            <p>{{ text_delivery_preview }} {% for rate in shipping_preview %}{{ rate.country }} {{ rate.amount }}{% if not loop.last %}, {% endif %}{% endfor %}</p>
             <div class="form-text">{{ text_delivery_skipped }}</div>
           {% else %}
             <div class="alert alert-warning">{{ text_delivery_none }}</div>

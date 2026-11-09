@@ -167,3 +167,10 @@ $_['text_history_return_requested'] = 'Return requested';
 $_['text_order_sub_total'] = 'Sub-Total';
 $_['text_order_shipping'] = 'sudemi shipping';
 $_['text_order_total'] = 'Total';
+// The shop currency sudemi charges buyers in (1.2.12).
+$_['entry_currency'] = 'Currency';
+$_['text_currency_seen'] = 'Buyers on sudemi pay in %s, the default currency of this shop. Your prices are sent in it as they are, without conversion.';
+$_['text_currency_fee'] = 'sudemi pays you out in EUR: the bank card company Stripe converts the payment, and its conversion fee (about 2%) is taken from your payout.';
+$_['text_currency_unsupported'] = 'sudemi cannot take payments in %s, so buyers cannot order from this shop. Set the default currency (System > Settings, tab Local) to one of: %s. Then send the catalogue again.';
+$_['text_currency_changed'] = 'This shop now sells in %1$s, but sudemi still has %2$s. Press "Send the catalogue now" so buyers are charged in %1$s.';
+$_['column_paid'] = 'Buyer paid';

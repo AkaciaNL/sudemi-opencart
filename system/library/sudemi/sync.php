@@ -12,6 +12,8 @@
 
 namespace Sudemi;
 
+require_once __DIR__ . '/currency.php';
+
 class Sync
 {
     const BATCH_SIZE = 100;
@@ -166,10 +168,38 @@ class Sync
             'started' => time(),
         ];
         $this->saveState($state);
-        $this->client->postSigned('/integration/v1/shop', $this->catalogue->shop());
+        $this->sendShop();
         $this->sendCategories($this->catalogue->categories());
 
         return $state;
+    }
+
+    /**
+     * Sends the shop's details, and remembers which currency sudemi now has for the shop (or that
+     * it refused the one sent), for the settings page.
+     */
+    private function sendShop()
+    {
+        $shop = $this->catalogue->shop();
+        $response = $this->client->postSigned('/integration/v1/shop', $shop);
+        if ($this->store === null || !is_array($response)) {
+            return;
+        }
+        $status = (int) $response['status'];
+        $body = isset($response['body']) && is_array($response['body']) ? $response['body'] : [];
+        if ($status === 200 && isset($body['currency']) && Currency::normalise($body['currency']) !== null) {
+            $this->store->write(Currency::SETTING_SHOP_CURRENCY, Currency::normalise($body['currency']));
+            $this->store->delete(Currency::SETTING_REFUSED);
+        } elseif ($status === 400 || $status === 422) {
+            $sent = isset($shop['currency']) ? (string) Currency::normalise($shop['currency']) : '';
+            $this->store->write(Currency::SETTING_REFUSED, $sent);
+            $this->logger->error(sprintf(
+                'sudemi did not accept this shop\'s currency %s (%s). Buyers cannot order until the default currency is one sudemi supports: %s.',
+                $sent,
+                isset($body['message']) ? (string) $body['message'] : $status,
+                implode(', ', Currency::SUPPORTED)
+            ));
+        }
     }
 
     /** Sends products after the cursor, page by page, then commits; see work(). */

@@ -167,3 +167,10 @@ $_['text_history_return_requested'] = 'Retour aangevraagd';
 $_['text_order_sub_total'] = 'Subtotaal';
 $_['text_order_shipping'] = 'Verzending via sudemi';
 $_['text_order_total'] = 'Totaal';
+// The shop currency sudemi charges buyers in (1.2.12).
+$_['entry_currency'] = 'Valuta';
+$_['text_currency_seen'] = 'Kopers op sudemi betalen in %s, de standaardvaluta van deze winkel. Je prijzen gaan zonder omrekening in die valuta mee.';
+$_['text_currency_fee'] = 'sudemi betaalt je uit in EUR: kaartverwerker Stripe rekent de betaling om, en de kosten daarvan (ongeveer 2%) gaan van je uitbetaling af.';
+$_['text_currency_unsupported'] = 'sudemi kan geen betalingen in %s aannemen, dus kopers kunnen niet bij deze winkel bestellen. Zet de standaardvaluta (System > Settings, tabblad Local) op een van: %s. Verstuur daarna de catalogus opnieuw.';
+$_['text_currency_changed'] = 'Deze winkel verkoopt nu in %1$s, maar sudemi heeft nog %2$s. Klik op "Catalogus nu versturen" zodat kopers in %1$s betalen.';
+$_['column_paid'] = 'Koper betaalde';

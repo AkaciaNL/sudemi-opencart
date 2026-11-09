@@ -167,3 +167,10 @@ $_['text_history_return_requested'] = 'התבקשה החזרה';
 $_['text_order_sub_total'] = 'סכום ביניים';
 $_['text_order_shipping'] = 'משלוח sudemi';
 $_['text_order_total'] = 'סה״כ';
+// The shop currency sudemi charges buyers in (1.2.12).
+$_['entry_currency'] = 'מטבע';
+$_['text_currency_seen'] = 'קונים ב-sudemi משלמים ב-%s, מטבע ברירת המחדל של החנות הזו. המחירים שלך נשלחים במטבע הזה כפי שהם, ללא המרה.';
+$_['text_currency_fee'] = 'sudemi משלם לך ב-EUR: חברת סליקת הכרטיסים Stripe ממירה את התשלום, ועמלת ההמרה שלה (כ-2%) מנוכה מהתשלום אליך.';
+$_['text_currency_unsupported'] = 'sudemi לא יכול לקבל תשלומים ב-%s, ולכן קונים לא יכולים להזמין מהחנות הזו. יש לקבוע כמטבע ברירת המחדל (System > Settings, לשונית Local) אחד מאלה: %s. לאחר מכן יש לשלוח שוב את הקטלוג.';
+$_['text_currency_changed'] = 'החנות הזו מוכרת עכשיו ב-%1$s, אבל אצל sudemi עדיין רשום %2$s. יש ללחוץ על "שליחת הקטלוג עכשיו" כדי שהקונים ישלמו ב-%1$s.';
+$_['column_paid'] = 'הקונה שילם';
