@@ -9,11 +9,11 @@ $_['text_edit'] = 'Połącz ten sklep z sudemi';
 $_['text_intro'] = 'Połączenie tego sklepu pozwala asystentowi AI znajdować Twoje produkty i kierować do Ciebie kupujących. Połączenie potwierdzasz w sudemi, zalogowany na własne konto - to rozszerzenie nigdy nie prosi o Twoje hasło do sudemi.';
 $_['text_connected'] = 'Połączono z sudemi.';
 $_['text_not_confirmed'] = 'Jeszcze niepotwierdzone. Otwórz link, potwierdź sklep w sudemi, a następnie sprawdź ponownie.';
-$_['text_disconnected'] = 'Rozłączono.';
+$_['text_disconnected'] = 'Odłączono.';
 $_['text_sync_started'] = 'Synchronizacja katalogu została uruchomiona i działa w tle; katalog zostanie wysłany w ciągu kilku minut.';
 $_['text_synced'] = 'Katalog został wysłany.';
 $_['text_sync_failed'] = 'Nie udało się wysłać katalogu. Żadna oferta nie została wycofana.';
-$_['text_sync_held'] = 'Synchronizacja katalogu jest wstrzymana: usunęłaby z sudemi wiele wystawionych produktów, więc nic nie zostało zmienione. Jeśli te produkty naprawdę zostały usunięte z tego sklepu, skontaktuj się z pomocą sudemi (support@sudemi.com).';
+$_['text_sync_held'] = 'Synchronizacja katalogu jest wstrzymana: usunęłaby z sudemi wiele wystawionych produktów, więc nic nie zostało zmienione. Jeśli te produkty naprawdę zostały usunięte z tego sklepu, skontaktuj się ze wsparciem sudemi (support@sudemi.com).';
 $_['text_locked'] = 'Twoja nazwa prawna, kraj, status przedsiębiorcy i numer VAT decydują o tym, co przysługuje kupującemu, dlatego są potwierdzane jednorazowo w sudemi i tam się je zmienia. To rozszerzenie nie może ich edytować.';
 $_['text_shop_url_fixed'] = 'Stały. sudemi sprawdziło, że ten sklep odpowiadał spod tego adresu, a oferta informuje kupującego, skąd pochodzi - dlatego zmiana adresu oznacza ponowne połączenie z nowego adresu.';
 $_['text_key_held'] = 'Prywatna część klucza podpisu nigdy nie opuszcza tego serwera i nigdy nie jest wysyłana do sudemi. Nie można jej też wyświetlić w tym miejscu.';
@@ -28,7 +28,7 @@ $_['button_connect'] = 'Połącz ten sklep';
 $_['button_confirm'] = 'Potwierdź ten sklep w sudemi';
 $_['button_check'] = 'Sprawdź ponownie';
 $_['button_sync'] = 'Wyślij katalog teraz';
-$_['button_disconnect'] = 'Rozłącz';
+$_['button_disconnect'] = 'Odłącz';
 
 // Error
 $_['error_permission'] = 'Nie masz uprawnień, aby to zmienić.';
@@ -92,17 +92,17 @@ $_['text_withdrawal_mixed'] = 'Po dostarczeniu nierozłącznie połączony z inn
 $_['text_withdrawal_alcohol'] = 'Napoje alkoholowe o cenie zależnej od rynku, dostarczane po ponad 30 dniach';
 
 // Support: tickets between this shop and sudemi support (sudemi sends the e-mails, not this extension)
-$_['text_support_title'] = 'Pomoc';
-$_['text_support_not_connected'] = 'Najpierw połącz ten sklep z sudemi; potem możesz kontaktować się stąd z pomocą techniczną sudemi.';
-$_['text_support_intro'] = 'Pytania dotyczące zamówień, płatności, wypłat lub tego rozszerzenia kieruj do pomocy technicznej sudemi. Odpowiedzi pojawiają się tutaj i są też wysyłane e-mailem na adres Twojego konta sudemi.';
+$_['text_support_title'] = 'Wsparcie';
+$_['text_support_not_connected'] = 'Najpierw połącz ten sklep z sudemi; potem możesz kontaktować się stąd ze wsparciem sudemi.';
+$_['text_support_intro'] = 'Pytania dotyczące zamówień, płatności, wypłat lub tego rozszerzenia kieruj do wsparcia sudemi. Odpowiedzi pojawiają się tutaj i są też wysyłane e-mailem na adres Twojego konta sudemi.';
 $_['text_support_tickets'] = 'Twoje zgłoszenia';
 $_['text_support_empty'] = 'Nie masz jeszcze żadnych zgłoszeń.';
 $_['text_support_new'] = 'Nowe zgłoszenie';
-$_['text_support_email'] = 'sudemi powiadomi Cię e-mailem, gdy pomoc techniczna odpowie. To rozszerzenie samo nie wysyła e-maili.';
-$_['text_support_opened'] = 'Zgłoszenie %s zostało utworzone. Pomoc techniczna sudemi odezwie się do Ciebie.';
+$_['text_support_email'] = 'sudemi powiadomi Cię e-mailem, gdy wsparcie odpowie. To rozszerzenie samo nie wysyła e-maili.';
+$_['text_support_opened'] = 'Zgłoszenie %s zostało utworzone. Wsparcie sudemi odezwie się do Ciebie.';
 $_['text_support_replied'] = 'Twoja odpowiedź została wysłana.';
 $_['text_support_reply_reopens'] = 'Odpowiedź ponownie otworzy to zamknięte zgłoszenie.';
-$_['text_support_from_support'] = 'Pomoc techniczna sudemi';
+$_['text_support_from_support'] = 'Wsparcie sudemi';
 $_['text_support_from_shop'] = 'Ty (ten sklep)';
 $_['text_support_status_open'] = 'Otwarte';
 $_['text_support_status_waiting_for_customer'] = 'Czeka na Twoją odpowiedź';
@@ -131,12 +131,12 @@ $_['button_support_back'] = 'Wróć do wszystkich zgłoszeń';
 $_['error_support_invalid'] = 'Sprawdź formularz: temat musi mieć od 3 do 200 znaków, wiadomość najwyżej 10 000, a ID zamówienia musi należeć do zamówienia sudemi tego sklepu.';
 $_['error_support_not_found'] = 'Nie znaleziono tego zgłoszenia dla tego sklepu.';
 $_['error_support_too_many'] = 'Za dużo zgłoszeń naraz: najwyżej 20 otwartych zgłoszeń i najwyżej 10 nowych na godzinę. Odpowiedz w istniejącym zgłoszeniu lub spróbuj później.';
-$_['error_support_unavailable'] = 'Pomoc techniczna sudemi jest w tej chwili nieosiągalna. Nic nie zostało wysłane; spróbuj ponownie za chwilę.';
+$_['error_support_unavailable'] = 'Wsparcie sudemi jest w tej chwili nieosiągalne. Nic nie zostało wysłane; spróbuj ponownie za chwilę.';
 
 // sudemi refused this site as not being the connected shop (409 site_mismatch): a staging copy,
 // a restored backup, or the shop moved. %s is the address the shop is connected under.
-$_['text_site_mismatch_at'] = 'sudemi odrzuciło żądania z tej witryny: ten sklep jest połączony z sudemi pod innym adresem (%s). Jeśli ta witryna jest kopią testową (staging) lub przywróconą kopią zapasową, rozłącz tutaj sudemi. Jeśli sklep przeniósł się pod ten adres, połącz go ponownie.';
-$_['text_site_mismatch'] = 'sudemi odrzuciło żądania z tej witryny: ten sklep jest połączony z sudemi pod innym adresem. Jeśli ta witryna jest kopią testową (staging) lub przywróconą kopią zapasową, rozłącz tutaj sudemi. Jeśli sklep przeniósł się pod ten adres, połącz go ponownie.';
+$_['text_site_mismatch_at'] = 'sudemi odrzuciło żądania z tej witryny: ten sklep jest połączony z sudemi pod innym adresem (%s). Jeśli ta witryna jest kopią testową (staging) lub przywróconą kopią zapasową, odłącz tutaj sudemi. Jeśli sklep przeniósł się pod ten adres, połącz go ponownie.';
+$_['text_site_mismatch'] = 'sudemi odrzuciło żądania z tej witryny: ten sklep jest połączony z sudemi pod innym adresem. Jeśli ta witryna jest kopią testową (staging) lub przywróconą kopią zapasową, odłącz tutaj sudemi. Jeśli sklep przeniósł się pod ten adres, połącz go ponownie.';
 
 // Return requests from buyers (answered within 7 days: accept, or reject with a reason the buyer
 // sees). The notes go into the order history; %s is the reason given.
@@ -170,9 +170,9 @@ $_['text_order_total'] = 'Razem';
 // The shop currency sudemi charges buyers in (1.2.12).
 $_['entry_currency'] = 'Waluta';
 $_['text_currency_seen'] = 'Kupujący w sudemi płacą w %s, domyślnej walucie tego sklepu. Twoje ceny są wysyłane w tej walucie bez przeliczania.';
-$_['text_currency_fee'] = 'sudemi wypłaca Ci pieniądze w EUR: operator płatności kartą Stripe przelicza płatność, a jego opłata za przewalutowanie (około 2%) jest potrącana z Twojej wypłaty.';
+$_['text_currency_fee'] = 'sudemi wypłaca Ci pieniądze w EUR: operator płatności Stripe przelicza płatność, a jego opłata za przewalutowanie (około 2%) jest potrącana z Twojej wypłaty.';
 $_['text_currency_unsupported'] = 'sudemi nie może przyjmować płatności w %s, więc kupujący nie mogą zamawiać w tym sklepie. Ustaw walutę domyślną (System > Settings, karta Local) na jedną z: %s. Potem wyślij katalog ponownie.';
-$_['text_currency_changed'] = 'Ten sklep sprzedaje teraz w %1$s, ale sudemi ma jeszcze %2$s. Kliknij "Wyślij katalog teraz", aby kupujący płacili w %1$s.';
+$_['text_currency_changed'] = 'Ten sklep sprzedaje teraz w %1$s, ale sudemi ma jeszcze %2$s. Kliknij „Wyślij katalog teraz”, aby kupujący płacili w %1$s.';
 $_['column_paid'] = 'Kupujący zapłacił';
 
 // 1.3.0: sudemi orders, shipping and payouts in this admin (sudemi stays the source of truth).
@@ -326,7 +326,7 @@ $_['text_shipping_intro'] = 'Dokąd kupujący z sudemi mogą zamawiać i ile pł
 $_['text_shipping_mode_shop'] = 'Użyj cen wysyłki z mojego sklepu';
 $_['help_shipping_mode_shop'] = 'Używane są, dla każdego produktu, ceny, które to rozszerzenie odczytuje z Twoich metod wysyłki i stref geograficznych.';
 $_['text_shipping_mode_custom'] = 'Wybierz kraje i ceny w sudemi';
-$_['help_shipping_mode_custom'] = 'Oferowane są tylko włączone kraje. Cena (w %1$s, najwyżej %2$s) jest naliczana za każdy produkt; zostaw ją pustą, aby użyć tam ceny z Twojego sklepu.';
+$_['help_shipping_mode_custom'] = 'Oferowane są tylko włączone kraje. Cena (w %1$s, najwyżej %2$s) jest naliczana raz za paczkę do tego kraju, niezależnie od produktów; zostaw ją pustą, aby użyć tam ceny z Twojego sklepu.';
 $_['button_shipping_prefill'] = 'Uzupełnij z mojego sklepu';
 $_['help_shipping_prefill'] = 'Włącza kraje, do których wysyła Twój sklep, z ceną Twojego sklepu za jedną sztukę.';
 $_['column_ship_enabled'] = 'Wysyłaj tam';

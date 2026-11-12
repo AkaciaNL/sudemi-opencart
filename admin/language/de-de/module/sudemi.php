@@ -13,7 +13,7 @@ $_['text_disconnected'] = 'Getrennt.';
 $_['text_sync_started'] = 'Die Katalogsynchronisierung wurde gestartet und läuft im Hintergrund; der Katalog wird innerhalb weniger Minuten gesendet.';
 $_['text_synced'] = 'Der Katalog wurde gesendet.';
 $_['text_sync_failed'] = 'Der Katalog konnte nicht gesendet werden. Es wurde nichts aus der Listung genommen.';
-$_['text_sync_held'] = 'Der Katalogabgleich ist angehalten: Er würde viele gelistete Produkte von sudemi entfernen, daher wurde nichts geändert. Wenn diese Produkte wirklich aus diesem Shop entfernt wurden, wenden Sie sich an den sudemi-Support (support@sudemi.com).';
+$_['text_sync_held'] = 'Die Katalogsynchronisierung ist angehalten: Sie würde viele gelistete Produkte von sudemi entfernen, daher wurde nichts geändert. Wenn diese Produkte wirklich aus diesem Shop entfernt wurden, wenden Sie sich an den sudemi-Support (support@sudemi.com).';
 $_['text_locked'] = 'Ihr rechtlicher Name, Ihr Land, Ihr Unternehmerstatus und Ihre USt-IdNr. bestimmen, welche Rechte ein Käufer hat. Deshalb werden sie einmalig auf sudemi bestätigt und dort geändert. Diese Erweiterung kann sie nicht bearbeiten.';
 $_['text_shop_url_fixed'] = 'Unveränderlich. sudemi hat geprüft, dass dieser Shop unter dieser Adresse geantwortet hat, und ein Eintrag zeigt dem Käufer, woher er stammt - eine Änderung bedeutet daher, sich von der neuen Adresse aus erneut zu verbinden.';
 $_['text_key_held'] = 'Der private Teil des Signaturschlüssels verlässt diesen Server nie und wird nie an sudemi gesendet. Er kann auch hier nicht angezeigt werden.';
@@ -89,7 +89,7 @@ $_['text_withdrawal_perishable'] = 'Schnell verderblich oder mit kurzem Verfalls
 $_['text_withdrawal_media'] = 'Versiegelte Audio-, Video- oder Software-Datenträger (nach Entsiegelung keine Rückgabe)';
 $_['text_withdrawal_press'] = 'Zeitung, Zeitschrift oder Illustrierte';
 $_['text_withdrawal_mixed'] = 'Nach der Lieferung untrennbar mit anderen Gütern vermischt';
-$_['text_withdrawal_alcohol'] = 'Alkoholische Getränke mit marktabhängigem Preis, Lieferung nach mehr als 30 Tagen';
+$_['text_withdrawal_alcohol'] = 'Alkoholische Getränke mit marktabhängigem Preis, Lieferung frühestens nach 30 Tagen';
 
 // Support: tickets between this shop and sudemi support (sudemi sends the e-mails, not this extension)
 $_['text_support_title'] = 'Support';
@@ -170,10 +170,10 @@ $_['text_order_total'] = 'Gesamt';
 // The shop currency sudemi charges buyers in (1.2.12).
 $_['entry_currency'] = 'Währung';
 $_['text_currency_seen'] = 'Käufer auf sudemi zahlen in %s, der Standardwährung dieses Shops. Ihre Preise werden ohne Umrechnung in dieser Währung übertragen.';
-$_['text_currency_fee'] = 'sudemi zahlt Ihnen in EUR aus: Der Kartenzahlungsdienst Stripe rechnet die Zahlung um, und seine Umrechnungsgebühr (etwa 2 %) wird von Ihrer Auszahlung abgezogen.';
+$_['text_currency_fee'] = 'sudemi zahlt Ihnen in EUR aus: Der Zahlungsdienstleister Stripe rechnet die Zahlung um, und seine Umrechnungsgebühr (etwa 2 %) wird von Ihrer Auszahlung abgezogen.';
 $_['text_currency_unsupported'] = 'sudemi kann keine Zahlungen in %s annehmen, daher können Käufer in diesem Shop nicht bestellen. Stellen Sie die Standardwährung (System > Settings, Reiter Local) auf eine dieser Währungen: %s. Senden Sie danach den Katalog erneut.';
 $_['text_currency_changed'] = 'Dieser Shop verkauft jetzt in %1$s, sudemi hat aber noch %2$s. Klicken Sie auf "Katalog jetzt senden", damit Käufer in %1$s bezahlen.';
-$_['column_paid'] = 'Käufer zahlte';
+$_['column_paid'] = 'Vom Käufer bezahlt';
 
 // 1.3.0: sudemi orders, shipping and payouts in this admin (sudemi stays the source of truth).
 $_['text_menu_orders'] = 'sudemi-Bestellungen';
@@ -240,7 +240,7 @@ $_['text_bulk_result'] = 'Erledigt: %d. Nicht geändert: %d.';
 $_['text_refunded_short'] = 'erstattet';
 $_['text_payouts_title'] = 'Auszahlungen';
 $_['entry_payout_account'] = 'Auszahlungskonto';
-$_['text_payouts_delay'] = 'Sie erhalten Ihr Geld %d Tage nachdem der Käufer die Bestellung erhalten hat.';
+$_['text_payouts_delay'] = 'Sie erhalten Ihr Geld %d Tage, nachdem der Käufer die Bestellung erhalten hat.';
 $_['text_payouts_empty'] = 'Noch keine Auszahlungen.';
 $_['text_payouts_portal'] = 'Das Auszahlungskonto wird im sudemi-Verkäuferportal verwaltet (Auszahlungen).';
 $_['text_next_due'] = 'nächste:';
@@ -326,7 +326,7 @@ $_['text_shipping_intro'] = 'Wohin sudemi-Käufer bestellen können und was sie 
 $_['text_shipping_mode_shop'] = 'Versandpreise meines Shops verwenden';
 $_['help_shipping_mode_shop'] = 'Es werden pro Produkt die Preise verwendet, die diese Erweiterung aus Ihren Versandarten und Geozonen liest.';
 $_['text_shipping_mode_custom'] = 'Länder und Preise auf sudemi wählen';
-$_['help_shipping_mode_custom'] = 'Nur die eingeschalteten Länder werden angeboten. Ein Preis (in %1$s, höchstens %2$s) wird für jedes Produkt berechnet; lassen Sie ihn leer, um dort den Preis Ihres Shops zu verwenden.';
+$_['help_shipping_mode_custom'] = 'Nur die eingeschalteten Länder werden angeboten. Der Preis (in %1$s, höchstens %2$s) wird einmal pro Paket in dieses Land berechnet, egal welche Produkte; lassen Sie ihn leer, um dort den Preis Ihres Shops zu verwenden.';
 $_['button_shipping_prefill'] = 'Aus meinem Shop übernehmen';
 $_['help_shipping_prefill'] = 'Schaltet die Länder ein, in die Ihr Shop versendet, mit dem Preis Ihres Shops für einen Artikel.';
 $_['column_ship_enabled'] = 'Dorthin versenden';

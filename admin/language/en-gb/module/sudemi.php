@@ -170,7 +170,7 @@ $_['text_order_total'] = 'Total';
 // The shop currency sudemi charges buyers in (1.2.12).
 $_['entry_currency'] = 'Currency';
 $_['text_currency_seen'] = 'Buyers on sudemi pay in %s, the default currency of this shop. Your prices are sent in it as they are, without conversion.';
-$_['text_currency_fee'] = 'sudemi pays you out in EUR: the bank card company Stripe converts the payment, and its conversion fee (about 2%) is taken from your payout.';
+$_['text_currency_fee'] = 'sudemi pays you out in EUR: the payment provider Stripe converts the payment, and its conversion fee (about 2%) is taken from your payout.';
 $_['text_currency_unsupported'] = 'sudemi cannot take payments in %s, so buyers cannot order from this shop. Set the default currency (System > Settings, tab Local) to one of: %s. Then send the catalogue again.';
 $_['text_currency_changed'] = 'This shop now sells in %1$s, but sudemi still has %2$s. Press "Send the catalogue now" so buyers are charged in %1$s.';
 $_['column_paid'] = 'Buyer paid';
@@ -326,7 +326,7 @@ $_['text_shipping_intro'] = 'Where sudemi buyers can order to, and what they pay
 $_['text_shipping_mode_shop'] = 'Use my shop\'s shipping prices';
 $_['help_shipping_mode_shop'] = 'The prices this extension reads from your shipping methods and geo zones are used, per product.';
 $_['text_shipping_mode_custom'] = 'Choose countries and prices on sudemi';
-$_['help_shipping_mode_custom'] = 'Only the countries switched on are offered. A price (in %1$s, at most %2$s) is charged for every product; leave it empty to use your shop\'s own price there.';
+$_['help_shipping_mode_custom'] = 'Only the countries switched on are offered. The price (in %1$s, at most %2$s) is charged once per parcel to that country, whatever the products; leave it empty to use your shop\'s own price there.';
 $_['button_shipping_prefill'] = 'Fill in from my shop';
 $_['help_shipping_prefill'] = 'Switches on the countries your shop ships to, with your shop\'s price for one item.';
 $_['column_ship_enabled'] = 'Ship there';

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.2
+
+- **Translations reviewed.** Every text in the 11 other languages was checked against the English:
+  money words (payout versus the buyer's payment), one form of address per language, plain wording.
+- **Clearer money texts.** The conversion fee of about 2 percent is taken by the payment provider
+  Stripe (it said "bank card company"), and an own shipping price is charged once per parcel, not
+  per product.
+
 ## 1.3.1
 
 - **A sudemi order can no longer become two OpenCart orders.** Before, two accepts at the same moment

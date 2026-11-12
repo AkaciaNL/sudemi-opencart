@@ -13,9 +13,9 @@ $_['text_disconnected'] = 'Déconnecté.';
 $_['text_sync_started'] = 'La synchronisation du catalogue a démarré et s’exécute en arrière-plan ; le catalogue est envoyé en quelques minutes.';
 $_['text_synced'] = 'Le catalogue a été envoyé.';
 $_['text_sync_failed'] = 'Le catalogue n’a pas pu être envoyé. Aucun produit n’a été retiré.';
-$_['text_sync_held'] = 'La synchronisation du catalogue est en attente : elle retirerait de sudemi de nombreux produits listés, donc rien n’a été modifié. Si ces produits ont vraiment été retirés de cette boutique, contactez le support sudemi (support@sudemi.com).';
+$_['text_sync_held'] = 'La synchronisation du catalogue est en attente : elle retirerait de sudemi de nombreux produits proposés, donc rien n’a été modifié. Si ces produits ont vraiment été retirés de cette boutique, contactez le support sudemi (support@sudemi.com).';
 $_['text_locked'] = 'Votre raison sociale, votre pays, votre statut de professionnel et votre numéro de TVA déterminent ce qui est dû à l’acheteur ; ils sont donc confirmés une seule fois sur sudemi et modifiés là-bas. Cette extension ne peut pas les modifier.';
-$_['text_shop_url_fixed'] = 'Fixe. sudemi a vérifié que cette boutique répondait à cette adresse, et chaque annonce indique à l’acheteur d’où elle provient - la modifier implique donc de vous reconnecter depuis la nouvelle adresse.';
+$_['text_shop_url_fixed'] = 'Non modifiable. sudemi a vérifié que cette boutique répondait à cette adresse, et chaque annonce indique à l’acheteur d’où elle provient - la modifier implique donc de vous reconnecter depuis la nouvelle adresse.';
 $_['text_key_held'] = 'La partie privée de la clé de signature ne quitte jamais ce serveur et n’est jamais envoyée à sudemi. Elle ne peut pas non plus être affichée ici.';
 
 // Entry
@@ -54,9 +54,9 @@ $_['text_delivery_preview'] = 'Tarifs de livraison envoyés à sudemi (d’aprè
 $_['text_delivery_skipped'] = 'Les pays sans tarif fixe (autres extensions, livraison gratuite avec minimum d’achat, zones géographiques ne couvrant qu’une partie d’un pays) sont exclus plutôt qu’estimés.';
 $_['text_delivery_none'] = 'Aucun tarif de livraison n’a pu être lu dans vos modes de livraison : les acheteurs sudemi ne peuvent donc pas commander. Activez Tarif forfaitaire, Par article, Selon le poids ou la livraison gratuite sans condition pour les zones géographiques vers lesquelles vous expédiez.';
 $_['entry_handling_days'] = 'Jours avant l’expédition d’une commande (au maximum)';
-$_['entry_transit_days'] = 'Jours de transport par le transporteur (au maximum)';
+$_['entry_transit_days'] = 'Jours d’acheminement par le transporteur (au maximum)';
 $_['button_delivery'] = 'Enregistrer les délais de livraison';
-$_['text_delivery_help'] = 'Les acheteurs voient la somme comme date de livraison estimée au plus tard. Indiquez vos délais réels ; les valeurs par défaut sont volontairement prudentes. Le catalogue est renvoyé lors de la prochaine synchronisation.';
+$_['text_delivery_help'] = 'Les acheteurs voient la somme des deux comme délai de livraison maximal estimé. Indiquez vos délais réels ; les valeurs par défaut sont volontairement prudentes. Le catalogue est renvoyé lors de la prochaine synchronisation.';
 $_['text_delivery_saved'] = 'Délais de livraison enregistrés.';
 
 // Order history on this page
@@ -69,14 +69,14 @@ $_['column_status'] = 'État';
 $_['column_net'] = 'Vous recevez';
 $_['column_customer'] = 'Client';
 $_['text_status_awaiting_seller'] = 'En attente de votre réponse - acheteur non débité';
-$_['text_status_accepted'] = 'Acceptée - en attente des autres boutiques du paiement de l’acheteur ; acheteur pas encore débité, n’expédiez pas';
+$_['text_status_accepted'] = 'Acceptée - en attente des autres boutiques incluses dans le paiement de l’acheteur ; acheteur pas encore débité, n’expédiez pas';
 $_['text_status_paid'] = 'Confirmée et débitée';
 $_['text_status_declined'] = 'Refusée - rien n’a été débité';
 $_['text_status_shipped'] = 'Expédiée';
 $_['text_status_delivered'] = 'Livrée';
 $_['text_status_cancelled'] = 'Annulée';
 $_['text_status_refunded'] = 'Remboursée';
-$_['text_history_awaiting'] = 'Commandes en attente de confirmation : %d. Ces acheteurs n’ont encore rien payé.';
+$_['text_history_awaiting'] = 'Commandes en attente de confirmation : %d. Ces acheteurs n’ont pas encore été débités.';
 $_['text_options_skipped'] = '%d produit(s) avec une option obligatoire (par exemple une taille à choisir) ne sont pas proposés sur sudemi : une commande passée par l’assistant IA d’un acheteur ne contient aucune option, vous ne sauriez donc pas quel article envoyer. Proposez-les plutôt comme variantes OpenCart (chaque variante est un produit à part entière).';
 
 // Product form: right of withdrawal (Directive 2011/83/EU, art. 16)
@@ -106,7 +106,7 @@ $_['text_support_from_support'] = 'Assistance sudemi';
 $_['text_support_from_shop'] = 'Vous (cette boutique)';
 $_['text_support_status_open'] = 'Ouvert';
 $_['text_support_status_waiting_for_customer'] = 'En attente de votre réponse';
-$_['text_support_status_answered'] = 'Répondu';
+$_['text_support_status_answered'] = 'Réponse envoyée';
 $_['text_support_status_closed'] = 'Fermé';
 $_['text_support_category_order'] = 'Une commande';
 $_['text_support_category_payment'] = 'Un paiement';
@@ -170,9 +170,9 @@ $_['text_order_total'] = 'Total';
 // The shop currency sudemi charges buyers in (1.2.12).
 $_['entry_currency'] = 'Devise';
 $_['text_currency_seen'] = 'Les acheteurs sur sudemi paient en %s, la devise par défaut de cette boutique. Vos prix sont envoyés dans cette devise, sans conversion.';
-$_['text_currency_fee'] = 'sudemi vous verse vos paiements en EUR : le service de paiement par carte Stripe convertit le paiement, et ses frais de conversion (environ 2 %) sont déduits de votre versement.';
+$_['text_currency_fee'] = 'sudemi effectue vos versements en EUR : Stripe, le prestataire de paiement, convertit le paiement, et ses frais de conversion (environ 2 %) sont déduits de votre versement.';
 $_['text_currency_unsupported'] = 'sudemi ne peut pas accepter de paiements en %s, les acheteurs ne peuvent donc pas commander dans cette boutique. Choisissez comme devise par défaut (System > Settings, onglet Local) l\'une de celles-ci : %s. Envoyez ensuite à nouveau le catalogue.';
-$_['text_currency_changed'] = 'Cette boutique vend maintenant en %1$s, mais sudemi a encore %2$s. Cliquez sur "Envoyer le catalogue maintenant" pour que les acheteurs paient en %1$s.';
+$_['text_currency_changed'] = 'Cette boutique vend maintenant en %1$s, mais sudemi utilise encore %2$s. Cliquez sur « Envoyer le catalogue maintenant » pour que les acheteurs paient en %1$s.';
 $_['column_paid'] = 'Payé par l\'acheteur';
 
 // 1.3.0: sudemi orders, shipping and payouts in this admin (sudemi stays the source of truth).
@@ -240,7 +240,7 @@ $_['text_bulk_result'] = 'Effectuées : %d. Non modifiées : %d.';
 $_['text_refunded_short'] = 'remboursée';
 $_['text_payouts_title'] = 'Versements';
 $_['entry_payout_account'] = 'Compte de versement';
-$_['text_payouts_delay'] = 'Vous êtes payé %d jours après la réception de la commande par l’acheteur.';
+$_['text_payouts_delay'] = 'Le versement a lieu %d jours après la réception de la commande par l’acheteur.';
 $_['text_payouts_empty'] = 'Aucun versement pour l’instant.';
 $_['text_payouts_portal'] = 'Le compte de versement se gère sur le portail vendeur sudemi (Versements).';
 $_['text_next_due'] = 'prochain :';
@@ -299,7 +299,7 @@ $_['text_action_shipped'] = 'Marquée comme expédiée sur sudemi. L’acheteur 
 $_['text_action_delivered'] = 'Marquée comme livrée sur sudemi.';
 $_['text_action_refunded'] = 'Remboursée via sudemi.';
 $_['text_action_cancelled'] = 'Annulée sur sudemi ; l’acheteur est remboursé en totalité.';
-$_['text_action_already'] = 'sudemi l’avait déjà ; rien n’a changé.';
+$_['text_action_already'] = 'sudemi avait déjà cette information ; rien n’a été modifié.';
 $_['error_action_reason'] = 'Indiquez un motif ; l’acheteur le verra.';
 $_['error_action_amount'] = 'Saisissez le montant en chiffres, par exemple 12.50, ou laissez vide pour rembourser le reste.';
 $_['error_action_shortfall'] = 'Non acceptée, rien n’a été envoyé : %s. Refusez la commande, ou corrigez le stock et acceptez à nouveau.';
@@ -326,13 +326,13 @@ $_['text_shipping_intro'] = 'Où les acheteurs sudemi peuvent commander, et ce q
 $_['text_shipping_mode_shop'] = 'Utiliser les frais de livraison de ma boutique';
 $_['help_shipping_mode_shop'] = 'Les prix que cette extension lit dans vos modes de livraison et zones géographiques sont utilisés, par produit.';
 $_['text_shipping_mode_custom'] = 'Choisir les pays et les prix sur sudemi';
-$_['help_shipping_mode_custom'] = 'Seuls les pays activés sont proposés. Un prix (en %1$s, %2$s au maximum) est facturé pour chaque produit ; laissez-le vide pour utiliser le prix de votre boutique pour ce pays.';
+$_['help_shipping_mode_custom'] = 'Seuls les pays activés sont proposés. Le prix (en %1$s, %2$s au maximum) est facturé une fois par colis vers ce pays, quels que soient les produits ; laissez-le vide pour utiliser le prix de votre boutique pour ce pays.';
 $_['button_shipping_prefill'] = 'Remplir depuis ma boutique';
 $_['help_shipping_prefill'] = 'Active les pays vers lesquels votre boutique expédie, avec le prix de votre boutique pour un article.';
-$_['column_ship_enabled'] = 'Livrer ce pays';
+$_['column_ship_enabled'] = 'Livrer dans ce pays';
 $_['column_ship_price'] = 'Prix sur sudemi';
 $_['column_ship_shop_price'] = 'Prix de votre boutique';
-$_['column_ship_effective'] = 'Les acheteurs paient';
+$_['column_ship_effective'] = 'Les acheteurs paient actuellement';
 $_['text_ship_own_price'] = 'prix de la boutique';
 $_['text_ship_not_offered'] = 'Non proposé';
 $_['text_shipping_source_sudemi'] = '(prix défini sur sudemi)';
