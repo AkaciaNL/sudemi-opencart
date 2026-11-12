@@ -280,7 +280,13 @@ class Orders
             return;
         }
 
-        $orderId = $this->createLocalOrder($pending, $sudemiId);
+        $got = $this->obtainLocalOrder($pending, $sudemiId);
+        if ($got['state'] === 'busy') {
+            // Another run (Accept on the sudemi page, a bulk accept) is building it right now and
+            // sends the answer itself. Nothing is built twice; the next heartbeat looks again.
+            return;
+        }
+        $orderId = $got['order_id'];
         if (!$orderId) {
             $this->client->postSigned(
                 '/integration/v1/orders/' . rawurlencode($sudemiId) . '/reject',
@@ -288,7 +294,111 @@ class Orders
             );
             return;
         }
+        if ($got['state'] === 'existing') {
+            $local = $this->rowById($orderId);
+            if ($local !== null && ($local['released'] || in_array($local['status'], array(self::STATUS_CANCELED, self::STATUS_REFUNDED), true))) {
+                $this->rejectLocal($sudemiId, $local, 'cancelled in the shop');
+
+                return;
+            }
+        }
         $this->accept($sudemiId, $orderId);
+    }
+
+    /**
+     * The OpenCart order for a sudemi order: the one already built, or a new one built by exactly
+     * one caller. Every accept goes through here: the heartbeat's automatic answer, Accept on the
+     * sudemi page, bulk accept and orders accepted on sudemi itself.
+     *
+     * Review 2026-11-12: the order (and the stock it takes) used to be created first and only then
+     * linked to its sudemi order, so two callers at the same moment both saw no order and both
+     * built one. Now a row keyed on the sudemi order id is inserted first (sudemi_order_claim); its
+     * primary key lets exactly one caller in, and only that caller builds the order. A caller that
+     * died after claiming leaves a row with no order: taken over after CLAIM_STALE_SECONDS by a
+     * conditional update, which again lets exactly one caller in.
+     *
+     * @return array ['state' => created|existing|busy|failed, 'order_id' => int]
+     */
+    public function obtainLocalOrder(array $pending, $sudemiId)
+    {
+        $sudemiId = strtolower((string) $sudemiId);
+        $claim = $this->claim($sudemiId);
+        if ($claim === 'busy') {
+            return array('state' => 'busy', 'order_id' => 0);
+        }
+        if (is_int($claim)) {
+            return array('state' => 'existing', 'order_id' => $claim);
+        }
+        // Won. An order built before claims existed, or by a caller that died after building it,
+        // is linked, not built again.
+        $existing = $this->localRow($sudemiId);
+        if ($existing !== null) {
+            $this->claimLink($sudemiId, $existing['id']);
+
+            return array('state' => 'existing', 'order_id' => $existing['id']);
+        }
+        try {
+            $orderId = $this->createLocalOrder($pending, $sudemiId);
+        } catch (\Throwable $e) {
+            // Failed here and now (not a process that died): the claim goes at once, so the next
+            // heartbeat can try again instead of waiting out the stale time.
+            $this->db->query("DELETE FROM `" . $this->prefix . "sudemi_order_claim` WHERE sudemi_order_id = '"
+                . $this->db->escape($sudemiId) . "'");
+            throw $e;
+        }
+        if (!$orderId) {
+            $this->db->query("DELETE FROM `" . $this->prefix . "sudemi_order_claim` WHERE sudemi_order_id = '"
+                . $this->db->escape($sudemiId) . "'");
+
+            return array('state' => 'failed', 'order_id' => 0);
+        }
+        $this->claimLink($sudemiId, $orderId);
+
+        return array('state' => 'created', 'order_id' => (int) $orderId);
+    }
+
+    const CLAIM_STALE_SECONDS = 600;
+
+    /** @return string|int 'won', 'busy', or the id of the order already built */
+    private function claim($sudemiId)
+    {
+        $table = $this->prefix . 'sudemi_order_claim';
+        $id = $this->db->escape($sudemiId);
+        $now = gmdate('Y-m-d H:i:s');
+        $this->db->query("INSERT IGNORE INTO `" . $table . "` (sudemi_order_id, order_id, claimed_at) VALUES ('" . $id . "', 0, '" . $now . "')");
+        if ((int) $this->db->countAffected() === 1) {
+            return 'won';
+        }
+        $row = $this->db->query("SELECT order_id, claimed_at FROM `" . $table . "` WHERE sudemi_order_id = '" . $id . "'");
+        if (!$row->num_rows) {
+            return 'busy';
+        }
+        $local = (int) $row->row['order_id'];
+        if ($local > 0) {
+            if ($this->rowById($local) === null) {
+                // Deleted for good while sudemi still waits: taken over from exactly that order id.
+                $this->db->query("UPDATE `" . $table . "` SET order_id = 0, claimed_at = '" . $now . "'
+                                   WHERE sudemi_order_id = '" . $id . "' AND order_id = " . $local);
+
+                return (int) $this->db->countAffected() === 1 ? 'won' : 'busy';
+            }
+
+            return $local;
+        }
+        if ((string) $row->row['claimed_at'] >= gmdate('Y-m-d H:i:s', time() - self::CLAIM_STALE_SECONDS)) {
+            return 'busy';
+        }
+        $this->db->query("UPDATE `" . $table . "` SET claimed_at = '" . $now . "'
+                           WHERE sudemi_order_id = '" . $id . "' AND order_id = 0
+                             AND claimed_at = '" . $this->db->escape((string) $row->row['claimed_at']) . "'");
+
+        return (int) $this->db->countAffected() === 1 ? 'won' : 'busy';
+    }
+
+    private function claimLink($sudemiId, $orderId)
+    {
+        $this->db->query("UPDATE `" . $this->prefix . "sudemi_order_claim` SET order_id = " . (int) $orderId
+            . " WHERE sudemi_order_id = '" . $this->db->escape($sudemiId) . "'");
     }
 
     /**
@@ -1934,12 +2044,16 @@ class Orders
             // Nothing is sent: the person decides (decline it, or fix the stock and accept again).
             return array('ok' => false, 'order_id' => 0, 'error' => 'shortfall', 'reason' => $problem);
         }
-        $orderId = $this->createLocalOrder($pending, $sudemiId);
-        if (!$orderId) {
+        $got = $this->obtainLocalOrder($pending, $sudemiId);
+        if ($got['state'] === 'busy') {
+            // Being accepted right now by another run (a second click, the automatic confirmation).
+            return array('ok' => false, 'order_id' => 0, 'error' => 'busy', 'reason' => null);
+        }
+        if (!$got['order_id']) {
             return array('ok' => false, 'order_id' => 0, 'error' => 'not_recorded', 'reason' => null);
         }
 
-        return array('ok' => true, 'order_id' => $orderId, 'error' => null, 'reason' => null);
+        return array('ok' => true, 'order_id' => $got['order_id'], 'error' => null, 'reason' => null);
     }
 
     /**
@@ -2112,7 +2226,15 @@ class Orders
                 if ($problem !== null) {
                     $this->logger->error(sprintf('sudemi order %s was accepted on sudemi but cannot be booked here: %s.', $sudemiId, $problem));
                 } else {
-                    $orderId = $this->createLocalOrder($pending, $sudemiId);
+                    $got = $this->obtainLocalOrder($pending, $sudemiId);
+                    if ($got['state'] === 'busy') {
+                        // Being built right now by another run: applied on a later beat.
+                        throw new ApplyLater('order being booked');
+                    }
+                    $orderId = $got['state'] === 'created' ? $got['order_id'] : 0;
+                    if ($got['state'] === 'existing') {
+                        $local = $this->rowById($got['order_id']);
+                    }
                     if ($orderId) {
                         $this->note($orderId, $this->noteText('text_note_imported'), self::STATE_INCOMPLETE);
                         $this->logger->info(sprintf('sudemi order %s was accepted on sudemi; booked here as order %d.', $sudemiId, $orderId));

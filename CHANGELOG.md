@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.1
+
+- **A sudemi order can no longer become two OpenCart orders.** Before, two accepts at the same moment
+  (a double click on Accept, a bulk accept, or the heartbeat answering while an order was accepted
+  by hand) could each build the order and take the stock twice. Now the sudemi order is claimed in
+  the database (table `sudemi_order_claim`, made by the extension on its own) before the OpenCart
+  order is built, and only the one that claims it builds it.
+
 ## 1.3.0
 
 Orders and shipping managed from the OpenCart admin (owner, 2026-11-09). The sudemi portal stays the

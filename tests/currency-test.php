@@ -90,6 +90,10 @@ class FakeDb {
 	public function getLastId() {
 		return 100;
 	}
+	/** The order claim (review 2026-11-12) is tested in claims-test.php; here every caller wins it. */
+	public function countAffected() {
+		return 1;
+	}
 	public function query( $sql ) {
 		$sql = preg_replace( '/\s+/', ' ', trim( $sql ) );
 		$m   = array();

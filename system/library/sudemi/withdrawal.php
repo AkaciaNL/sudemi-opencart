@@ -25,7 +25,7 @@ class Withdrawal
 {
     const FIELD = 'sudemi_withdrawal_exclusion';
     const SETTING_SCHEMA = 'sudemi_schema_version';
-    const SCHEMA_VERSION = '1.3.0';
+    const SCHEMA_VERSION = '1.3.1'; // 1.3.1: the order claim table (review 2026-11-12)
     /** Set when an exclusion changed; the next heartbeat sends the catalogue. */
     const SETTING_RESYNC_DUE = 'sudemi_resync_due';
 
@@ -121,6 +121,16 @@ class Withdrawal
                 `date_modified` DATETIME NOT NULL,
                 PRIMARY KEY (`sudemi_order_id`),
                 KEY `order_id` (`order_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
+        );
+        // 1.3.1 (review 2026-11-12): which caller builds the shop order for a sudemi order. The row
+        // is inserted before the order is built; its primary key lets exactly one caller in.
+        $this->db->query(
+            'CREATE TABLE IF NOT EXISTS `' . DB_PREFIX . 'sudemi_order_claim` (
+                `sudemi_order_id` CHAR(36) NOT NULL,
+                `order_id` INT(11) NOT NULL DEFAULT 0,
+                `claimed_at` DATETIME NOT NULL,
+                PRIMARY KEY (`sudemi_order_id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
         );
         foreach (self::EVENTS as $event) {
