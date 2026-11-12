@@ -171,7 +171,7 @@ $_['text_order_total'] = 'Razem';
 $_['entry_currency'] = 'Waluta';
 $_['text_currency_seen'] = 'Kupujący w sudemi płacą w %s, domyślnej walucie tego sklepu. Twoje ceny są wysyłane w tej walucie bez przeliczania.';
 $_['text_currency_fee'] = 'sudemi wypłaca Ci pieniądze w EUR: operator płatności Stripe przelicza płatność, a jego opłata za przewalutowanie (około 2%) jest potrącana z Twojej wypłaty.';
-$_['text_currency_unsupported'] = 'sudemi nie może przyjmować płatności w %s, więc kupujący nie mogą zamawiać w tym sklepie. Ustaw walutę domyślną (System > Settings, karta Local) na jedną z: %s. Potem wyślij katalog ponownie.';
+$_['text_currency_unsupported'] = 'sudemi nie może przyjmować płatności w %s, więc kupujący nie mogą zamawiać w tym sklepie. Ustaw walutę domyślną (System > Ustawienia, karta Lokalne; po angielsku System > Settings, Local) na jedną z: %s. Potem wyślij katalog ponownie.';
 $_['text_currency_changed'] = 'Ten sklep sprzedaje teraz w %1$s, ale sudemi ma jeszcze %2$s. Kliknij „Wyślij katalog teraz”, aby kupujący płacili w %1$s.';
 $_['column_paid'] = 'Kupujący zapłacił';
 

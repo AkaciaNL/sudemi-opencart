@@ -171,7 +171,7 @@ $_['text_order_total'] = 'Totaal';
 $_['entry_currency'] = 'Valuta';
 $_['text_currency_seen'] = 'Kopers op sudemi betalen in %s, de standaardvaluta van deze winkel. Je prijzen gaan zonder omrekening in die valuta mee.';
 $_['text_currency_fee'] = 'sudemi betaalt je uit in EUR: betaalprovider Stripe rekent de betaling om, en de kosten daarvan (ongeveer 2%) gaan van je uitbetaling af.';
-$_['text_currency_unsupported'] = 'sudemi kan geen betalingen in %s aannemen, dus kopers kunnen niet bij deze winkel bestellen. Zet de standaardvaluta (System > Settings, tabblad Local) op een van: %s. Verstuur daarna de catalogus opnieuw.';
+$_['text_currency_unsupported'] = 'sudemi kan geen betalingen in %s aannemen, dus kopers kunnen niet bij deze winkel bestellen. Zet de standaardvaluta (Systeem > Instellingen, tabblad Lokaal; in het Engels System > Settings, Local) op een van: %s. Verstuur daarna de catalogus opnieuw.';
 $_['text_currency_changed'] = 'Deze winkel verkoopt nu in %1$s, maar sudemi heeft nog %2$s. Klik op "Catalogus nu versturen" zodat kopers in %1$s betalen.';
 $_['column_paid'] = 'Koper betaalde';
 

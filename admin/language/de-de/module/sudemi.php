@@ -171,7 +171,7 @@ $_['text_order_total'] = 'Gesamt';
 $_['entry_currency'] = 'Währung';
 $_['text_currency_seen'] = 'Käufer auf sudemi zahlen in %s, der Standardwährung dieses Shops. Ihre Preise werden ohne Umrechnung in dieser Währung übertragen.';
 $_['text_currency_fee'] = 'sudemi zahlt Ihnen in EUR aus: Der Zahlungsdienstleister Stripe rechnet die Zahlung um, und seine Umrechnungsgebühr (etwa 2 %) wird von Ihrer Auszahlung abgezogen.';
-$_['text_currency_unsupported'] = 'sudemi kann keine Zahlungen in %s annehmen, daher können Käufer in diesem Shop nicht bestellen. Stellen Sie die Standardwährung (System > Settings, Reiter Local) auf eine dieser Währungen: %s. Senden Sie danach den Katalog erneut.';
+$_['text_currency_unsupported'] = 'sudemi kann keine Zahlungen in %s annehmen, daher können Käufer in diesem Shop nicht bestellen. Stellen Sie die Standardwährung (System > Einstellungen, Reiter Lokal; englisch System > Settings, Local) auf eine dieser Währungen: %s. Senden Sie danach den Katalog erneut.';
 $_['text_currency_changed'] = 'Dieser Shop verkauft jetzt in %1$s, sudemi hat aber noch %2$s. Klicken Sie auf "Katalog jetzt senden", damit Käufer in %1$s bezahlen.';
 $_['column_paid'] = 'Vom Käufer bezahlt';
 

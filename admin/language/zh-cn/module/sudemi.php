@@ -171,7 +171,7 @@ $_['text_order_total'] = '总计';
 $_['entry_currency'] = '货币';
 $_['text_currency_seen'] = 'sudemi 上的买家以 %s 付款，即本店的默认货币。你的价格按原样以该货币发送，不做换算。';
 $_['text_currency_fee'] = 'sudemi 以欧元（EUR）向你打款：支付服务商 Stripe 会换算这笔付款，其换汇费用（约 2%）从你的打款中扣除。';
-$_['text_currency_unsupported'] = 'sudemi 无法接受 %s 付款，因此买家无法在本店下单。请将默认货币（System > Settings，Local 选项卡）设为以下之一：%s。然后重新发送商品目录。';
+$_['text_currency_unsupported'] = 'sudemi 无法接受 %s 付款，因此买家无法在本店下单。请将默认货币（系统 > 设置，本地 选项卡；英文界面为 System > Settings，Local）设为以下之一：%s。然后重新发送商品目录。';
 $_['text_currency_changed'] = '本店现在以 %1$s 销售，但 sudemi 仍记录为 %2$s。请点击“立即发送商品目录”，让买家以 %1$s 付款。';
 $_['column_paid'] = '买家实付';
 
