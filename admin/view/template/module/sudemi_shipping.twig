@@ -5,14 +5,12 @@
 <div id="content">
   <div class="page-header">
     <div class="container-fluid">
-      <div class="float-end">
-        <a href="{{ orders_href }}" class="btn btn-light"><i class="fa-solid fa-list"></i> {{ text_menu_orders }}</a>
-        <a href="{{ settings_href }}" class="btn btn-light"><i class="fa-solid fa-gear"></i> {{ text_menu_settings }}</a>
-      </div>
       <h1>{{ text_shipping_title }}</h1>
+      <ol class="breadcrumb"><li class="breadcrumb-item"><a href="{{ home_href }}">{{ text_home }}</a></li><li class="breadcrumb-item">sudemi</li><li class="breadcrumb-item">{{ text_shipping_title }}</li></ol>
     </div>
   </div>
   <div class="container-fluid">
+    {{ sudemi_nav|raw }}
     {% if not connected %}
       <div class="alert alert-warning">{{ text_orders_not_connected }} <a href="{{ settings_href }}">{{ text_menu_settings }}</a></div>
     {% elseif error %}

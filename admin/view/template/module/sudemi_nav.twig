@@ -1,0 +1,75 @@
+{# The sudemi header every page of the extension starts with: the mark, the shop, whether sudemi
+   shows its products, and the tabs of the sudemi menu. Autoescaping on; the styles of all sudemi
+   pages live here so every page looks the same. Logical properties (margin-inline, inset-inline)
+   keep it right in Arabic and Hebrew. #}
+{% autoescape 'html' %}
+<style>
+.sudemi-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.75rem 1.5rem;background:#fff;border:1px solid #e3e6ea;border-radius:.6rem;padding:.9rem 1.1rem;margin-bottom:1rem}
+.sudemi-brand{display:flex;align-items:center;gap:.8rem;min-width:0}
+.sudemi-brand svg{flex:0 0 auto}
+.sudemi-brand-name{font-weight:700;font-size:1.15rem;letter-spacing:-.01em;color:#16181d;line-height:1.2}
+.sudemi-brand-shop{color:#5d6470;font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60vw}
+.sudemi-state{display:inline-flex;align-items:center;gap:.45rem;border-radius:999px;padding:.35rem .8rem;font-size:.85rem;font-weight:600}
+.sudemi-state::before{content:"";width:.55rem;height:.55rem;border-radius:50%;background:currentColor}
+.sudemi-state-on{background:#e7f6ec;color:#1b7a3d}
+.sudemi-state-warn{background:#fff4e0;color:#9a5b00}
+.sudemi-state-off{background:#eef0f3;color:#5d6470}
+.sudemi-tabs{display:flex;gap:.25rem;overflow-x:auto;border-bottom:1px solid #dfe3e8;margin-bottom:1.25rem;scrollbar-width:thin}
+.sudemi-tabs a{display:inline-flex;align-items:center;gap:.45rem;white-space:nowrap;padding:.6rem .9rem;color:#4a515c;text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500}
+.sudemi-tabs a:hover{color:#2b59d6}
+.sudemi-tabs a.active{color:#2b59d6;border-bottom-color:#2b59d6;font-weight:600}
+.sudemi-tabs i{opacity:.8}
+.sudemi-card{background:#fff;border:1px solid #e3e6ea;border-radius:.6rem;margin-bottom:1rem}
+.sudemi-card>.sudemi-card-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.5rem;padding:.8rem 1.1rem;border-bottom:1px solid #eef0f3}
+.sudemi-card>.sudemi-card-head h2{font-size:1rem;font-weight:600;margin:0}
+.sudemi-card>.sudemi-card-body{padding:1rem 1.1rem}
+.sudemi-muted{color:#6b7280;font-size:.875rem}
+.sudemi-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(9rem,1fr));gap:.75rem;margin-bottom:1rem}
+.sudemi-kpi{background:#fff;border:1px solid #e3e6ea;border-radius:.6rem;padding:.85rem 1rem}
+.sudemi-kpi-label{display:flex;align-items:center;gap:.45rem;color:#5d6470;font-size:.82rem;font-weight:500}
+.sudemi-kpi-label i{color:#2b59d6}
+.sudemi-kpi-value{font-size:1.3rem;font-weight:700;color:#16181d;margin-top:.25rem;line-height:1.2;overflow-wrap:anywhere}
+.sudemi-kpi-help{color:#7a818c;font-size:.76rem;margin-top:.3rem;line-height:1.35}
+.sudemi-chart{direction:ltr}
+.sudemi-chart-svg{width:100%;height:auto;max-height:300px;display:block}
+.sudemi-grid{stroke:#eef0f3;stroke-width:1}
+.sudemi-axis{fill:#7a818c;font-size:11px}
+.sudemi-area{fill:#2b59d6;fill-opacity:.08}
+.sudemi-line{fill:none;stroke:#2b59d6;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.sudemi-dot{fill:#fff;stroke:#2b59d6;stroke-width:1.5}
+.sudemi-seg .btn{font-size:.82rem}
+.sudemi-bar{height:.45rem;border-radius:999px;background:#eef0f3;overflow:hidden;min-width:4rem}
+.sudemi-bar>span{display:block;height:100%;background:#2b59d6;border-radius:999px}
+.sudemi-table{margin:0}
+.sudemi-table th{color:#5d6470;font-weight:600;font-size:.8rem;text-transform:none;white-space:nowrap;border-bottom-width:1px}
+.sudemi-table td{vertical-align:middle}
+.sudemi-thumb{width:48px;height:48px;border-radius:.4rem;object-fit:cover;border:1px solid #eef0f3;background:#f7f8fa}
+.sudemi-badge{display:inline-block;border-radius:999px;padding:.2rem .6rem;font-size:.75rem;font-weight:600;line-height:1.3}
+.sudemi-badge-on{background:#e7f6ec;color:#1b7a3d}
+.sudemi-badge-off{background:#fdecec;color:#b42318}
+.sudemi-badge-muted{background:#eef0f3;color:#5d6470}
+.sudemi-reasons{margin:.3rem 0 0;padding:0;list-style:none;color:#9a5b00;font-size:.78rem}
+.sudemi-empty{text-align:center;padding:2.2rem 1rem;color:#6b7280}
+.sudemi-empty i{font-size:1.8rem;color:#c3c9d2;display:block;width:100%;text-align:center;margin-bottom:.6rem}
+.sudemi-pills{display:flex;flex-wrap:wrap;gap:.4rem}
+.sudemi-pills a{border:1px solid #dfe3e8;border-radius:999px;padding:.3rem .85rem;font-size:.85rem;color:#4a515c;text-decoration:none;background:#fff}
+.sudemi-pills a.active{background:#2b59d6;border-color:#2b59d6;color:#fff}
+.sudemi-dl{display:grid;grid-template-columns:minmax(9rem,14rem) 1fr;gap:.55rem 1.2rem;margin:0}
+.sudemi-dl dt{color:#5d6470;font-weight:500}
+.sudemi-dl dd{margin:0;overflow-wrap:anywhere}
+@media (max-width:576px){.sudemi-dl{grid-template-columns:1fr}.sudemi-dl dd{margin-bottom:.4rem}.sudemi-kpi-value{font-size:1.2rem}.sudemi-head{padding:.75rem}}
+</style>
+<div class="sudemi-head" id="sudemi-head">
+  <div class="sudemi-brand">
+    <svg width="38" height="38" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#2b59d6"/><g fill="none" stroke="#fff" stroke-width="3.1" stroke-linecap="round" stroke-linejoin="round"><path d="M8 11.2h7.2a4.2 4.2 0 0 1 4.2 4.2v1.2"/><path d="M24 20.8h-7.2a4.2 4.2 0 0 1-4.2-4.2v-1.2"/></g></svg>
+    <div style="min-width:0">
+      <div class="sudemi-brand-name">sudemi</div>
+      <div class="sudemi-brand-shop" title="{{ shop_name }}">{{ shop_name }} · {{ brand_tagline }}</div>
+    </div>
+  </div>
+  <span class="sudemi-state sudemi-state-{{ state }}" id="sudemi-state" data-state="{{ state }}">{{ state_label }}</span>
+</div>
+<nav class="sudemi-tabs" aria-label="{{ nav_label }}" id="sudemi-tabs">
+  {% for t in tabs %}<a href="{{ t.href }}" class="{% if t.active %}active{% endif %}" data-tab="{{ t.key }}"{% if t.active %} aria-current="page"{% endif %}><i class="{{ t.icon }}"></i>{{ t.label }}</a>{% endfor %}
+</nav>
+{% endautoescape %}

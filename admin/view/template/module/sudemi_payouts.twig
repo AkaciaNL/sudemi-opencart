@@ -1,0 +1,50 @@
+{# sudemi > Payouts (GET /payouts, read only). Autoescaping on. #}
+{% autoescape 'html' %}
+{{ header|raw }}{{ column_left|raw }}
+<div id="content">
+  <div class="page-header">
+    <div class="container-fluid">
+      <h1>{{ text_payouts_title }}</h1>
+      <ol class="breadcrumb"><li class="breadcrumb-item"><a href="{{ home_href }}">{{ text_home }}</a></li><li class="breadcrumb-item">sudemi</li><li class="breadcrumb-item">{{ text_payouts_title }}</li></ol>
+    </div>
+  </div>
+  <div class="container-fluid" id="sudemi-payouts-page">
+    {{ sudemi_nav|raw }}
+    {% if not connected %}
+      <div class="sudemi-card"><div class="sudemi-empty"><i class="fa-solid fa-plug"></i>{{ text_orders_not_connected }} <a href="{{ settings_href }}">{{ text_menu_settings }}</a></div></div>
+    {% elseif error %}
+      <div class="sudemi-card"><div class="sudemi-empty"><i class="fa-solid fa-triangle-exclamation"></i>{{ error }}</div></div>
+    {% else %}
+      <div class="sudemi-card" id="sudemi-payouts">
+        <div class="sudemi-card-head">
+          <h2>{{ entry_payout_account }}</h2>
+          <span class="sudemi-badge {% if payouts.active %}sudemi-badge-on{% else %}sudemi-badge-off{% endif %}" id="sudemi-payout-account" data-state="{{ payouts.state }}">{{ payouts.state_label }}</span>
+        </div>
+        <div class="sudemi-card-body">
+          <p class="mb-0">{{ text_payouts_delay|format(payouts.delay_days) }}</p>
+          <p class="sudemi-muted mb-0">{{ text_payouts_portal }}</p>
+        </div>
+      </div>
+      {% for c in payouts.currencies %}
+        <div class="sudemi-card" data-currency="{{ c.currency }}">
+          <div class="sudemi-card-head"><h2>{{ c.currency }}</h2>{% if c.next_due %}<span class="sudemi-muted">{{ text_next_due }} {{ c.next_due }}</span>{% endif %}</div>
+          <div class="sudemi-card-body">
+            <div class="sudemi-kpis mb-0">
+              <div class="sudemi-kpi"><div class="sudemi-kpi-label"><i class="fa-solid fa-circle-check"></i>{{ column_paid_out }}</div><div class="sudemi-kpi-value">{{ c.paid_out }}</div></div>
+              <div class="sudemi-kpi"><div class="sudemi-kpi-label"><i class="fa-solid fa-hourglass-half"></i>{{ column_outstanding }}</div><div class="sudemi-kpi-value">{{ c.outstanding }}</div></div>
+              <div class="sudemi-kpi"><div class="sudemi-kpi-label"><i class="fa-solid fa-truck"></i>{{ column_waiting_shipment }}</div><div class="sudemi-kpi-value">{{ c.waiting }}</div></div>
+              <div class="sudemi-kpi"><div class="sudemi-kpi-label"><i class="fa-solid fa-calendar-check"></i>{{ column_scheduled }}</div><div class="sudemi-kpi-value">{{ c.scheduled }}</div></div>
+              <div class="sudemi-kpi"><div class="sudemi-kpi-label"><i class="fa-solid fa-arrow-right-arrow-left"></i>{{ column_processing }}</div><div class="sudemi-kpi-value">{{ c.processing }}</div></div>
+              <div class="sudemi-kpi"><div class="sudemi-kpi-label"><i class="fa-solid fa-lock"></i>{{ column_held }}</div><div class="sudemi-kpi-value">{{ c.held }}</div></div>
+            </div>
+          </div>
+        </div>
+      {% else %}
+        <div class="sudemi-card"><div class="sudemi-empty" id="sudemi-payouts-empty"><i class="fa-solid fa-coins"></i>{{ text_payouts_empty }}</div></div>
+      {% endfor %}
+      <p class="sudemi-muted">{{ text_payouts_explained }}</p>
+    {% endif %}
+  </div>
+</div>
+{{ footer|raw }}
+{% endautoescape %}

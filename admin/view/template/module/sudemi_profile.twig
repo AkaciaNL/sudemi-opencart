@@ -1,0 +1,87 @@
+{# sudemi > Shop profile (GET /shop, POST /shop). The name buyers see is changed by sudemi support
+   only (owner 2026-11-09). Autoescaping on. #}
+{% autoescape 'html' %}
+{{ header|raw }}{{ column_left|raw }}
+<div id="content">
+  <div class="page-header">
+    <div class="container-fluid">
+      <h1>{{ text_profile_title }}</h1>
+      <ol class="breadcrumb"><li class="breadcrumb-item"><a href="{{ home_href }}">{{ text_home }}</a></li><li class="breadcrumb-item">sudemi</li><li class="breadcrumb-item">{{ text_profile_title }}</li></ol>
+    </div>
+  </div>
+  <div class="container-fluid" id="sudemi-profile">
+    {{ sudemi_nav|raw }}
+    {% if not connected %}
+      <div class="sudemi-card"><div class="sudemi-empty"><i class="fa-solid fa-plug"></i>{{ text_orders_not_connected }} <a href="{{ settings_href }}">{{ text_menu_settings }}</a></div></div>
+    {% else %}
+      {% if error %}<div class="alert alert-warning">{{ error }}</div>{% endif %}
+      <p class="sudemi-muted">{{ text_profile_intro }}</p>
+      <div class="row g-3">
+        <div class="col-lg-7">
+          <div class="sudemi-card">
+            <div class="sudemi-card-head"><h2>{{ text_profile_buyers_see }}</h2></div>
+            <div class="sudemi-card-body">
+              <div class="mb-3">
+                <label class="form-label" for="sudemi-profile-name">{{ entry_profile_name }}</label>
+                <div class="input-group">
+                  <input type="text" class="form-control" id="sudemi-profile-name" value="{{ profile.name }}" readonly>
+                  <a class="btn btn-outline-secondary" id="sudemi-rename" href="{{ rename_href }}"><i class="fa-solid fa-pen"></i> {{ button_profile_rename }}</a>
+                </div>
+                <div class="form-text">{{ help_profile_name }}</div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label" for="sudemi-profile-description">{{ entry_profile_description }}</label>
+                <textarea class="form-control" id="sudemi-profile-description" rows="5" maxlength="2000">{{ profile.description }}</textarea>
+                <div class="form-text">{{ help_profile_description }}</div>
+              </div>
+              <div class="row g-3">
+                <div class="col-md-7">
+                  <label class="form-label" for="sudemi-profile-email">{{ entry_profile_email }}</label>
+                  <input type="email" class="form-control" id="sudemi-profile-email" value="{{ profile.support_email }}" maxlength="254">
+                  <div class="form-text">{{ help_profile_email }}</div>
+                </div>
+                <div class="col-md-5">
+                  <label class="form-label" for="sudemi-profile-returns">{{ entry_profile_returns }}</label>
+                  <div class="input-group"><input type="number" class="form-control" id="sudemi-profile-returns" min="14" max="365" value="{{ profile.returns_days }}"><span class="input-group-text">{{ text_days }}</span></div>
+                  <div class="form-text">{{ help_profile_returns }}</div>
+                </div>
+              </div>
+              <button type="button" class="btn btn-primary mt-3" id="sudemi-profile-save" onclick="sudemiProfileSave()"><i class="fa-solid fa-floppy-disk"></i> {{ button_profile_save }}</button>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-5">
+          <div class="sudemi-card">
+            <div class="sudemi-card-head"><h2>{{ text_profile_fixed }}</h2></div>
+            <div class="sudemi-card-body">
+              <dl class="sudemi-dl">
+                <dt>{{ entry_shop_url }}</dt><dd><code>{{ profile.origin }}</code></dd>
+                <dt>{{ entry_currency }}</dt><dd><code>{{ profile.currency }}</code></dd>
+              </dl>
+              <p class="sudemi-muted mt-3 mb-0">{{ text_locked }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+<script type="text/javascript">
+function sudemiProfileSave() {
+    var button = document.getElementById('sudemi-profile-save');
+    button.disabled = true;
+    $.ajax({
+        url: 'index.php?route=extension/sudemi/module/sudemi.profileSave&user_token={{ user_token|e('js') }}',
+        type: 'post', dataType: 'json',
+        data: {description: $('#sudemi-profile-description').val(), support_email: $('#sudemi-profile-email').val(), returns_days: $('#sudemi-profile-returns').val()},
+        success: function (json) {
+            button.disabled = false;
+            if (json.error) { alert(json.error); return; }
+            if (json.success) { alert(json.success); location.reload(); }
+        },
+        error: function () { button.disabled = false; alert('{{ error_profile_unavailable|e('js') }}'); }
+    });
+}
+</script>
+{{ footer|raw }}
+{% endautoescape %}

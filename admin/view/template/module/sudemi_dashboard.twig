@@ -1,0 +1,119 @@
+{# sudemi > Dashboard (statistics, protocol 4e). Autoescaping on; the chart SVG is built and escaped
+   in PHP (Sudemi\Insights::chart) and printed raw. #}
+{% autoescape 'html' %}
+{{ header|raw }}{{ column_left|raw }}
+<div id="content">
+  <div class="page-header">
+    <div class="container-fluid">
+      <h1>{{ text_dashboard_title }}</h1>
+      <ol class="breadcrumb"><li class="breadcrumb-item"><a href="{{ home_href }}">{{ text_home }}</a></li><li class="breadcrumb-item">sudemi</li><li class="breadcrumb-item">{{ text_dashboard_title }}</li></ol>
+    </div>
+  </div>
+  <div class="container-fluid" id="sudemi-dashboard">
+    {{ sudemi_nav|raw }}
+    {% if not connected %}
+      <div class="sudemi-card"><div class="sudemi-empty"><i class="fa-solid fa-plug"></i>{{ text_orders_not_connected }} <a href="{{ settings_href }}">{{ text_menu_settings }}</a></div></div>
+    {% else %}
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <p class="sudemi-muted mb-0">{{ text_dashboard_intro }}</p>
+        <div class="btn-group sudemi-seg" role="group" aria-label="{{ text_period }}" id="sudemi-period">
+          {% for p in periods %}<a href="{{ p.href }}" class="btn btn-sm {% if p.active %}btn-primary{% else %}btn-outline-secondary{% endif %}" data-days="{{ p.days }}">{{ p.label }}</a>{% endfor %}
+        </div>
+      </div>
+      {% if error %}
+        <div class="sudemi-card"><div class="sudemi-empty" id="sudemi-stats-error"><i class="fa-solid fa-chart-line"></i>{{ error }}</div></div>
+      {% elseif stats %}
+        {% if stats.empty %}<div class="alert alert-info" id="sudemi-stats-empty"><i class="fa-solid fa-circle-info"></i> {{ text_dashboard_empty }}</div>{% endif %}
+        <div class="sudemi-kpis" id="sudemi-kpis">
+          {% for k in stats.kpis %}
+          <div class="sudemi-kpi" data-kpi="{{ k.key }}">
+            <div class="sudemi-kpi-label"><i class="{{ k.icon }}"></i>{{ k.label }}</div>
+            <div class="sudemi-kpi-value">{{ k.value }}</div>
+            <div class="sudemi-kpi-help">{{ k.help }}</div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <div class="sudemi-card" id="sudemi-chart-card">
+          <div class="sudemi-card-head">
+            <h2>{{ text_chart_title }} <span class="sudemi-muted">{{ stats.from }} - {{ stats.to }} (UTC)</span></h2>
+            <div class="btn-group sudemi-seg" role="group" aria-label="{{ text_chart_title }}">
+              {% for c in stats.charts %}<button type="button" class="btn btn-sm {% if loop.first %}btn-primary{% else %}btn-outline-secondary{% endif %}" data-metric="{{ c.metric }}" onclick="sudemiChart('{{ c.metric }}')">{{ c.title }}</button>{% endfor %}
+            </div>
+          </div>
+          <div class="sudemi-card-body sudemi-chart">
+            {% for c in stats.charts %}<div class="sudemi-chart-pane" data-metric="{{ c.metric }}"{% if not loop.first %} hidden{% endif %}>{{ c.svg|raw }}</div>{% endfor %}
+          </div>
+        </div>
+
+        <div class="row g-3">
+          <div class="col-xl-8">
+            <div class="sudemi-card" id="sudemi-top">
+              <div class="sudemi-card-head"><h2>{{ text_top_products }}</h2><a href="{{ products_href }}" class="btn btn-sm btn-outline-primary">{{ text_menu_products }}</a></div>
+              {% if stats.top %}
+              <div class="table-responsive">
+                <table class="table sudemi-table">
+                  <thead><tr><th>{{ column_product }}</th><th class="text-end">{{ text_kpi_impressions }}</th><th class="text-end">{{ text_kpi_detail_views }}</th><th class="text-end">{{ text_kpi_cart_adds }}</th><th class="text-end">{{ text_kpi_orders }}</th><th class="text-end">{{ text_kpi_sales }}</th></tr></thead>
+                  <tbody>
+                  {% for p in stats.top %}
+                    <tr><td>{% if p.href %}<a href="{{ p.href }}">{{ p.title }}</a>{% else %}{{ p.title }}{% endif %}</td><td class="text-end">{{ p.impressions }}</td><td class="text-end">{{ p.detail_views }}</td><td class="text-end">{{ p.cart_adds }}</td><td class="text-end">{{ p.orders }}</td><td class="text-end text-nowrap">{{ p.sales }}</td></tr>
+                  {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+              {% else %}
+                <div class="sudemi-empty"><i class="fa-solid fa-box-open"></i>{{ text_top_empty }}</div>
+              {% endif %}
+            </div>
+          </div>
+          <div class="col-xl-4">
+            <div class="sudemi-card" id="sudemi-listings-summary">
+              <div class="sudemi-card-head"><h2>{{ text_listings_title }}</h2></div>
+              <div class="sudemi-card-body">
+                <div class="d-flex justify-content-between mb-2"><span>{{ text_listing_filter_listed }}</span><a href="{{ products_href }}&amp;status=listed"><strong>{{ stats.listings.listed }}</strong></a></div>
+                <div class="d-flex justify-content-between mb-2"><span>{{ text_listing_filter_not_listed }}</span><a href="{{ products_href }}&amp;status=not_listed"><strong class="{% if stats.listings.not_listed %}text-warning{% endif %}">{{ stats.listings.not_listed }}</strong></a></div>
+                <div class="d-flex justify-content-between"><span class="sudemi-muted">{{ text_listing_total }}</span><span class="sudemi-muted">{{ stats.listings.total }}</span></div>
+              </div>
+            </div>
+            <div class="sudemi-card" id="sudemi-statuses">
+              <div class="sudemi-card-head"><h2>{{ text_orders_by_status }}</h2><a href="{{ orders_href }}" class="btn btn-sm btn-outline-primary">{{ text_menu_orders }}</a></div>
+              <div class="sudemi-card-body">
+                {% for s in stats.statuses %}
+                  <div class="d-flex align-items-center gap-2 mb-2"><a href="{{ s.href }}" class="flex-grow-1 text-decoration-none">{{ s.label }}</a><div class="sudemi-bar flex-grow-1"><span style="width: {{ s.share }}%"></span></div><strong style="min-width:2rem" class="text-end">{{ s.count }}</strong></div>
+                {% else %}
+                  <p class="sudemi-muted mb-0">{{ text_no_orders_period }}</p>
+                {% endfor %}
+              </div>
+            </div>
+            <div class="sudemi-card" id="sudemi-countries">
+              <div class="sudemi-card-head"><h2>{{ text_countries_title }}</h2></div>
+              {% if stats.countries %}
+              <table class="table sudemi-table">
+                <thead><tr><th>{{ column_country }}</th><th class="text-end">{{ text_kpi_orders }}</th><th class="text-end">{{ text_kpi_sales }}</th></tr></thead>
+                <tbody>{% for c in stats.countries %}<tr><td>{{ c.name }} <span class="sudemi-muted">{{ c.code }}</span></td><td class="text-end">{{ c.orders }}</td><td class="text-end text-nowrap">{{ c.sales }}</td></tr>{% endfor %}</tbody>
+              </table>
+              {% else %}
+                <div class="sudemi-card-body"><p class="sudemi-muted mb-0">{{ text_no_orders_period }}</p></div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        <p class="sudemi-muted">{{ text_dashboard_footnote }}</p>
+      {% endif %}
+    {% endif %}
+  </div>
+</div>
+<script type="text/javascript">
+function sudemiChart(metric) {
+    document.querySelectorAll('#sudemi-chart-card .sudemi-chart-pane').forEach(function (el) { el.hidden = el.getAttribute('data-metric') !== metric; });
+    document.querySelectorAll('#sudemi-chart-card [data-metric]').forEach(function (el) {
+        if (el.tagName === 'BUTTON') {
+            var on = el.getAttribute('data-metric') === metric;
+            el.classList.toggle('btn-primary', on);
+            el.classList.toggle('btn-outline-secondary', !on);
+        }
+    });
+}
+</script>
+{{ footer|raw }}
+{% endautoescape %}

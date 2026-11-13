@@ -5,14 +5,12 @@
 <div id="content">
   <div class="page-header">
     <div class="container-fluid">
-      <div class="float-end">
-        <a href="{{ shipping_href }}" class="btn btn-light"><i class="fa-solid fa-truck"></i> {{ text_menu_shipping }}</a>
-        <a href="{{ settings_href }}" class="btn btn-light"><i class="fa-solid fa-gear"></i> {{ text_menu_settings }}</a>
-      </div>
       <h1>{{ text_orders_title }}</h1>
+      <ol class="breadcrumb"><li class="breadcrumb-item"><a href="{{ home_href }}">{{ text_home }}</a></li><li class="breadcrumb-item">sudemi</li><li class="breadcrumb-item">{{ text_orders_title }}</li></ol>
     </div>
   </div>
   <div class="container-fluid">
+    {{ sudemi_nav|raw }}
     {% if not connected %}
       <div class="alert alert-warning">{{ text_orders_not_connected }} <a href="{{ settings_href }}">{{ text_menu_settings }}</a></div>
     {% else %}
@@ -55,25 +53,36 @@
     </div>
     {% endif %}
 
-    {% if payouts %}
-    <div class="card mb-3" id="sudemi-payouts">
-      <div class="card-header"><i class="fa-solid fa-coins"></i> {{ text_payouts_title }}</div>
-      <div class="card-body">
-        <p>{{ entry_payout_account }}: <span class="badge {% if payouts.active %}bg-success{% else %}bg-warning text-dark{% endif %}" id="sudemi-payout-account" data-state="{{ payouts.state }}">{{ payouts.state_label }}</span>
-          <span class="form-text ms-2">{{ text_payouts_delay|format(payouts.delay_days) }}</span></p>
-        {% if payouts.currencies %}
-        <table class="table table-sm" id="sudemi-payouts-table">
-          <thead><tr><th>{{ column_currency }}</th><th>{{ column_paid_out }}</th><th>{{ column_outstanding }}</th><th>{{ column_waiting_shipment }}</th><th>{{ column_scheduled }}</th><th>{{ column_processing }}</th><th>{{ column_held }}</th></tr></thead>
-          <tbody>
-          {% for c in payouts.currencies %}
-            <tr data-currency="{{ c.currency }}"><td>{{ c.currency }}</td><td>{{ c.paid_out }}</td><td>{{ c.outstanding }}</td><td>{{ c.waiting }}</td><td>{{ c.scheduled }}{% if c.next_due %}<br><small>{{ text_next_due }} {{ c.next_due }}</small>{% endif %}</td><td>{{ c.processing }}</td><td>{{ c.held }}</td></tr>
-          {% endfor %}
-          </tbody>
-        </table>
+    {# Return requests: buyers who asked to return a delivered order. The shop answers within 7 days:
+       accept, or reject with a reason the buyer is shown. The list is the one the last heartbeat
+       brought; the buyer's reason is plain text, printed escaped. #}
+    {% if requests %}
+    <div class="sudemi-card" id="sudemi-return-requests">
+      <div class="sudemi-card-head"><h2><i class="fa-solid fa-rotate-left"></i> {{ text_requests_title }}</h2></div>
+      <div class="sudemi-card-body">
+        <p class="form-text">{{ text_requests_intro }}</p>
+        {% if requests %}
+          <table class="table table-sm align-middle">
+            <thead><tr><th>{{ column_request_order }}</th><th>{{ column_request_reason }}</th><th>{{ column_request_respond_by }}</th><th style="width:22rem">{{ column_request_answer }}</th></tr></thead>
+            <tbody>
+            {% for r in requests %}
+              <tr class="sudemi-request" data-order-id="{{ r.order_id|e }}">
+                <td>{% if r.href %}<a href="{{ r.href|e }}">#{{ r.local|e }}</a>{% else %}{{ text_request_no_local|e }}{% endif %}<br><small>sudemi <code>{{ r.short|e }}</code></small><br><small>{{ column_request_requested|e }}: {{ r.requested_at|e }}</small></td>
+                <td style="white-space: pre-wrap; overflow-wrap: anywhere;">{% if r.reason %}{{ r.reason|e }}{% else %}<em>{{ text_request_no_reason|e }}</em>{% endif %}</td>
+                <td>{{ r.respond_by|e }}{% if r.overdue %}<br><span class="badge bg-danger">{{ text_request_overdue|e }}</span>{% endif %}</td>
+                <td>
+                  <button type="button" class="btn btn-success btn-sm mb-2" onclick="sudemiRequest(this, 'accept')">{{ button_request_accept|e }}</button>
+                  <label class="form-label small mb-1" for="sudemi-reject-{{ loop.index }}">{{ entry_request_reject_reason|e }}</label>
+                  <textarea id="sudemi-reject-{{ loop.index }}" class="form-control form-control-sm sudemi-reject-reason" rows="2" maxlength="1000" required></textarea>
+                  <button type="button" class="btn btn-outline-danger btn-sm mt-1" onclick="sudemiRequest(this, 'reject')">{{ button_request_reject|e }}</button>
+                </td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
         {% else %}
-          <p class="form-text mb-0">{{ text_payouts_empty }}</p>
+          <p class="form-text mb-0" id="sudemi-return-requests-empty">{{ text_requests_empty }}</p>
         {% endif %}
-        <div class="form-text">{{ text_payouts_portal }}</div>
       </div>
     </div>
     {% endif %}
@@ -163,7 +172,7 @@
           <span>{% if next_href %}<a class="btn btn-light" id="sudemi-next" href="{{ next_href }}">{{ button_next }} &raquo;</a>{% endif %}</span>
         </nav>
         {% else %}
-          <p class="form-text" id="sudemi-orders-empty">{{ text_history_empty }}</p>
+          <div class="sudemi-empty" id="sudemi-orders-empty"><i class="fa-solid fa-receipt"></i>{% if filters.status or filters.q or filters.from or filters.to %}{{ text_orders_none_filter }}{% else %}{{ text_orders_none }}{% endif %}</div>
         {% endif %}
       </div>
     </div>
@@ -220,6 +229,30 @@ function sudemiBulk() {
         success: sudemiAnswer,
         error: function () { $('#sudemi-bulk-run').prop('disabled', false); alert('{{ error_orders_unavailable|e('js') }}'); }});
 }
+// Answering a return request is a guarded action (modify permission + user token), like the others.
+// A rejection needs a reason (shown to the buyer); it is checked here and again by sudemi.
+function sudemiRequest(button, action) {
+    var row = $(button).closest('tr.sudemi-request');
+    var reason = $.trim(row.find('.sudemi-reject-reason').val() || '');
+    if (action === 'reject' && reason === '') {
+        alert('{{ error_request_reason|e('js') }}');
+        row.find('.sudemi-reject-reason').focus();
+        return;
+    }
+    $(button).prop('disabled', true);
+    $.ajax({
+        url: 'index.php?route=extension/sudemi/module/sudemi.request' + (action === 'accept' ? 'Accept' : 'Reject') + '&user_token={{ user_token|e('js') }}',
+        type: 'post', dataType: 'json',
+        data: { order_id: row.data('order-id'), reason: action === 'reject' ? reason : '' },
+        success: function (json) {
+            if (json.error) { alert(json.error); }
+            if (json.success) { alert(json.success); }
+            location.reload();
+        },
+        error: function () { $(button).prop('disabled', false); alert('{{ error_request_unavailable|e('js') }}'); }
+    });
+}
+
 </script>
 {{ footer|raw }}
 {% endautoescape %}

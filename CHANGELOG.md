@@ -1,5 +1,34 @@
 # Changelog
 
+## 1.4.0
+
+Everything sudemi holds about the shop, inside the OpenCart admin, and a cleaner look (owner
+2026-11-13). Needs sudemi core 2026-11-13 (PROTOCOL.md section 4e) for the statistics and the
+products list; with an older core those two pages say so and everything else works as before.
+
+- **A sudemi menu of its own** (left menu > sudemi) and the same tabs on every sudemi page:
+  Dashboard, Products on sudemi, Orders, Shipping, Payouts, Shop profile, Support, Settings. Every
+  page starts with the sudemi header: the shop's name and whether sudemi shows its products.
+- **Dashboard (statistics)** for the last 7, 30 or 90 days: how often AI assistants showed your
+  products in their search results, how often they opened one, how often a buyer put one in the
+  cart, orders, sales, what is left after commission and refunds, and the conversion. A day-by-day
+  chart (drawn in the page, no outside scripts), the top products, orders by status and by country.
+- **Products on sudemi**: every product as sudemi holds it, with its photo, price, stock, whether
+  buyers can find it and why not (switched off, out of stock, no delivery price, taken down, payout
+  account not active, shop not reporting), and how often it was shown, viewed and ordered in the
+  last 30 days. A switch per product hides it on sudemi only; a sync never switches it back on.
+- **Shop profile**: the text about the shop, the support e-mail for buyers and the days to return,
+  saved on sudemi and kept here (the hourly shop update sends the same values, so an edit is not
+  undone). The name buyers see is changed by sudemi support: a button opens a filled-in ticket.
+- **Payouts** and **Support** have their own pages; return requests moved to the Orders page.
+- **Orders**: an empty list now says where orders come from (a buyer buying through an AI
+  assistant) and that they also appear under Sales > Orders.
+- **Settings** reorganised into cards (listing status, connection, catalogue, delivery times); the
+  activity log has a translated heading and shows the latest 12 entries first. The missing
+  "sodium" warning text is now present in every language.
+- All new texts in the twelve languages; a new test checks that every English text exists in every
+  language with the same placeholders.
+
 ## 1.3.2
 
 - **Translations reviewed.** Every text in the 11 other languages was checked against the English:

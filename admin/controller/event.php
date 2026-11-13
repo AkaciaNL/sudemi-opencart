@@ -115,7 +115,7 @@ class Event extends \Opencart\System\Engine\Controller
     }
 
     /**
-     * The sudemi entries in the admin menu (Orders, Shipping, Settings), for users who may open
+     * The sudemi entries in the admin menu (Dashboard to Settings), for users who may open
      * the extension. OpenCart prints menu names unescaped: these are this extension's own texts,
      * escaped here anyway.
      */
@@ -132,8 +132,11 @@ class Event extends \Opencart\System\Engine\Controller
             };
             $token = 'user_token=' . rawurlencode((string) $this->session->data['user_token']);
             $children = [];
-            foreach ([['text_menu_orders', 'extension/sudemi/module/sudemi.orders'], ['text_menu_shipping', 'extension/sudemi/module/sudemi.shipping'],
-                ['text_menu_settings', 'extension/sudemi/module/sudemi']] as $item) {
+            // The pages of the sudemi menu (1.4.0), in the order of the tabs on every sudemi page.
+            foreach ([['text_menu_dashboard', 'extension/sudemi/module/sudemi.dashboard'], ['text_menu_products', 'extension/sudemi/module/sudemi.products'],
+                ['text_menu_orders', 'extension/sudemi/module/sudemi.orders'], ['text_menu_shipping', 'extension/sudemi/module/sudemi.shipping'],
+                ['text_menu_payouts', 'extension/sudemi/module/sudemi.payouts'], ['text_menu_profile', 'extension/sudemi/module/sudemi.profile'],
+                ['text_menu_support', 'extension/sudemi/module/sudemi.support'], ['text_menu_settings', 'extension/sudemi/module/sudemi']] as $item) {
                 $children[] = ['name' => $label($item[0]), 'href' => $this->url->link($item[1], $token), 'children' => []];
             }
             $data['menus'][] = ['id' => 'menu-sudemi', 'icon' => 'fa-solid fa-store', 'name' => 'sudemi', 'href' => '', 'children' => $children];

@@ -18,15 +18,11 @@ class Sudemi extends \Opencart\System\Engine\Controller
     public function index(): void
     {
         $this->load->language('extension/sudemi/module/sudemi');
-        $this->document->setTitle($this->language->get('heading_title'));
+        $this->document->setTitle($this->language->get('text_settings_title'));
 
         $this->beatIfDue();
 
-        $data = $this->common();
-        $data['support'] = $this->supportPage($data['connected']);
-        $data['header'] = $this->load->controller('common/header');
-        $data['column_left'] = $this->load->controller('common/column_left');
-        $data['footer'] = $this->load->controller('common/footer');
+        $data = array_merge($this->shell('settings'), $this->common());
 
         $this->response->setOutput($this->load->view('extension/sudemi/module/sudemi', $data));
     }
@@ -402,7 +398,7 @@ class Sudemi extends \Opencart\System\Engine\Controller
             'order_id' => isset($ticket['orderId']) && is_string($ticket['orderId']) ? $ticket['orderId'] : '',
             'updated' => $this->supportDate(isset($ticket['lastMessageAt']) ? $ticket['lastMessageAt']
                 : (isset($ticket['updatedAt']) ? $ticket['updatedAt'] : '')),
-            'href' => 'index.php?route=extension/sudemi/module/sudemi&user_token=' . rawurlencode((string) $this->session->data['user_token'])
+            'href' => 'index.php?route=extension/sudemi/module/sudemi.support&user_token=' . rawurlencode((string) $this->session->data['user_token'])
                 . '&sudemi_ticket=' . rawurlencode((string) $ticket['id']) . '#sudemi-support',
         ];
     }
@@ -498,6 +494,396 @@ class Sudemi extends \Opencart\System\Engine\Controller
     }
 
     // ------------------------------------------------------------------------------------------
+    // 1.4.0 (owner 2026-11-13: "Everything should be visible to the shop via plugin"): statistics,
+    // the shop's products as sudemi holds them, payouts, the shop profile and support, each a page
+    // of the sudemi menu (protocol section 4e). Read from sudemi on every page load.
+    // ------------------------------------------------------------------------------------------
+
+    /** sudemi > Dashboard: what sudemi did for this shop in the last 7, 30 or 90 days. */
+    public function dashboard(): void
+    {
+        $this->load->language('extension/sudemi/module/sudemi');
+        $this->document->setTitle($this->language->get('text_dashboard_title'));
+        $this->beatIfDue();
+        require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/insights.php';
+        $sudemi = $this->services();
+        $data = $this->shell('dashboard');
+        $data['connected'] = $sudemi['client']->isConnected();
+        $days = \Sudemi\Insights::period(isset($this->request->get['days']) ? $this->request->get['days'] : null);
+        $data['days'] = $days;
+        $data['periods'] = [];
+        foreach (\Sudemi\Insights::PERIODS as $p) {
+            $data['periods'][] = ['days' => $p, 'label' => sprintf($this->language->get('text_period_days'), $p),
+                'href' => $data['dashboard_href'] . '&days=' . $p, 'active' => $p === $days];
+        }
+        $data['stats'] = null;
+        $data['error'] = '';
+        if ($data['connected']) {
+            list($from, $to) = \Sudemi\Insights::range($days);
+            $response = $sudemi['client']->sendSigned('GET', '/integration/v1/stats' . \Sudemi\Client::query(['from' => $from, 'to' => $to]));
+            if (is_array($response) && (int) $response['status'] === 200 && is_array($response['body'])) {
+                $data['stats'] = $this->statsView(\Sudemi\Insights::stats($response['body']));
+            } elseif (is_array($response) && (int) $response['status'] === 404) {
+                $data['error'] = $this->language->get('error_stats_not_yet');
+            } else {
+                $data['error'] = $this->language->get('error_stats_unavailable');
+            }
+        }
+        $this->response->setOutput($this->load->view('extension/sudemi/module/sudemi_dashboard', $data));
+    }
+
+    /** The dashboard's numbers and texts, formatted in PHP so the template only prints them. */
+    private function statsView(array $s): array
+    {
+        $cur = $s['currency'];
+        $money = function ($minor) use ($cur) {
+            return \Sudemi\Currency::format((int) $minor, $cur);
+        };
+        $t = $s['totals'];
+        $kpis = [
+            ['key' => 'impressions', 'icon' => 'fa-solid fa-magnifying-glass', 'value' => \Sudemi\Insights::count($t['impressions']), 'help' => $this->language->get('help_kpi_impressions')],
+            ['key' => 'detail_views', 'icon' => 'fa-solid fa-eye', 'value' => \Sudemi\Insights::count($t['detail_views']), 'help' => $this->language->get('help_kpi_detail_views')],
+            ['key' => 'cart_adds', 'icon' => 'fa-solid fa-cart-plus', 'value' => \Sudemi\Insights::count($t['cart_adds']), 'help' => $this->language->get('help_kpi_cart_adds')],
+            ['key' => 'orders', 'icon' => 'fa-solid fa-receipt', 'value' => \Sudemi\Insights::count($t['orders']),
+                'help' => sprintf($this->language->get('help_kpi_orders'), \Sudemi\Insights::count($t['units']))],
+            ['key' => 'sales', 'icon' => 'fa-solid fa-euro-sign', 'value' => $money($t['sales_minor']),
+                'help' => sprintf($this->language->get('help_kpi_sales'), $money($t['average_order_minor']))],
+            ['key' => 'net', 'icon' => 'fa-solid fa-wallet', 'value' => $money($t['net_minor']),
+                'help' => sprintf($this->language->get('help_kpi_net'), $money($t['commission_minor']), $money($t['refunded_minor']))],
+            ['key' => 'conversion', 'icon' => 'fa-solid fa-percent', 'value' => \Sudemi\Insights::conversion($t['conversion_bps']) . ' %',
+                'help' => $this->language->get('help_kpi_conversion')],
+        ];
+        foreach ($kpis as &$kpi) {
+            $kpi['label'] = $this->language->get('text_kpi_' . $kpi['key']);
+        }
+        unset($kpi);
+
+        $charts = [];
+        foreach (\Sudemi\Insights::METRICS as $metric) {
+            $label = $metric === 'sales_minor' ? $money : function ($v) {
+                return \Sudemi\Insights::count($v);
+            };
+            $title = $this->language->get('text_chart_' . $metric);
+            $charts[] = ['metric' => $metric, 'title' => $title, 'svg' => \Sudemi\Insights::chart($s['daily'], $metric, $label, $title)];
+        }
+
+        $token = rawurlencode((string) $this->session->data['user_token']);
+        $top = [];
+        foreach ($s['top_products'] as $p) {
+            $pid = \Sudemi\Insights::productId($p['external_id']);
+            $top[] = [
+                'title' => $p['title'],
+                'href' => $pid ? 'index.php?route=catalog/product.form&product_id=' . $pid . '&user_token=' . $token : '',
+                'impressions' => \Sudemi\Insights::count($p['impressions']),
+                'detail_views' => \Sudemi\Insights::count($p['detail_views']),
+                'cart_adds' => \Sudemi\Insights::count($p['cart_adds']),
+                'orders' => \Sudemi\Insights::count($p['orders']),
+                'units' => \Sudemi\Insights::count($p['units']),
+                'sales' => $money($p['sales_minor']),
+            ];
+        }
+        $statuses = [];
+        $all = array_sum($s['orders_by_status']);
+        foreach ($s['orders_by_status'] as $code => $n) {
+            $statuses[] = ['label' => $this->shortStatus($code), 'count' => $n, 'share' => $all > 0 ? round(100 * $n / $all) : 0,
+                'href' => $this->ordersHref(['status' => in_array($code, self::ORDER_STATUSES, true) ? $code : ''])];
+        }
+        $names = $this->countryNames();
+        $countries = [];
+        foreach ($s['countries'] as $c) {
+            $countries[] = ['code' => $c['country'], 'name' => isset($names[$c['country']]) ? $names[$c['country']] : $c['country'],
+                'orders' => \Sudemi\Insights::count($c['orders']), 'sales' => $money($c['sales_minor'])];
+        }
+
+        return [
+            'currency' => $cur,
+            'from' => $s['from'],
+            'to' => $s['to'],
+            'kpis' => $kpis,
+            'charts' => $charts,
+            'top' => $top,
+            'statuses' => $statuses,
+            'countries' => $countries,
+            'listings' => $s['listings'],
+            'empty' => $t['impressions'] === 0 && $t['orders'] === 0 && $t['detail_views'] === 0,
+        ];
+    }
+
+    /** An order status in a few words, for the dashboard (the order table keeps the long labels). */
+    private function shortStatus(string $code): string
+    {
+        $key = 'text_short_status_' . strtolower($code);
+        $label = $this->language->get($key);
+
+        return $label !== $key ? $label : $this->statusLabel($code);
+    }
+
+    /** sudemi > Products on sudemi: every product as sudemi holds it, why one is not shown, the switch. */
+    public function products(): void
+    {
+        $this->load->language('extension/sudemi/module/sudemi');
+        $this->document->setTitle($this->language->get('text_products_title'));
+        require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/insights.php';
+        $sudemi = $this->services();
+        $data = $this->shell('products');
+        $data['connected'] = $sudemi['client']->isConnected();
+        $get = $this->request->get;
+        $filter = isset($get['status']) && in_array($get['status'], \Sudemi\Insights::LISTING_FILTERS, true) ? (string) $get['status'] : 'all';
+        $q = isset($get['q']) && is_string($get['q']) ? trim(html_entity_decode($get['q'], ENT_QUOTES | ENT_HTML5, 'UTF-8')) : '';
+        $q = function_exists('mb_substr') ? mb_substr($q, 0, 100, 'UTF-8') : substr($q, 0, 100);
+        $page = isset($get['page']) && ctype_digit((string) $get['page']) ? max(1, (int) $get['page']) : 1;
+        $data['filter'] = $filter;
+        $data['q'] = $q;
+        $data['filters'] = [];
+        foreach (\Sudemi\Insights::LISTING_FILTERS as $f) {
+            $data['filters'][] = ['value' => $f, 'label' => $this->language->get('text_listing_filter_' . $f), 'active' => $f === $filter,
+                'href' => $this->productsHref(['status' => $f, 'q' => $q])];
+        }
+        $data['items'] = [];
+        $data['total'] = 0;
+        $data['error'] = '';
+        $data['prev_href'] = '';
+        $data['next_href'] = '';
+        if ($data['connected']) {
+            $size = \Sudemi\Insights::LISTING_PAGE_SIZE;
+            $response = $sudemi['client']->sendSigned('GET', '/integration/v1/listings' . \Sudemi\Client::query([
+                'status' => $filter, 'q' => $q, 'page' => $page - 1, 'size' => $size]));
+            if (is_array($response) && (int) $response['status'] === 200 && is_array($response['body'])) {
+                $body = $response['body'];
+                $items = [];
+                foreach ((isset($body['items']) && is_array($body['items']) ? $body['items'] : []) as $item) {
+                    $items[] = \Sudemi\Insights::listing($item);
+                }
+                $data['items'] = $this->listingRows($items);
+                $data['total'] = isset($body['total']) ? (int) $body['total'] : count($items);
+                if ($page > 1) {
+                    $data['prev_href'] = $this->productsHref(['status' => $filter, 'q' => $q, 'page' => $page - 1]);
+                }
+                if ($page * $size < $data['total']) {
+                    $data['next_href'] = $this->productsHref(['status' => $filter, 'q' => $q, 'page' => $page + 1]);
+                }
+            } elseif (is_array($response) && (int) $response['status'] === 404) {
+                $data['error'] = $this->language->get('error_stats_not_yet');
+            } else {
+                $data['error'] = $this->language->get('error_listings_unavailable');
+            }
+        }
+        $this->response->setOutput($this->load->view('extension/sudemi/module/sudemi_products', $data));
+    }
+
+    /** Listing rows with this shop's photo and edit link where the product still exists here. */
+    private function listingRows(array $items): array
+    {
+        $ids = [];
+        foreach ($items as $item) {
+            $pid = \Sudemi\Insights::productId($item['external_id']);
+            if ($pid) {
+                $ids[] = $pid;
+            }
+        }
+        $images = [];
+        if ($ids) {
+            $query = $this->db->query('SELECT product_id, image FROM `' . DB_PREFIX . 'product` WHERE product_id IN (' . implode(',', array_unique($ids)) . ')');
+            foreach ($query->rows as $row) {
+                $images[(int) $row['product_id']] = (string) $row['image'];
+            }
+        }
+        $this->load->model('tool/image');
+        $token = rawurlencode((string) $this->session->data['user_token']);
+        $rows = [];
+        foreach ($items as $item) {
+            $pid = \Sudemi\Insights::productId($item['external_id']);
+            $image = $pid && isset($images[$pid]) && $images[$pid] !== '' && is_file(DIR_IMAGE . html_entity_decode($images[$pid], ENT_QUOTES, 'UTF-8'))
+                ? $this->model_tool_image->resize(html_entity_decode($images[$pid], ENT_QUOTES, 'UTF-8'), 48, 48)
+                : $this->model_tool_image->resize('no_image.png', 48, 48);
+            $reasons = [];
+            foreach ($item['reasons'] as $r) {
+                $reasons[] = $this->language->get('text_reason_' . $r);
+            }
+            $rows[] = [
+                'external_id' => $item['external_id'],
+                'title' => $item['title'],
+                'sku' => $item['sku'],
+                'image' => $image,
+                'href' => $pid && isset($images[$pid]) ? 'index.php?route=catalog/product.form&product_id=' . $pid . '&user_token=' . $token : '',
+                'price' => \Sudemi\Currency::format($item['price_minor'], $item['currency']),
+                'quantity' => $item['quantity'],
+                'in_stock' => $item['in_stock'],
+                'enabled' => $item['enabled'],
+                'listed' => $item['listed'],
+                'reasons' => $reasons,
+                'images' => $item['images'],
+                'shipping_countries' => $item['shipping_countries'],
+                'impressions' => \Sudemi\Insights::count($item['impressions_30d']),
+                'detail_views' => \Sudemi\Insights::count($item['detail_views_30d']),
+                'orders' => \Sudemi\Insights::count($item['orders_30d']),
+            ];
+        }
+
+        return $rows;
+    }
+
+    private function productsHref(array $params): string
+    {
+        return 'index.php?route=extension/sudemi/module/sudemi.products&user_token=' . rawurlencode((string) $this->session->data['user_token'])
+            . '&' . http_build_query(array_filter($params, function ($v) { return $v !== '' && $v !== null && $v !== 'all'; }));
+    }
+
+    /** The "show on sudemi" switch of one product (POST /listings/{id}/enabled). */
+    public function listingToggle(): void
+    {
+        $this->load->language('extension/sudemi/module/sudemi');
+        $json = [];
+        if (!$this->guard($json)) {
+            $this->respond($json);
+
+            return;
+        }
+        $id = $this->posted('external_id');
+        if (!preg_match('/^[A-Za-z0-9._:\-]{1,128}$/', $id)) {
+            $json['error'] = $this->language->get('error_listing_toggle');
+            $this->respond($json);
+
+            return;
+        }
+        $enabled = $this->posted('enabled') === '1';
+        $sudemi = $this->services();
+        $response = $sudemi['client']->sendSigned('POST', '/integration/v1/listings/' . rawurlencode($id) . '/enabled', ['enabled' => $enabled]);
+        if (is_array($response) && (int) $response['status'] === 200 && is_array($response['body'])) {
+            $json['success'] = $this->language->get($enabled ? 'text_listing_enabled' : 'text_listing_disabled');
+            $json['enabled'] = !empty($response['body']['enabled']);
+            $json['listed'] = !empty($response['body']['listed']);
+        } elseif (is_array($response) && (int) $response['status'] === 404) {
+            $json['error'] = $this->language->get('error_listing_not_found');
+        } else {
+            $json['error'] = $this->language->get('error_listing_toggle');
+        }
+        $this->respond($json);
+    }
+
+    /** sudemi > Payouts: the payout account and this shop's money per currency (GET /payouts). */
+    public function payouts(): void
+    {
+        $this->load->language('extension/sudemi/module/sudemi');
+        $this->document->setTitle($this->language->get('text_payouts_title'));
+        $sudemi = $this->services();
+        $data = $this->shell('payouts');
+        $data['connected'] = $sudemi['client']->isConnected();
+        $data['payouts'] = $data['connected'] ? $this->payoutsPanel($sudemi['client']) : null;
+        $data['error'] = $data['connected'] && $data['payouts'] === null ? $this->language->get('error_payouts_unavailable') : '';
+        $this->response->setOutput($this->load->view('extension/sudemi/module/sudemi_payouts', $data));
+    }
+
+    /** sudemi > Shop profile: what buyers read about this shop on sudemi (GET /shop). */
+    public function profile(): void
+    {
+        $this->load->language('extension/sudemi/module/sudemi');
+        $this->document->setTitle($this->language->get('text_profile_title'));
+        $sudemi = $this->services();
+        $data = $this->shell('profile');
+        $data['connected'] = $sudemi['client']->isConnected();
+        $shop = $sudemi['catalogue']->shop();
+        $data['profile'] = [
+            'name' => $shop['displayName'],
+            'description' => (string) $shop['description'],
+            'support_email' => (string) $shop['supportEmail'],
+            'returns_days' => isset($shop['returnsWindowDays']) ? (int) $shop['returnsWindowDays'] : 14,
+            'currency' => (string) $shop['currency'],
+            'origin' => $this->shopUrl(),
+        ];
+        $data['error'] = '';
+        if ($data['connected']) {
+            $response = $sudemi['client']->sendSigned('GET', '/integration/v1/shop');
+            if (is_array($response) && (int) $response['status'] === 200 && is_array($response['body'])) {
+                $b = $response['body'];
+                foreach (['name' => 'shop_name', 'description' => 'shop_description', 'support_email' => 'support_email', 'currency' => 'currency'] as $k => $field) {
+                    if (isset($b[$field]) && is_string($b[$field]) && $b[$field] !== '') {
+                        $data['profile'][$k] = $b[$field];
+                    }
+                }
+                if (isset($b['returns_window_days']) && is_numeric($b['returns_window_days'])) {
+                    $data['profile']['returns_days'] = (int) $b['returns_window_days'];
+                }
+            } else {
+                $data['error'] = $this->language->get('error_profile_unavailable');
+            }
+        }
+        $data['rename_href'] = $data['support_href'] . '&sudemi_new=rename';
+        $this->response->setOutput($this->load->view('extension/sudemi/module/sudemi_profile', $data));
+    }
+
+    /** Saves the shop profile on sudemi (POST /shop) and keeps it here, so the hourly push sends the same. */
+    public function profileSave(): void
+    {
+        $this->load->language('extension/sudemi/module/sudemi');
+        $json = [];
+        if (!$this->guard($json)) {
+            $this->respond($json);
+
+            return;
+        }
+        $description = trim($this->posted('description'));
+        $email = trim($this->posted('support_email'));
+        $days = $this->posted('returns_days');
+        if ((function_exists('mb_strlen') ? mb_strlen($description, 'UTF-8') : strlen($description)) > 2000) {
+            $json['error'] = $this->language->get('error_profile_description');
+        } elseif ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $json['error'] = $this->language->get('error_profile_email');
+        } elseif (!ctype_digit($days) || (int) $days < 14 || (int) $days > 365) {
+            $json['error'] = $this->language->get('error_profile_returns');
+        }
+        if (isset($json['error'])) {
+            $this->respond($json);
+
+            return;
+        }
+        $sudemi = $this->services();
+        if (!$sudemi['client']->isConnected()) {
+            $json['error'] = $this->language->get('text_orders_not_connected');
+            $this->respond($json);
+
+            return;
+        }
+        $body = ['returnsWindowDays' => (int) $days];
+        if ($description !== '') {
+            $body['description'] = $description;
+        }
+        if ($email !== '') {
+            $body['supportEmail'] = $email;
+        }
+        $response = $sudemi['client']->sendSigned('POST', '/integration/v1/shop', $body);
+        if (is_array($response) && (int) $response['status'] === 200) {
+            $store = $sudemi['store'];
+            $description !== '' ? $store->write(\Sudemi\Catalogue::PROFILE_DESCRIPTION, $description) : $store->delete(\Sudemi\Catalogue::PROFILE_DESCRIPTION);
+            $email !== '' ? $store->write(\Sudemi\Catalogue::PROFILE_SUPPORT_EMAIL, $email) : $store->delete(\Sudemi\Catalogue::PROFILE_SUPPORT_EMAIL);
+            $store->write(\Sudemi\Catalogue::PROFILE_RETURNS_DAYS, (string) (int) $days);
+            $json['success'] = $this->language->get('text_profile_saved');
+        } elseif (is_array($response) && in_array((int) $response['status'], [400, 422], true)) {
+            $json['error'] = isset($response['body']['message']) && is_string($response['body']['message'])
+                ? $response['body']['message'] : $this->language->get('error_profile_unavailable');
+        } else {
+            $json['error'] = $this->language->get('error_profile_unavailable');
+        }
+        $this->respond($json);
+    }
+
+    /** sudemi > Support: tickets with sudemi support (moved here from the settings page, 1.4.0). */
+    public function support(): void
+    {
+        $this->load->language('extension/sudemi/module/sudemi');
+        $this->document->setTitle($this->language->get('text_support_title'));
+        $sudemi = $this->services();
+        $data = $this->shell('support');
+        $data['connected'] = $sudemi['client']->isConnected();
+        $data['support'] = $this->supportPage($data['connected']);
+        // "Ask sudemi to rename the shop" from the profile page: the form starts filled in.
+        $rename = isset($this->request->get['sudemi_new']) && $this->request->get['sudemi_new'] === 'rename';
+        $data['prefill'] = $rename ? ['category' => 'ACCOUNT', 'subject' => $this->language->get('text_rename_subject'),
+            'message' => $this->language->get('text_rename_message')] : ['category' => '', 'subject' => '', 'message' => ''];
+        $this->response->setOutput($this->load->view('extension/sudemi/module/sudemi_support', $data));
+    }
+
+    // ------------------------------------------------------------------------------------------
     // 1.3.0: sudemi orders, shipping and payouts inside the OpenCart admin. sudemi is the source
     // of truth: every page reads from sudemi, every action is sent to sudemi, and sudemi's answer
     // (the order page read back) is what the local order is brought to.
@@ -514,7 +900,7 @@ class Sudemi extends \Opencart\System\Engine\Controller
         $this->load->language('extension/sudemi/module/sudemi');
         $this->document->setTitle($this->language->get('text_orders_title'));
         $sudemi = $this->services();
-        $data = $this->shell();
+        $data = $this->shell('orders');
         $data['connected'] = $sudemi['client']->isConnected();
         $data['auto_confirm'] = $sudemi['orders']->autoConfirm();
         $filters = $this->orderFilters();
@@ -573,6 +959,8 @@ class Sudemi extends \Opencart\System\Engine\Controller
                 . '&' . http_build_query(array_filter($export, 'strlen'));
         }
         $data['bulk_max'] = self::BULK_MAX;
+        // Buyers who asked to return a delivered order (moved here from the settings page, 1.4.0).
+        $data['requests'] = $data['connected'] ? $this->returnRequests($sudemi) : [];
         $this->response->setOutput($this->load->view('extension/sudemi/module/sudemi_orders', $data));
     }
 
@@ -582,7 +970,7 @@ class Sudemi extends \Opencart\System\Engine\Controller
         $this->load->language('extension/sudemi/module/sudemi');
         $this->document->setTitle($this->language->get('text_order_title'));
         $sudemi = $this->services();
-        $data = $this->shell();
+        $data = $this->shell('orders');
         $id = strtolower(isset($this->request->get['order_id']) ? (string) $this->request->get['order_id'] : '');
         $data['order'] = null;
         $data['error'] = '';
@@ -960,7 +1348,7 @@ class Sudemi extends \Opencart\System\Engine\Controller
         $this->load->language('extension/sudemi/module/sudemi');
         $this->document->setTitle($this->language->get('text_shipping_title'));
         $sudemi = $this->services();
-        $data = $this->shell();
+        $data = $this->shell('shipping');
         $data['connected'] = $sudemi['client']->isConnected();
         $data['settings'] = null;
         $data['error'] = '';
@@ -1351,12 +1739,26 @@ class Sudemi extends \Opencart\System\Engine\Controller
             . '&' . http_build_query(array_filter($filters, function ($v) { return $v !== '' && $v !== null; }));
     }
 
-    /** What every page of the extension has: OpenCart's header, menu and footer, the token, the links. */
-    private function shell(): array
+    /** The pages of the sudemi menu, in its order: [key, route, icon, language key]. */
+    const PAGES = [
+        ['dashboard', 'extension/sudemi/module/sudemi.dashboard', 'fa-solid fa-chart-line', 'text_menu_dashboard'],
+        ['products', 'extension/sudemi/module/sudemi.products', 'fa-solid fa-box-open', 'text_menu_products'],
+        ['orders', 'extension/sudemi/module/sudemi.orders', 'fa-solid fa-receipt', 'text_menu_orders'],
+        ['shipping', 'extension/sudemi/module/sudemi.shipping', 'fa-solid fa-truck', 'text_menu_shipping'],
+        ['payouts', 'extension/sudemi/module/sudemi.payouts', 'fa-solid fa-coins', 'text_menu_payouts'],
+        ['profile', 'extension/sudemi/module/sudemi.profile', 'fa-solid fa-store', 'text_menu_profile'],
+        ['support', 'extension/sudemi/module/sudemi.support', 'fa-solid fa-life-ring', 'text_menu_support'],
+        ['settings', 'extension/sudemi/module/sudemi', 'fa-solid fa-gear', 'text_menu_settings'],
+    ];
+
+    /**
+     * What every page of the extension has: OpenCart's header, menu and footer, the token, the
+     * links, and the sudemi header (the shop, whether sudemi shows it, the tabs of the sudemi menu).
+     */
+    private function shell(string $active = ''): array
     {
         $token = rawurlencode((string) $this->session->data['user_token']);
-
-        return [
+        $data = [
             'user_token' => $this->session->data['user_token'],
             'header' => $this->load->controller('common/header'),
             'column_left' => $this->load->controller('common/column_left'),
@@ -1364,7 +1766,53 @@ class Sudemi extends \Opencart\System\Engine\Controller
             'orders_href' => 'index.php?route=extension/sudemi/module/sudemi.orders&user_token=' . $token,
             'shipping_href' => 'index.php?route=extension/sudemi/module/sudemi.shipping&user_token=' . $token,
             'settings_href' => 'index.php?route=extension/sudemi/module/sudemi&user_token=' . $token,
+            'support_href' => 'index.php?route=extension/sudemi/module/sudemi.support&user_token=' . $token,
+            'products_href' => 'index.php?route=extension/sudemi/module/sudemi.products&user_token=' . $token,
+            'payouts_href' => 'index.php?route=extension/sudemi/module/sudemi.payouts&user_token=' . $token,
+            'profile_href' => 'index.php?route=extension/sudemi/module/sudemi.profile&user_token=' . $token,
+            'dashboard_href' => 'index.php?route=extension/sudemi/module/sudemi.dashboard&user_token=' . $token,
+            'home_href' => 'index.php?route=common/dashboard&user_token=' . $token,
         ];
+        $data['sudemi_nav'] = $this->nav($active);
+
+        return $data;
+    }
+
+    /** The sudemi header and tabs every page starts with (sudemi_nav.twig). */
+    private function nav(string $active): string
+    {
+        $token = rawurlencode((string) $this->session->data['user_token']);
+        $tabs = [];
+        foreach (self::PAGES as $page) {
+            $tabs[] = ['key' => $page[0], 'href' => 'index.php?route=' . $page[1] . '&user_token=' . $token, 'icon' => $page[2],
+                'label' => $this->language->get($page[3]), 'active' => $page[0] === $active];
+        }
+        $state = 'off';
+        $label = $this->language->get('text_nav_not_connected');
+        try {
+            $sudemi = $this->services();
+            if ($sudemi['client']->isConnected()) {
+                $status = $sudemi['heartbeat']->status();
+                if (!empty($status['connected']) && !empty($status['listed'])) {
+                    $state = 'on';
+                    $label = $this->language->get('text_nav_listed');
+                } else {
+                    $state = 'warn';
+                    $label = $this->language->get('text_nav_not_listed');
+                }
+            }
+        } catch (\Throwable $e) {
+            // The header must render even when sudemi or the database is unreachable.
+        }
+
+        return $this->load->view('extension/sudemi/module/sudemi_nav', [
+            'tabs' => $tabs,
+            'shop_name' => \Sudemi\Catalogue::text($this->config->get('config_name')),
+            'state' => $state,
+            'state_label' => $label,
+            'brand_tagline' => $this->language->get('text_nav_tagline'),
+            'nav_label' => $this->language->get('text_nav_label'),
+        ]);
     }
 
     /**
@@ -1525,8 +1973,6 @@ class Sudemi extends \Opencart\System\Engine\Controller
             'claim_url' => $sudemi['pairing']->claimUrl(),
             'shop_url' => $this->shopUrl(),
             'install_id' => $sudemi['client']->installId(),
-            'history' => $sudemi['client']->isConnected() ? $this->orderHistory($sudemi['client']) : null,
-            'requests' => $sudemi['client']->isConnected() ? $this->returnRequests($sudemi) : [],
             'log' => $sudemi['logger']->entries(),
             'status' => $this->listingStatus($sudemi['heartbeat']->status()),
             'pending' => $sudemi['queue']->count(),
@@ -1539,52 +1985,6 @@ class Sudemi extends \Opencart\System\Engine\Controller
             // the template must not put it anywhere a non-admin can read.
             'cron_url' => $this->shopUrl() . 'index.php?route=extension/sudemi/cron&token='
                 . rawurlencode($sudemi['heartbeat']->cronToken()),
-        ];
-    }
-
-    /**
-     * The shop's orders as sudemi holds them (approved, declined, shipped, who bought), for this
-     * page. Read from sudemi, not from OpenCart's orders: an order sudemi declined because nobody
-     * answered in time leaves no local order at all.
-     *
-     * @return array|null null when sudemi could not be reached
-     */
-    private function orderHistory($client): ?array
-    {
-        $response = $client->getSigned('/integration/v1/orders?limit=20');
-        if ($response === null || (int) $response['status'] !== 200 || !is_array($response['body'])) {
-            return null;
-        }
-        $body = $response['body'];
-        $rows = [];
-        foreach ((isset($body['orders']) && is_array($body['orders']) ? $body['orders'] : []) as $order) {
-            $items = [];
-            foreach ((isset($order['lines']) && is_array($order['lines']) ? $order['lines'] : []) as $line) {
-                $qty = isset($line['quantity']) ? (int) $line['quantity'] : 1;
-                $items[] = (isset($line['title']) ? (string) $line['title'] : '') . ($qty > 1 ? ' × ' . $qty : '');
-            }
-            $status = isset($order['status']) ? (string) $order['status'] : '';
-            $currency = isset($order['currency_code']) ? (string) $order['currency_code'] : 'EUR';
-            $label = $this->language->get('text_status_' . strtolower($status));
-            $rows[] = [
-                'id' => substr((string) $order['order_id'], 0, 8),
-                'date' => isset($order['placed_at']) ? substr((string) $order['placed_at'], 0, 10) : '',
-                'items' => implode(', ', $items),
-                'status' => $label !== 'text_status_' . strtolower($status) ? $label : $status,
-                // In the currency the buyer was charged in, with that currency's own decimals.
-                'paid' => \Sudemi\Currency::format(isset($order['total_minor']) ? (int) $order['total_minor'] : 0, $currency),
-                'net' => \Sudemi\Currency::format(isset($order['your_net_minor']) ? (int) $order['your_net_minor'] : 0, $currency),
-                // Only present once sudemi has released it, which is only after this shop confirmed.
-                'customer' => isset($order['customer_name']) ? (string) $order['customer_name'] : ' - ',
-                // An open return request on this order (answered in the list above).
-                'return_requested' => !empty($order['customer_request']) && is_array($order['customer_request']),
-            ];
-        }
-        $awaiting = isset($body['counts']['AWAITING_SELLER']) ? (int) $body['counts']['AWAITING_SELLER'] : 0;
-
-        return [
-            'rows' => $rows,
-            'awaiting' => $awaiting > 0 ? sprintf($this->language->get('text_history_awaiting'), $awaiting) : '',
         ];
     }
 

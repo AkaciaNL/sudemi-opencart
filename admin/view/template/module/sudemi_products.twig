@@ -1,0 +1,102 @@
+{# sudemi > Products on sudemi (GET /listings, POST /listings/{id}/enabled). Autoescaping on. #}
+{% autoescape 'html' %}
+{{ header|raw }}{{ column_left|raw }}
+<div id="content">
+  <div class="page-header">
+    <div class="container-fluid">
+      <h1>{{ text_products_title }}</h1>
+      <ol class="breadcrumb"><li class="breadcrumb-item"><a href="{{ home_href }}">{{ text_home }}</a></li><li class="breadcrumb-item">sudemi</li><li class="breadcrumb-item">{{ text_products_title }}</li></ol>
+    </div>
+  </div>
+  <div class="container-fluid" id="sudemi-products">
+    {{ sudemi_nav|raw }}
+    {% if not connected %}
+      <div class="sudemi-card"><div class="sudemi-empty"><i class="fa-solid fa-plug"></i>{{ text_orders_not_connected }} <a href="{{ settings_href }}">{{ text_menu_settings }}</a></div></div>
+    {% else %}
+      <p class="sudemi-muted">{{ text_products_intro }}</p>
+      <div class="sudemi-card">
+        <div class="sudemi-card-head">
+          <div class="sudemi-pills" id="sudemi-listing-filters">{% for f in filters %}<a href="{{ f.href }}" class="{% if f.active %}active{% endif %}" data-filter="{{ f.value }}">{{ f.label }}</a>{% endfor %}</div>
+          <form class="d-flex gap-2" method="get" action="index.php" role="search">
+            <input type="hidden" name="route" value="extension/sudemi/module/sudemi.products">
+            <input type="hidden" name="user_token" value="{{ user_token }}">
+            {% if filter != 'all' %}<input type="hidden" name="status" value="{{ filter }}">{% endif %}
+            <input type="search" name="q" value="{{ q }}" class="form-control form-control-sm" style="min-width:16rem" placeholder="{{ entry_products_search }}" aria-label="{{ entry_products_search }}" maxlength="100">
+            <button class="btn btn-sm btn-primary" type="submit"><i class="fa-solid fa-magnifying-glass"></i></button>
+          </form>
+        </div>
+        {% if error %}
+          <div class="sudemi-empty" id="sudemi-listings-error"><i class="fa-solid fa-triangle-exclamation"></i>{{ error }}</div>
+        {% elseif items %}
+          <div class="table-responsive">
+            <table class="table sudemi-table" id="sudemi-listings">
+              <thead><tr>
+                <th>{{ column_product }}</th><th class="text-end">{{ column_price }}</th><th class="text-end">{{ column_stock }}</th>
+                <th>{{ column_listing }}</th>
+                <th class="text-end" title="{{ help_kpi_impressions }}">{{ text_kpi_impressions }}</th>
+                <th class="text-end" title="{{ help_kpi_detail_views }}">{{ text_kpi_detail_views }}</th>
+                <th class="text-end">{{ text_kpi_orders }}</th>
+                <th class="text-center">{{ column_show_on_sudemi }}</th>
+              </tr></thead>
+              <tbody>
+              {% for p in items %}
+                <tr class="sudemi-listing" data-external-id="{{ p.external_id }}">
+                  <td>
+                    <div class="d-flex align-items-center gap-2">
+                      <img class="sudemi-thumb" src="{{ p.image }}" alt="" loading="lazy">
+                      <div style="min-width:0">
+                        {% if p.href %}<a href="{{ p.href }}">{{ p.title }}</a>{% else %}{{ p.title }}{% endif %}
+                        <div class="sudemi-muted">{% if p.sku %}{{ column_sku }} {{ p.sku }} · {% endif %}{{ text_images_count|format(p.images) }} · {{ text_shipping_countries_count|format(p.shipping_countries) }}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="text-end text-nowrap">{{ p.price }}</td>
+                  <td class="text-end">{% if p.in_stock %}{{ p.quantity }}{% else %}<span class="text-danger">0</span>{% endif %}</td>
+                  <td>
+                    {% if p.listed %}<span class="sudemi-badge sudemi-badge-on">{{ text_listed_badge }}</span>{% else %}<span class="sudemi-badge sudemi-badge-off">{{ text_not_listed_badge }}</span>
+                    <ul class="sudemi-reasons">{% for r in p.reasons %}<li>{{ r }}</li>{% endfor %}</ul>{% endif %}
+                  </td>
+                  <td class="text-end">{{ p.impressions }}</td>
+                  <td class="text-end">{{ p.detail_views }}</td>
+                  <td class="text-end">{{ p.orders }}</td>
+                  <td class="text-center">
+                    <div class="form-check form-switch d-inline-block m-0">
+                      <input class="form-check-input sudemi-toggle" type="checkbox" role="switch" aria-label="{{ column_show_on_sudemi }}: {{ p.title }}" {% if p.enabled %}checked{% endif %}>
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <div class="sudemi-card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <span class="sudemi-muted" id="sudemi-listing-total">{{ text_products_found|format(total) }} · {{ text_counts_30d }}</span>
+            <span>{% if prev_href %}<a class="btn btn-sm btn-light" href="{{ prev_href }}">&laquo; {{ button_prev }}</a>{% endif %}
+              {% if next_href %}<a class="btn btn-sm btn-light" id="sudemi-next" href="{{ next_href }}">{{ button_next }} &raquo;</a>{% endif %}</span>
+          </div>
+        {% else %}
+          <div class="sudemi-empty" id="sudemi-listings-empty"><i class="fa-solid fa-box-open"></i>{% if q or filter != 'all' %}{{ text_products_none_filter }}{% else %}{{ text_products_none }}{% endif %}</div>
+        {% endif %}
+      </div>
+      <p class="sudemi-muted">{{ text_products_switch_help }}</p>
+    {% endif %}
+  </div>
+</div>
+<script type="text/javascript">
+$('#sudemi-listings').on('change', '.sudemi-toggle', function () {
+    var box = this, row = $(this).closest('tr');
+    box.disabled = true;
+    $.ajax({
+        url: 'index.php?route=extension/sudemi/module/sudemi.listingToggle&user_token={{ user_token|e('js') }}',
+        type: 'post', dataType: 'json',
+        data: {external_id: row.data('external-id'), enabled: box.checked ? '1' : '0'},
+        success: function (json) {
+            if (json.error) { alert(json.error); box.checked = !box.checked; box.disabled = false; return; }
+            location.reload();
+        },
+        error: function () { box.checked = !box.checked; box.disabled = false; alert('{{ error_listing_toggle|e('js') }}'); }
+    });
+});
+</script>
+{{ footer|raw }}
+{% endautoescape %}

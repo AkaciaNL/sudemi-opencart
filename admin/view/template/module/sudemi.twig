@@ -1,23 +1,20 @@
-{# OpenCart 4 switches Twig's autoescaping OFF, so it is switched on explicitly for this whole
-   page: every value (ticket subjects and messages from sudemi support, product names, order
-   data) is HTML-escaped. Only OpenCart's own header, menu and footer markup is printed raw.
+{# sudemi > Settings: connecting the shop, whether sudemi shows it, delivery times, the catalogue.
+   OpenCart 4 switches Twig's autoescaping OFF, so it is switched on explicitly for this whole
+   page: every value is HTML-escaped. Only OpenCart's own header, menu and footer markup and the
+   sudemi header (rendered escaped by sudemi_nav.twig) are printed raw.
    (Security fix 2026-11-07: a support message containing HTML was rendered as HTML.) #}
 {% autoescape 'html' %}
 {{ header|raw }}{{ column_left|raw }}
 <div id="content">
   <div class="page-header">
     <div class="container-fluid">
-      {% if connected %}
-      <div class="float-end">
-        <a href="index.php?route=extension/sudemi/module/sudemi.orders&amp;user_token={{ user_token }}" id="sudemi-orders-link" class="btn btn-primary"><i class="fa-solid fa-list"></i> {{ text_menu_orders }}</a>
-        <a href="index.php?route=extension/sudemi/module/sudemi.shipping&amp;user_token={{ user_token }}" id="sudemi-shipping-link" class="btn btn-light"><i class="fa-solid fa-truck"></i> {{ text_menu_shipping }}</a>
-      </div>
-      {% endif %}
-      <h1>{{ heading_title }}</h1>
+      <h1>{{ text_settings_title }}</h1>
+      <ol class="breadcrumb"><li class="breadcrumb-item"><a href="{{ home_href }}">{{ text_home }}</a></li><li class="breadcrumb-item">sudemi</li><li class="breadcrumb-item">{{ text_settings_title }}</li></ol>
     </div>
   </div>
 
   <div class="container-fluid">
+    {{ sudemi_nav|raw }}
     <div id="alert" class="toast-container position-fixed top-0 end-0 p-3"></div>
 
     {% if not supported %}
@@ -27,293 +24,132 @@
       <div class="alert alert-danger" id="sudemi-currency-warning">{{ currency.warning }}</div>
     {% endif %}
 
-    <div class="card">
-      <div class="card-header"><i class="fa-solid fa-store"></i> sudemi</div>
-      <div class="card-body">
-
-        {% if connected %}
-          <div class="alert alert-success">{{ text_connected }}</div>
-
-          <table class="table">
-            <tr>
-              <th style="width:14rem">{{ entry_shop_url }}</th>
-              <td><code>{{ shop_url }}</code><div class="form-text">{{ text_shop_url_fixed }}</div></td>
-            </tr>
-            <tr>
-              <th>{{ entry_currency }}</th>
-              <td><code id="sudemi-currency">{{ currency.code }}</code><div class="form-text">{{ currency.text }}{% if currency.fee %} {{ currency.fee }}{% endif %}</div>
-                {% if currency.changed %}<div class="alert alert-warning mt-2 mb-0">{{ currency.changed }}</div>{% endif %}</td>
-            </tr>
-            <tr>
-              <th>{{ entry_install }}</th>
-              <td><code>{{ install_id }}</code></td>
-            </tr>
-            <tr>
-              <th>{{ entry_key }}</th>
-              <td><code>held on this server</code><div class="form-text">{{ text_key_held }}</div></td>
-            </tr>
-          </table>
-
-          {# Whether sudemi is showing this shop's products, in sudemi's own words. Worth its
-             own block because the failure it reports is invisible from here: products stop being
+    {% if connected %}
+      <div class="row g-3">
+        <div class="col-xl-7">
+          {# Whether sudemi is showing this shop's products, in sudemi's own words. Worth its own
+             block because the failure it reports is invisible from here: products stop being
              listed when the beats stop arriving, and from this side everything looks normal. The
              usual cause is no cron entry on the host. #}
-          <h2 class="h5 mt-4">{{ text_listing_status }}</h2>
-          {% if not status %}
-            <div class="alert alert-warning">{{ text_never_reported }}</div>
-          {% elseif not status.reachable %}
-            <div class="alert alert-danger">{{ text_unreachable }}</div>
-          {% elseif not status.connected %}
-            <div class="alert alert-danger">{{ status.message }}</div>
-          {% elseif not status.listed %}
-            <div class="alert alert-warning">{{ status.reason }}</div>
-          {% else %}
-            <div class="alert alert-success">{{ text_listed }}</div>
-          {% endif %}
-
-          <table class="table">
-            <tr>
-              <th style="width:14rem">{{ entry_pending }}</th>
-              <td><code>{{ pending }}</code><div class="form-text">{{ text_pending }}</div></td>
-            </tr>
-            {% if status.trusted_until %}
-            <tr>
-              <th>{{ entry_trusted_until }}</th>
-              <td><code>{{ status.trusted_until }}</code><div class="form-text">{{ text_trusted_until }}</div></td>
-            </tr>
-            {% endif %}
-            <tr>
-              <th>{{ entry_cron }}</th>
-              <td><code>*/5 * * * * curl -fsS "{{ cron_url }}" &gt;/dev/null</code><div class="form-text">{{ text_cron }}</div></td>
-            </tr>
-          </table>
-
-          {% if history is null %}
-            <div class="alert alert-warning">{{ text_history_error }}</div>
-          {% else %}
-            <h5 class="mt-4">{{ text_history_title }}</h5>
-            {% if history.awaiting %}<div class="alert alert-warning">{{ history.awaiting }}</div>{% endif %}
-            {% if history.rows %}
-              <table class="table table-sm" id="sudemi-order-history">
-                <thead><tr><th>{{ column_order }}</th><th>{{ column_items }}</th><th>{{ column_status }}</th><th>{{ column_paid }}</th><th>{{ column_net }}</th><th>{{ column_customer }}</th></tr></thead>
-                <tbody>
-                {% for row in history.rows %}
-                  <tr><td><code>{{ row.id }}</code><br><small>{{ row.date }}</small></td><td>{{ row.items }}</td><td>{{ row.status }}{% if row.return_requested %}<br><span class="badge bg-warning text-dark">{{ text_history_return_requested }}</span>{% endif %}</td><td>{{ row.paid }}</td><td>{{ row.net }}</td><td>{{ row.customer }}</td></tr>
-                {% endfor %}
-                </tbody>
-              </table>
-            {% else %}
-              <p class="form-text">{{ text_history_empty }}</p>
-            {% endif %}
-          {% endif %}
-
-          {% if options_skipped %}
-            <div class="alert alert-info">{{ text_options_skipped|format(options_skipped) }}</div>
-          {% endif %}
-
-          <h5 class="mt-4">{{ text_delivery_title }}</h5>
-          {% if shipping_preview %}
-            <p>{{ text_delivery_preview }} {% for rate in shipping_preview %}{{ rate.country }} {{ rate.amount }}{% if not loop.last %}, {% endif %}{% endfor %}</p>
-            <div class="form-text">{{ text_delivery_skipped }}</div>
-          {% else %}
-            <div class="alert alert-warning">{{ text_delivery_none }}</div>
-          {% endif %}
-          <div class="row g-2 align-items-end mb-3">
-            <div class="col-auto"><label class="form-label" for="sudemi-handling">{{ entry_handling_days }}</label>
-              <input id="sudemi-handling" type="number" min="0" max="60" class="form-control" value="{{ handling_days }}"/></div>
-            <div class="col-auto"><label class="form-label" for="sudemi-transit">{{ entry_transit_days }}</label>
-              <input id="sudemi-transit" type="number" min="0" max="60" class="form-control" value="{{ transit_days }}"/></div>
-            <div class="col-auto"><button class="btn btn-secondary" onclick="sudemiDelivery()">{{ button_delivery }}</button></div>
+          <div class="sudemi-card" id="sudemi-listing-status">
+            <div class="sudemi-card-head"><h2>{{ text_listing_status }}</h2></div>
+            <div class="sudemi-card-body">
+              {% if not status %}
+                <div class="alert alert-warning">{{ text_never_reported }}</div>
+              {% elseif not status.reachable %}
+                <div class="alert alert-danger">{{ text_unreachable }}</div>
+              {% elseif not status.connected %}
+                <div class="alert alert-danger">{{ status.message }}</div>
+              {% elseif not status.listed %}
+                <div class="alert alert-warning">{{ status.reason }}</div>
+              {% else %}
+                <div class="alert alert-success mb-3"><i class="fa-solid fa-circle-check"></i> {{ text_listed }}</div>
+              {% endif %}
+              <dl class="sudemi-dl">
+                <dt>{{ entry_pending }}</dt><dd><strong>{{ pending }}</strong><div class="sudemi-muted">{{ text_pending }}</div></dd>
+                {% if status.trusted_until %}<dt>{{ entry_trusted_until }}</dt><dd><code>{{ status.trusted_until }}</code><div class="sudemi-muted">{{ text_trusted_until }}</div></dd>{% endif %}
+                <dt>{{ entry_cron }}</dt><dd><code style="word-break:break-all">*/5 * * * * curl -fsS "{{ cron_url }}" &gt;/dev/null</code><div class="sudemi-muted">{{ text_cron }}</div></dd>
+              </dl>
+            </div>
           </div>
-          <div class="form-text mb-3">{{ text_delivery_help }}</div>
 
-          <p>{{ text_locked }}</p>
+          <div class="sudemi-card" id="sudemi-connection">
+            <div class="sudemi-card-head"><h2>{{ text_connection_title }}</h2><span class="sudemi-badge sudemi-badge-on">{{ text_connected }}</span></div>
+            <div class="sudemi-card-body">
+              <dl class="sudemi-dl">
+                <dt>{{ entry_shop_url }}</dt><dd><code>{{ shop_url }}</code><div class="sudemi-muted">{{ text_shop_url_fixed }}</div></dd>
+                <dt>{{ entry_currency }}</dt><dd><code id="sudemi-currency">{{ currency.code }}</code><div class="sudemi-muted">{{ currency.text }}{% if currency.fee %} {{ currency.fee }}{% endif %}</div>
+                  {% if currency.changed %}<div class="alert alert-warning mt-2 mb-0">{{ currency.changed }}</div>{% endif %}</dd>
+                <dt>{{ entry_install }}</dt><dd><code>{{ install_id }}</code></dd>
+                <dt>{{ entry_key }}</dt><dd><code>{{ text_key_here }}</code><div class="sudemi-muted">{{ text_key_held }}</div></dd>
+              </dl>
+              <p class="sudemi-muted mt-3 mb-3">{{ text_locked }}</p>
+              <button class="btn btn-outline-danger btn-sm" onclick="if (confirm('{{ text_disconnect_confirm|e('js') }}')) { sudemiPost('disconnect'); }"><i class="fa-solid fa-link-slash"></i> {{ button_disconnect }}</button>
+            </div>
+          </div>
+        </div>
 
-          <button class="btn btn-secondary" onclick="sudemiPost('sync')">{{ button_sync }}</button>
-          <button class="btn btn-danger" onclick="sudemiPost('disconnect')">{{ button_disconnect }}</button>
+        <div class="col-xl-5">
+          <div class="sudemi-card" id="sudemi-catalogue">
+            <div class="sudemi-card-head"><h2>{{ text_catalogue_title }}</h2></div>
+            <div class="sudemi-card-body">
+              <p class="sudemi-muted">{{ text_catalogue_intro }}</p>
+              {% if options_skipped %}<div class="alert alert-info">{{ text_options_skipped|format(options_skipped) }}</div>{% endif %}
+              <button class="btn btn-primary" onclick="sudemiPost('sync')"><i class="fa-solid fa-rotate"></i> {{ button_sync }}</button>
+              <a class="btn btn-outline-secondary" href="{{ products_href }}"><i class="fa-solid fa-box-open"></i> {{ text_menu_products }}</a>
+            </div>
+          </div>
 
-        {% elseif claim_url %}
-          <p><a class="btn btn-primary" target="_blank" rel="noopener noreferrer" href="{{ claim_url }}">{{ button_confirm }}</a></p>
-          <button class="btn btn-secondary" onclick="sudemiPost('check')">{{ button_check }}</button>
-
-        {% else %}
-          <p>{{ text_intro }}</p>
-          <button class="btn btn-primary" {% if not supported %}disabled{% endif %} onclick="sudemiPost('connect')">{{ button_connect }}</button>
-        {% endif %}
-
-        {% if log %}
-          <h5 class="mt-4">Recent activity</h5>
-          <table class="table table-sm">
-            {% for entry in log %}
-              <tr><td style="width:14rem">{{ entry.at }}</td><td>{{ entry.message }}</td></tr>
-            {% endfor %}
-          </table>
-        {% endif %}
-
+          <div class="sudemi-card" id="sudemi-delivery">
+            <div class="sudemi-card-head"><h2>{{ text_delivery_title }}</h2></div>
+            <div class="sudemi-card-body">
+              {% if shipping_preview %}
+                <p class="mb-1">{{ text_delivery_preview }}</p>
+                <div class="d-flex flex-wrap gap-1 mb-2">{% for rate in shipping_preview %}<span class="sudemi-badge sudemi-badge-muted">{{ rate.country }} {{ rate.amount }}</span>{% endfor %}</div>
+                <div class="sudemi-muted mb-3">{{ text_delivery_skipped }} <a href="{{ shipping_href }}">{{ text_menu_shipping }}</a></div>
+              {% else %}
+                <div class="alert alert-warning">{{ text_delivery_none }}</div>
+              {% endif %}
+              <div class="row g-2 align-items-end">
+                <div class="col-sm-6"><label class="form-label" for="sudemi-handling">{{ entry_handling_days }}</label>
+                  <div class="input-group"><input id="sudemi-handling" type="number" min="0" max="60" class="form-control" value="{{ handling_days }}"/><span class="input-group-text">{{ text_days }}</span></div></div>
+                <div class="col-sm-6"><label class="form-label" for="sudemi-transit">{{ entry_transit_days }}</label>
+                  <div class="input-group"><input id="sudemi-transit" type="number" min="0" max="60" class="form-control" value="{{ transit_days }}"/><span class="input-group-text">{{ text_days }}</span></div></div>
+              </div>
+              <div class="sudemi-muted my-2">{{ text_delivery_help }}</div>
+              <button class="btn btn-outline-primary" onclick="sudemiDelivery()"><i class="fa-solid fa-floppy-disk"></i> {{ button_delivery }}</button>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
 
-    {# Return requests: buyers who asked to return a delivered order. The shop answers within 7 days:
-       accept, or reject with a reason the buyer is shown. The list is the one the last heartbeat
-       brought; the buyer's reason is plain text, printed escaped. #}
-    {% if connected %}
-    <div class="card mt-3" id="sudemi-return-requests">
-      <div class="card-header"><i class="fa-solid fa-rotate-left"></i> {{ text_requests_title }}</div>
-      <div class="card-body">
-        <p class="form-text">{{ text_requests_intro }}</p>
-        {% if requests %}
-          <table class="table table-sm align-middle">
-            <thead><tr><th>{{ column_request_order }}</th><th>{{ column_request_reason }}</th><th>{{ column_request_respond_by }}</th><th style="width:22rem">{{ column_request_answer }}</th></tr></thead>
-            <tbody>
-            {% for r in requests %}
-              <tr class="sudemi-request" data-order-id="{{ r.order_id|e }}">
-                <td>{% if r.href %}<a href="{{ r.href|e }}">#{{ r.local|e }}</a>{% else %}{{ text_request_no_local|e }}{% endif %}<br><small>sudemi <code>{{ r.short|e }}</code></small><br><small>{{ column_request_requested|e }}: {{ r.requested_at|e }}</small></td>
-                <td style="white-space: pre-wrap; overflow-wrap: anywhere;">{% if r.reason %}{{ r.reason|e }}{% else %}<em>{{ text_request_no_reason|e }}</em>{% endif %}</td>
-                <td>{{ r.respond_by|e }}{% if r.overdue %}<br><span class="badge bg-danger">{{ text_request_overdue|e }}</span>{% endif %}</td>
-                <td>
-                  <button type="button" class="btn btn-success btn-sm mb-2" onclick="sudemiRequest(this, 'accept')">{{ button_request_accept|e }}</button>
-                  <label class="form-label small mb-1" for="sudemi-reject-{{ loop.index }}">{{ entry_request_reject_reason|e }}</label>
-                  <textarea id="sudemi-reject-{{ loop.index }}" class="form-control form-control-sm sudemi-reject-reason" rows="2" maxlength="1000" required></textarea>
-                  <button type="button" class="btn btn-outline-danger btn-sm mt-1" onclick="sudemiRequest(this, 'reject')">{{ button_request_reject|e }}</button>
-                </td>
-              </tr>
-            {% endfor %}
-            </tbody>
-          </table>
-        {% else %}
-          <p class="form-text mb-0" id="sudemi-return-requests-empty">{{ text_requests_empty }}</p>
-        {% endif %}
+    {% elseif claim_url %}
+      <div class="sudemi-card" id="sudemi-claim">
+        <div class="sudemi-card-body text-center py-5">
+          <i class="fa-solid fa-link fa-2x mb-3" style="color:#2b59d6"></i>
+          <h2 class="h4">{{ text_claim_title }}</h2>
+          <p class="sudemi-muted mx-auto" style="max-width:36rem">{{ text_not_confirmed }}</p>
+          <a class="btn btn-primary" target="_blank" rel="noopener noreferrer" href="{{ claim_url }}">{{ button_confirm }}</a>
+          <button class="btn btn-outline-secondary" onclick="sudemiPost('check')">{{ button_check }}</button>
+        </div>
       </div>
-    </div>
+
+    {% else %}
+      <div class="sudemi-card" id="sudemi-welcome">
+        <div class="sudemi-card-body py-5">
+          <div class="row align-items-center g-4">
+            <div class="col-lg-8">
+              <h2 class="h3 mb-3">{{ text_welcome_title }}</h2>
+              <p class="mb-3">{{ text_intro }}</p>
+              <ul class="list-unstyled sudemi-muted mb-4">
+                <li class="mb-2"><i class="fa-solid fa-check text-success"></i> {{ text_welcome_point_1 }}</li>
+                <li class="mb-2"><i class="fa-solid fa-check text-success"></i> {{ text_welcome_point_2 }}</li>
+                <li class="mb-2"><i class="fa-solid fa-check text-success"></i> {{ text_welcome_point_3 }}</li>
+              </ul>
+              <button class="btn btn-primary btn-lg" {% if not supported %}disabled{% endif %} onclick="sudemiPost('connect')"><i class="fa-solid fa-plug"></i> {{ button_connect }}</button>
+            </div>
+          </div>
+        </div>
+      </div>
     {% endif %}
 
-    {# Support: tickets between this shop and sudemi support. Message bodies are plain text from
-       sudemi, printed escaped; white-space: pre-wrap keeps their line breaks. #}
-    <div class="card mt-3" id="sudemi-support">
-      <div class="card-header"><i class="fa-solid fa-life-ring"></i> {{ text_support_title }}</div>
-      <div class="card-body">
-        {% if not support.connected %}
-          <p class="form-text mb-0">{{ text_support_not_connected }}</p>
-        {% else %}
-          <p class="form-text">{{ text_support_intro }}</p>
-          {% if support.error %}<div class="alert alert-warning">{{ support.error }}</div>{% endif %}
-
-          {% if support.ticket_error %}<div class="alert alert-warning">{{ support.ticket_error }}</div>{% endif %}
-          {% if support.ticket %}
-            <div class="border rounded p-3 mb-4" id="sudemi-support-ticket" data-ticket-id="{{ support.ticket.id }}">
-              <h2 class="h5">{{ support.ticket.number }} · {{ support.ticket.subject }}</h2>
-              <p class="form-text">{{ support.ticket.category_label }} · {{ column_support_status }}: <strong>{{ support.ticket.status_label }}</strong>{% if support.ticket.order_id %} · {{ entry_support_order }}: <code>{{ support.ticket.order_id }}</code>{% endif %}</p>
-              {% for message in support.ticket.messages %}
-                <div class="card mb-2 {% if message.support %}border-primary{% else %}border-secondary{% endif %}">
-                  <div class="card-header py-1 {% if message.support %}bg-primary text-white{% endif %}"><strong>{{ message.author }}</strong> <small class="ms-2">{{ message.date }}</small></div>
-                  <div class="card-body py-2" style="white-space: pre-wrap; overflow-wrap: anywhere;">{{ message.body }}</div>
-                </div>
-              {% endfor %}
-              <label class="form-label mt-2" for="sudemi-support-reply">{{ entry_support_reply }}</label>
-              <textarea id="sudemi-support-reply" class="form-control" rows="4" maxlength="10000"></textarea>
-              {% if support.ticket.status == 'CLOSED' %}<div class="form-text">{{ text_support_reply_reopens }}</div>{% endif %}
-              <button class="btn btn-primary mt-2" onclick="sudemiSupportReply()">{{ button_support_reply }}</button>
-              <a class="btn btn-link mt-2" href="index.php?route=extension/sudemi/module/sudemi&amp;user_token={{ user_token }}#sudemi-support">{{ button_support_back }}</a>
-            </div>
-          {% endif %}
-
-          <h2 class="h5">{{ text_support_tickets }}</h2>
-          {% if support.tickets %}
-            <table class="table table-sm" id="sudemi-support-tickets">
-              <thead><tr><th>{{ column_support_number }}</th><th>{{ column_support_subject }}</th><th>{{ column_support_status }}</th><th>{{ column_support_updated }}</th></tr></thead>
-              <tbody>
-              {% for t in support.tickets %}
-                <tr><td><a href="{{ t.href }}"><code>{{ t.number }}</code></a></td><td><a href="{{ t.href }}">{{ t.subject }}</a><br><small>{{ t.category_label }}</small></td><td>{{ t.status_label }}</td><td>{{ t.updated }}</td></tr>
-              {% endfor %}
-              </tbody>
-            </table>
-          {% elseif not support.error %}
-            <p class="form-text">{{ text_support_empty }}</p>
-          {% endif %}
-
-          <h2 class="h5 mt-4">{{ text_support_new }}</h2>
-          <div class="row g-2">
-            <div class="col-md-4"><label class="form-label" for="sudemi-support-category">{{ entry_support_category }}</label>
-              <select id="sudemi-support-category" class="form-select">
-                {% for c in support.categories %}<option value="{{ c.value }}">{{ c.label }}</option>{% endfor %}
-              </select></div>
-            <div class="col-md-8"><label class="form-label" for="sudemi-support-order">{{ entry_support_order }}</label>
-              <input id="sudemi-support-order" type="text" class="form-control" maxlength="36" placeholder="{{ help_support_order }}"/></div>
-            <div class="col-12"><label class="form-label" for="sudemi-support-subject">{{ entry_support_subject }}</label>
-              <input id="sudemi-support-subject" type="text" class="form-control" minlength="3" maxlength="200"/></div>
-            <div class="col-12"><label class="form-label" for="sudemi-support-message">{{ entry_support_message }}</label>
-              <textarea id="sudemi-support-message" class="form-control" rows="5" maxlength="10000"></textarea>
-              <div class="form-text">{{ text_support_email }}</div></div>
-          </div>
-          <button class="btn btn-primary mt-2" onclick="sudemiSupportOpen()">{{ button_support_open }}</button>
-        {% endif %}
+    {% if log %}
+      <div class="sudemi-card" id="sudemi-activity">
+        <div class="sudemi-card-head"><h2>{{ text_activity_title }}</h2></div>
+        <div class="table-responsive">
+          <table class="table table-sm sudemi-table">
+            {% for entry in log %}
+              <tr{% if loop.index > 12 %} class="sudemi-log-more" hidden{% endif %}><td class="text-nowrap sudemi-muted" style="width:13rem">{{ entry.at }}</td><td>{{ entry.message }}</td></tr>
+            {% endfor %}
+          </table>
+        </div>
+        {% if log|length > 12 %}<div class="sudemi-card-body pt-2"><button type="button" class="btn btn-sm btn-light" onclick="document.querySelectorAll('.sudemi-log-more').forEach(function (r) { r.hidden = false; }); this.remove();">{{ button_show_all }}</button></div>{% endif %}
       </div>
-    </div>
+    {% endif %}
   </div>
 </div>
 
 <script type="text/javascript">
-// Opening and replying are guarded actions (modify permission + user token), like the others.
-var sudemiSupportUrl = 'index.php?route=extension/sudemi/module/sudemi&user_token={{ user_token|e('js') }}';
-
-function sudemiSupportShow(ticketId) {
-    location.href = sudemiSupportUrl + '&sudemi_ticket=' + encodeURIComponent(ticketId) + '#sudemi-support';
-}
-
-function sudemiSupportOpen() {
-    $.ajax({
-        url: 'index.php?route=extension/sudemi/module/sudemi.supportOpen&user_token={{ user_token|e('js') }}',
-        type: 'post', dataType: 'json',
-        data: {
-            category: $('#sudemi-support-category').val(), subject: $('#sudemi-support-subject').val(),
-            message: $('#sudemi-support-message').val(), order_id: $('#sudemi-support-order').val()
-        },
-        success: function (json) {
-            if (json.error) { alert(json.error); return; }
-            if (json.success) { alert(json.success); sudemiSupportShow(json.ticket_id); }
-        },
-        error: function () { alert('{{ error_support_unavailable|e('js') }}'); }
-    });
-}
-
-function sudemiSupportReply() {
-    var ticketId = $('#sudemi-support-ticket').data('ticket-id');
-    $.ajax({
-        url: 'index.php?route=extension/sudemi/module/sudemi.supportReply&user_token={{ user_token|e('js') }}',
-        type: 'post', dataType: 'json',
-        data: { ticket_id: ticketId, message: $('#sudemi-support-reply').val() },
-        success: function (json) {
-            if (json.error) { alert(json.error); return; }
-            if (json.success) { sudemiSupportShow(json.ticket_id); }
-        },
-        error: function () { alert('{{ error_support_unavailable|e('js') }}'); }
-    });
-}
-
-// Answering a return request is a guarded action (modify permission + user token), like the others.
-// A rejection needs a reason (shown to the buyer); it is checked here and again by sudemi.
-function sudemiRequest(button, action) {
-    var row = $(button).closest('tr.sudemi-request');
-    var reason = $.trim(row.find('.sudemi-reject-reason').val() || '');
-    if (action === 'reject' && reason === '') {
-        alert('{{ error_request_reason|e('js') }}');
-        row.find('.sudemi-reject-reason').focus();
-        return;
-    }
-    $(button).prop('disabled', true);
-    $.ajax({
-        url: 'index.php?route=extension/sudemi/module/sudemi.request' + (action === 'accept' ? 'Accept' : 'Reject') + '&user_token={{ user_token|e('js') }}',
-        type: 'post', dataType: 'json',
-        data: { order_id: row.data('order-id'), reason: action === 'reject' ? reason : '' },
-        success: function (json) {
-            if (json.error) { alert(json.error); }
-            if (json.success) { alert(json.success); }
-            location.reload();
-        },
-        error: function () { $(button).prop('disabled', false); alert('{{ error_request_unavailable|e('js') }}'); }
-    });
-}
-
 // The user token travels in the query string, which is how OpenCart's admin authenticates an
 // AJAX call; the controller compares it with hash_equals before doing anything.
 function sudemiDelivery() {
@@ -335,7 +171,7 @@ function sudemiPost(action) {
             if (json.success) { alert(json.success); location.reload(); }
             if (json.claim_url) { window.open(json.claim_url, '_blank', 'noopener'); location.reload(); }
         },
-        error: function () { alert('The request failed.'); }
+        error: function () { alert('{{ error_request_failed|e('js') }}'); }
     });
 }
 </script>

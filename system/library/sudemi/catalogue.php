@@ -54,16 +54,31 @@ class Catalogue
         return trim(str_replace("\u{00A0}", ' ', $text));
     }
 
+    /** Settings the Shop profile page saves (1.4.0); they win over the store's own values. */
+    const PROFILE_DESCRIPTION = 'sudemi_profile_description';
+    const PROFILE_SUPPORT_EMAIL = 'sudemi_profile_support_email';
+    const PROFILE_RETURNS_DAYS = 'sudemi_profile_returns_days';
+
     public function shop()
     {
-        return [
+        $description = (string) $this->config->get(self::PROFILE_DESCRIPTION);
+        $email = (string) $this->config->get(self::PROFILE_SUPPORT_EMAIL);
+        $returns = (int) $this->config->get(self::PROFILE_RETURNS_DAYS);
+        $shop = [
             'displayName' => self::text($this->config->get('config_name')),
-            'description' => self::plain($this->config->get('config_meta_description')),
+            // What the shop owner wrote for sudemi on the Shop profile page, else the store's meta
+            // description: the hourly push must not undo an edit made on that page.
+            'description' => $description !== '' ? $description : self::plain($this->config->get('config_meta_description')),
             'languages' => [substr((string) $this->config->get('config_language'), 0, 2)],
             'currency' => $this->config->get('config_currency'),
-            'supportEmail' => $this->config->get('config_email'),
+            'supportEmail' => $email !== '' ? $email : $this->config->get('config_email'),
             'shipsTo' => [],
         ];
+        if ($returns > 0) {
+            $shop['returnsWindowDays'] = $returns;
+        }
+
+        return $shop;
     }
 
     public function categories()

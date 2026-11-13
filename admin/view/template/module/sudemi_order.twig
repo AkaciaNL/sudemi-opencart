@@ -8,9 +8,11 @@
     <div class="container-fluid">
       <div class="float-end"><a href="{{ back_href }}" class="btn btn-light"><i class="fa-solid fa-reply"></i> {{ text_orders_title }}</a></div>
       <h1>{{ text_order_title }}{% if order %} <code>{{ order.short }}</code>{% endif %}</h1>
+      <ol class="breadcrumb"><li class="breadcrumb-item"><a href="{{ home_href }}">{{ text_home }}</a></li><li class="breadcrumb-item">sudemi</li><li class="breadcrumb-item"><a href="{{ back_href }}">{{ text_orders_title }}</a></li></ol>
     </div>
   </div>
   <div class="container-fluid">
+    {{ sudemi_nav|raw }}
     {% if error %}<div class="alert alert-warning">{{ error }}</div>{% endif %}
     {% if order %}
     <div id="sudemi-order" data-order-id="{{ order.id }}" data-status="{{ order.status }}">
