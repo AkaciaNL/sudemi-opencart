@@ -1,6 +1,6 @@
 <?php
 /**
- * 1.4.0: statistics, the products on sudemi, the admin texts.
+ * 1.4.0: statistics, the products on sudemi, the admin texts. 1.4.1: the checkout mode banner.
  *
  * - Insights: the period, a partial or malformed answer from sudemi, the listing reasons, the
  *   chart (escaped, every day drawn, a round scale), product ids.
@@ -97,6 +97,26 @@ check( 'chart: no days still draws an empty frame', 0 === substr_count( $svg, '<
 $svg = Insights::chart( array( array( 'day' => '2026-11-01', 'orders' => 2 ) ), 'nonsense', function ( $v ) { return '<x>'; }, 'x' );
 check( 'chart: an unknown metric falls back, labels are escaped', false === strpos( $svg, '<x>' ) && false !== strpos( $svg, '&lt;x&gt;' ) );
 
+// ---- 1.4.1: the checkout mode banner from GET /shop.
+$b = Insights::checkoutBanner( array( 'checkout_mode' => 'SHOP', 'checkout_mode_reason' => 'stripe_not_connected', 'stripe_connect_url' => 'https://sudemi.com/seller/payouts' ) );
+check( 'SHOP: the banner with its Connect Stripe address', array( 'mode' => 'SHOP', 'reason' => 'stripe_not_connected', 'url' => 'https://sudemi.com/seller/payouts', 'needs_info' => false ) === $b, $b );
+$b = Insights::checkoutBanner( array( 'checkout_mode' => 'SHOP', 'checkout_mode_reason' => 'stripe_requirements_due', 'stripe_connect_url' => 'https://sudemi.com/seller/payouts' ) );
+check( 'SHOP because Stripe needs more information: the extra line', true === $b['needs_info'] && 'stripe_requirements_due' === $b['reason'], $b );
+$b = Insights::checkoutBanner( array( 'checkout_mode' => 'SUDEMI', 'checkout_mode_reason' => null, 'stripe_connect_url' => 'https://sudemi.com/seller/payouts' ) );
+check( 'SUDEMI: the green banner, no button', array( 'mode' => 'SUDEMI', 'reason' => '', 'url' => '', 'needs_info' => false ) === $b, $b );
+$b = Insights::checkoutBanner( array( 'checkout_mode' => 'SUSPENDED', 'checkout_mode_reason' => 'stripe_restricted' ) );
+check( 'SUSPENDED: the paused banner', 'SUSPENDED' === $b['mode'] && 'stripe_restricted' === $b['reason'] && '' === $b['url'], $b );
+check( 'no checkout_mode (an older core): no banner', null === Insights::checkoutBanner( array( 'shop_name' => 'x' ) ) );
+check( 'no answer: no banner', null === Insights::checkoutBanner( null ) );
+check( 'an unknown mode: no banner', null === Insights::checkoutBanner( array( 'checkout_mode' => 'shop' ) ) );
+check( 'a mode that is not text: no banner', null === Insights::checkoutBanner( array( 'checkout_mode' => array( 'SHOP' ) ) ) );
+$b = Insights::checkoutBanner( array( 'checkout_mode' => 'SHOP', 'checkout_mode_reason' => '<b>', 'stripe_connect_url' => 'javascript:alert(1)' ) );
+check( 'a script address is never a link, an unknown reason is dropped', '' === $b['url'] && '' === $b['reason'] && false === $b['needs_info'], $b );
+$b = Insights::checkoutBanner( array( 'checkout_mode' => 'SHOP', 'stripe_connect_url' => '/seller/payouts' ) );
+check( 'a relative address is not a link', '' === $b['url'], $b );
+$b = Insights::checkoutBanner( array( 'checkout_mode' => 'SHOP', 'stripe_connect_url' => 'https://x.test/a" onmouseover="x' ) );
+check( 'an address with a quote is not a link', '' === $b['url'], $b );
+
 // ---- Admin texts in all twelve languages.
 $en = array();
 $_ = array();
@@ -129,7 +149,9 @@ foreach ( $languages as $file ) {
 		}
 	}
 	check( "$code has no long dash", array() === $dash, $dash );
-	foreach ( array( 'text_menu_dashboard', 'text_kpi_impressions', 'text_reason_not_in_shop', 'text_profile_title', 'text_short_status_paid' ) as $key ) {
+	foreach ( array( 'text_menu_dashboard', 'text_kpi_impressions', 'text_reason_not_in_shop', 'text_profile_title', 'text_short_status_paid',
+		'text_checkout_shop_title', 'text_checkout_shop_text', 'text_checkout_needs_info', 'button_checkout_connect', 'text_checkout_sudemi_title',
+		'text_checkout_sudemi_text', 'text_checkout_suspended_title', 'text_checkout_suspended_text', 'button_checkout_support' ) as $key ) {
 		if ( isset( $_[ $key ] ) && 'en-gb' !== $code && $_[ $key ] === $en[ $key ] && ! in_array( $key, array( 'text_menu_dashboard' ), true ) ) {
 			check( "$code translates $key", false, $_[ $key ] );
 		}

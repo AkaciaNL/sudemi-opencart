@@ -793,8 +793,8 @@ class Sudemi extends \Opencart\System\Engine\Controller
         ];
         $data['error'] = '';
         if ($data['connected']) {
-            $response = $sudemi['client']->sendSigned('GET', '/integration/v1/shop');
-            if (is_array($response) && (int) $response['status'] === 200 && is_array($response['body'])) {
+            $response = $this->shopResponse($sudemi);
+            if (isset($response['status']) && (int) $response['status'] === 200 && is_array($response['body'] ?? null)) {
                 $b = $response['body'];
                 foreach (['name' => 'shop_name', 'description' => 'shop_description', 'support_email' => 'support_email', 'currency' => 'currency'] as $k => $field) {
                     if (isset($b[$field]) && is_string($b[$field]) && $b[$field] !== '') {
@@ -1804,6 +1804,12 @@ class Sudemi extends \Opencart\System\Engine\Controller
         } catch (\Throwable $e) {
             // The header must render even when sudemi or the database is unreachable.
         }
+        $banner = null;
+        try {
+            $banner = isset($sudemi) && $sudemi['client']->isConnected() ? $this->checkoutBanner($sudemi) : null;
+        } catch (\Throwable $e) {
+            $banner = null;
+        }
 
         return $this->load->view('extension/sudemi/module/sudemi_nav', [
             'tabs' => $tabs,
@@ -1812,7 +1818,68 @@ class Sudemi extends \Opencart\System\Engine\Controller
             'state_label' => $label,
             'brand_tagline' => $this->language->get('text_nav_tagline'),
             'nav_label' => $this->language->get('text_nav_label'),
+            'checkout' => $banner,
+            'checkout_support_href' => 'index.php?route=extension/sudemi/module/sudemi.support&user_token=' . $token,
+            'text_checkout_shop_title' => $this->language->get('text_checkout_shop_title'),
+            'text_checkout_shop_text' => $this->language->get('text_checkout_shop_text'),
+            'text_checkout_needs_info' => $this->language->get('text_checkout_needs_info'),
+            'button_checkout_connect' => $this->language->get('button_checkout_connect'),
+            'text_checkout_sudemi_title' => $this->language->get('text_checkout_sudemi_title'),
+            'text_checkout_sudemi_text' => $this->language->get('text_checkout_sudemi_text'),
+            'text_checkout_suspended_title' => $this->language->get('text_checkout_suspended_title'),
+            'text_checkout_suspended_text' => $this->language->get('text_checkout_suspended_text'),
+            'button_checkout_support' => $this->language->get('button_checkout_support'),
         ]);
+    }
+
+    /** Setting that keeps the checkout mode for CHECKOUT_TTL seconds: {at, banner}. */
+    const CHECKOUT_CACHE = 'sudemi_checkout_mode';
+    const CHECKOUT_TTL = 60;
+
+    /** GET /shop of this request, called once however many parts of the page need it. */
+    private $shopRead = null;
+
+    /**
+     * sudemi's GET /shop answer, once per request; a fresh answer also refreshes the checkout
+     * mode the header shows, so the Shop profile page costs one call, not two.
+     */
+    private function shopResponse(array $sudemi)
+    {
+        if ($this->shopRead === null) {
+            $response = $sudemi['client']->sendSigned('GET', '/integration/v1/shop');
+            $this->shopRead = is_array($response) ? $response : [];
+            $ok = isset($this->shopRead['status']) && (int) $this->shopRead['status'] === 200 && is_array($this->shopRead['body'] ?? null);
+            $sudemi['store']->write(self::CHECKOUT_CACHE, [
+                'at' => time(),
+                'banner' => $ok ? \Sudemi\Insights::checkoutBanner($this->shopRead['body']) : null,
+            ]);
+        }
+
+        return $this->shopRead;
+    }
+
+    /**
+     * The checkout mode banner (1.4.1, docs/seller-modes.md) for the header: from the last minute's
+     * answer when there is one, else from GET /shop. A failed call is kept for the minute too, so a
+     * shop's request budget (120 a minute) is never spent on the header. Null: no banner.
+     */
+    private function checkoutBanner(array $sudemi): ?array
+    {
+        require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/insights.php';
+        $cached = $sudemi['store']->read(self::CHECKOUT_CACHE);
+        if (is_array($cached) && isset($cached['at']) && is_numeric($cached['at'])
+            && (int) $cached['at'] <= time() && (int) $cached['at'] > time() - self::CHECKOUT_TTL) {
+            $banner = $cached['banner'] ?? null;
+        } else {
+            $this->shopResponse($sudemi);
+            $banner = $sudemi['store']->read(self::CHECKOUT_CACHE)['banner'] ?? null;
+        }
+        // Checked again: the setting is stored in the database and read back from there.
+        return is_array($banner) ? \Sudemi\Insights::checkoutBanner([
+            'checkout_mode' => $banner['mode'] ?? null,
+            'checkout_mode_reason' => $banner['reason'] ?? null,
+            'stripe_connect_url' => $banner['url'] ?? null,
+        ]) : null;
     }
 
     /**

@@ -491,3 +491,14 @@ $_['error_request_failed'] = '请求失败。请重试。';
 $_['text_sodium_missing'] = '此服务器缺少 PHP 的 sodium 扩展，连接需要它来签名请求。请让你的主机服务商启用它。';
 $_['text_orders_none'] = '还没有 sudemi 订单。买家通过 AI 助手购买你的商品时就会产生订单，并显示在这里和“销售 > 订单”中。';
 $_['text_orders_none_filter'] = '没有符合此筛选的订单。';
+
+// 1.4.1: checkout mode banner on every sudemi page (docs/seller-modes.md)
+$_['text_checkout_shop_title'] = 'Stripe 未连接。你的商品已在 sudemi 上架，请连接 Stripe';
+$_['text_checkout_shop_text'] = '在此之前，买家在你自己的网站付款：免费上架，无佣金。';
+$_['button_checkout_connect'] = '连接 Stripe';
+$_['text_checkout_sudemi_title'] = 'Stripe 已连接';
+$_['text_checkout_sudemi_text'] = '买家通过 sudemi 付款，你的订单和打款都在这里。';
+$_['text_checkout_suspended_title'] = '我们正在审核支付服务商的限制，你的店铺在 sudemi 上已暂停';
+$_['text_checkout_suspended_text'] = '你的商品暂时不展示。我们会通过电子邮件告诉你需要什么。';
+$_['button_checkout_support'] = '联系客服';
+$_['text_checkout_needs_info'] = 'Stripe 需要你提供更多信息。';

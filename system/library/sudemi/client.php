@@ -27,7 +27,7 @@ class Client
 
     /** A cap, so a strange Retry-After cannot park a cron run for an hour. */
     const RATE_LIMIT_MAX_WAIT = 90;
-    const VERSION = '1.4.0';
+    const VERSION = '1.4.1';
 
     /**
      * Test seam, null in production. When set (only by PHP code running in this same process,

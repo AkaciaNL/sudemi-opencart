@@ -491,3 +491,14 @@ $_['error_request_failed'] = 'İstek başarısız oldu. Tekrar deneyin.';
 $_['text_sodium_missing'] = 'Bu sunucuda, bağlantının istekleri imzalamak için ihtiyaç duyduğu PHP sodium eklentisi eksik. Barındırma firmanızdan bunu açmasını isteyin.';
 $_['text_orders_none'] = 'Henüz sudemi siparişi yok. Bir alıcı ürünlerinizden birini yapay zekâ asistanı üzerinden satın aldığında sipariş gelir; burada ve Satışlar > Siparişler altında görünür.';
 $_['text_orders_none_filter'] = 'Bu filtreye uyan sipariş yok.';
+
+// 1.4.1: checkout mode banner on every sudemi page (docs/seller-modes.md)
+$_['text_checkout_shop_title'] = 'Stripe bağlı değil. Ürünleriniz sudemi\'de listeleniyor, Stripe\'ı bağlayın';
+$_['text_checkout_shop_text'] = 'O zamana kadar alıcılar kendi web sitenizde öder: ücretsiz listeleme, komisyon yok.';
+$_['button_checkout_connect'] = 'Stripe\'ı bağla';
+$_['text_checkout_sudemi_title'] = 'Stripe bağlantısı tamam';
+$_['text_checkout_sudemi_text'] = 'Alıcılar sudemi üzerinden öder; siparişleriniz ve ödeme aktarımlarınız burada.';
+$_['text_checkout_suspended_title'] = 'Bir ödeme kuruluşu kısıtlamasını incelerken mağazanız sudemi\'de duraklatıldı';
+$_['text_checkout_suspended_text'] = 'Ürünleriniz şimdilik gösterilmiyor. Neyin gerektiğini size e-postayla bildiririz.';
+$_['button_checkout_support'] = 'Destekle iletişime geçin';
+$_['text_checkout_needs_info'] = 'Stripe sizden daha fazla bilgi istiyor.';

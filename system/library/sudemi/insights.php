@@ -159,6 +159,39 @@ class Insights
         );
     }
 
+    /** The checkout modes GET /shop reports (docs/seller-modes.md); anything else shows no banner. */
+    const CHECKOUT_MODES = array('SUDEMI', 'SHOP', 'SUSPENDED');
+    const CHECKOUT_REASONS = array('stripe_not_connected', 'stripe_requirements_due', 'stripe_restricted');
+
+    /**
+     * The checkout banner (1.4.1) for sudemi's GET /shop answer: null when the answer is missing,
+     * malformed or from a core without checkout modes, so the page then shows no banner.
+     *
+     * @return array{mode:string,reason:string,url:string,needs_info:bool}|null
+     */
+    public static function checkoutBanner($body)
+    {
+        if (!is_array($body) || !isset($body['checkout_mode']) || !is_string($body['checkout_mode'])
+            || !in_array($body['checkout_mode'], self::CHECKOUT_MODES, true)) {
+            return null;
+        }
+        $reason = isset($body['checkout_mode_reason']) && is_string($body['checkout_mode_reason'])
+            && in_array($body['checkout_mode_reason'], self::CHECKOUT_REASONS, true) ? $body['checkout_mode_reason'] : '';
+        $url = isset($body['stripe_connect_url']) && is_string($body['stripe_connect_url']) ? trim($body['stripe_connect_url']) : '';
+        // Only a web address becomes a link: no javascript:, data: or relative paths.
+        if (strlen($url) > 2000 || !preg_match('#^https?://[^\s"\'<>]+$#i', $url)) {
+            $url = '';
+        }
+        $mode = $body['checkout_mode'];
+
+        return array(
+            'mode' => $mode,
+            'reason' => $reason,
+            'url' => $mode === 'SHOP' ? $url : '',
+            'needs_info' => $mode === 'SHOP' && $reason === 'stripe_requirements_due',
+        );
+    }
+
     /** The OpenCart product id an external id names ("53"), or 0. */
     public static function productId($externalId)
     {

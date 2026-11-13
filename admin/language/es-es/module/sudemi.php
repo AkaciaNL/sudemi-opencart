@@ -491,3 +491,14 @@ $_['error_request_failed'] = 'La solicitud ha fallado. Inténtalo de nuevo.';
 $_['text_sodium_missing'] = 'A este servidor le falta la extensión PHP sodium, que la conexión necesita para firmar las solicitudes. Pide a tu proveedor de alojamiento que la active.';
 $_['text_orders_none'] = 'Todavía no hay pedidos de sudemi. Un pedido llega cuando un comprador compra uno de tus productos a través de un asistente de IA; aparece aquí y en Ventas > Pedidos.';
 $_['text_orders_none_filter'] = 'Ningún pedido coincide con este filtro.';
+
+// 1.4.1: checkout mode banner on every sudemi page (docs/seller-modes.md)
+$_['text_checkout_shop_title'] = 'Stripe no está conectado. Tus productos aparecen en sudemi, conecta Stripe';
+$_['text_checkout_shop_text'] = 'Hasta entonces los compradores pagan en tu propia web: anuncio gratis, sin comisión.';
+$_['button_checkout_connect'] = 'Conectar Stripe';
+$_['text_checkout_sudemi_title'] = 'Stripe está conectado';
+$_['text_checkout_sudemi_text'] = 'Los compradores pagan a través de sudemi, y tus pedidos y transferencias están aquí.';
+$_['text_checkout_suspended_title'] = 'Tu tienda está pausada en sudemi mientras revisamos una restricción del proveedor de pagos';
+$_['text_checkout_suspended_text'] = 'Tus productos no se muestran por ahora. Te escribimos qué hace falta.';
+$_['button_checkout_support'] = 'Contactar con soporte';
+$_['text_checkout_needs_info'] = 'Stripe necesita más información tuya.';

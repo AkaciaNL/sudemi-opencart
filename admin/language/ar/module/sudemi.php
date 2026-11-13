@@ -491,3 +491,14 @@ $_['error_request_failed'] = 'فشل الطلب. حاول مرة أخرى.';
 $_['text_sodium_missing'] = 'ينقص هذا الخادمَ امتداد PHP المسمى sodium، الذي يحتاجه الاتصال لتوقيع الطلبات. اطلب من مزود الاستضافة تفعيله.';
 $_['text_orders_none'] = 'لا توجد طلبات من sudemi بعد. يصل الطلب حين يشتري مشترٍ أحد منتجاتك عبر مساعد ذكاء اصطناعي، ويظهر هنا وفي المبيعات > الطلبات.';
 $_['text_orders_none_filter'] = 'لا يوجد طلب يطابق هذا الفلتر.';
+
+// 1.4.1: checkout mode banner on every sudemi page (docs/seller-modes.md)
+$_['text_checkout_shop_title'] = 'Stripe غير مرتبط. منتجاتك معروضة على sudemi، اربط Stripe';
+$_['text_checkout_shop_text'] = 'حتى ذلك الحين يدفع المشترون على موقعك: عرض مجاني بلا عمولة.';
+$_['button_checkout_connect'] = 'ربط Stripe';
+$_['text_checkout_sudemi_title'] = 'تم ربط Stripe';
+$_['text_checkout_sudemi_text'] = 'يدفع المشترون عبر sudemi، وتجد طلباتك وتحويلاتك هنا.';
+$_['text_checkout_suspended_title'] = 'متجرك متوقف مؤقتًا على sudemi ريثما نراجع قيدًا فرضه مزوّد الدفع';
+$_['text_checkout_suspended_text'] = 'لا تُعرض منتجاتك حاليًا. سنراسلك بما هو مطلوب.';
+$_['button_checkout_support'] = 'تواصل مع الدعم';
+$_['text_checkout_needs_info'] = 'تحتاج Stripe إلى مزيد من المعلومات منك.';

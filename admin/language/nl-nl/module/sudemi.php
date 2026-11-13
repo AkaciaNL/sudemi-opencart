@@ -491,3 +491,14 @@ $_['error_request_failed'] = 'Het verzoek is mislukt. Probeer het opnieuw.';
 $_['text_sodium_missing'] = 'Deze server mist de PHP-extensie sodium, die de koppeling nodig heeft om verzoeken te ondertekenen. Vraag je hostingpartij om die aan te zetten.';
 $_['text_orders_none'] = 'Nog geen sudemi-bestellingen. Een bestelling komt binnen als een koper een product van je koopt via een AI-assistent; ze verschijnt hier en onder Verkopen > Bestellingen.';
 $_['text_orders_none_filter'] = 'Geen bestelling past bij dit filter.';
+
+// 1.4.1: checkout mode banner on every sudemi page (docs/seller-modes.md)
+$_['text_checkout_shop_title'] = 'Stripe is niet verbonden. Je producten staan op sudemi, verbind Stripe';
+$_['text_checkout_shop_text'] = 'Tot dan betalen kopers op je eigen website: gratis vermelding, geen commissie.';
+$_['button_checkout_connect'] = 'Stripe verbinden';
+$_['text_checkout_sudemi_title'] = 'Stripe is verbonden';
+$_['text_checkout_sudemi_text'] = 'Kopers betalen via sudemi, en je bestellingen en uitbetalingen vind je hier.';
+$_['text_checkout_suspended_title'] = 'Je winkel is gepauzeerd op sudemi terwijl wij een beperking van de betaaldienst bekijken';
+$_['text_checkout_suspended_text'] = 'Je producten worden voorlopig niet getoond. We mailen je wat er nodig is.';
+$_['button_checkout_support'] = 'Contact met support';
+$_['text_checkout_needs_info'] = 'Stripe heeft meer informatie van je nodig.';

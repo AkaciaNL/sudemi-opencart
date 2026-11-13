@@ -491,3 +491,14 @@ $_['error_request_failed'] = 'Żądanie się nie powiodło. Spróbuj ponownie.';
 $_['text_sodium_missing'] = 'Na tym serwerze brakuje rozszerzenia PHP sodium, którego połączenie potrzebuje do podpisywania żądań. Poproś dostawcę hostingu o jego włączenie.';
 $_['text_orders_none'] = 'Nie ma jeszcze zamówień z sudemi. Zamówienie pojawia się, gdy kupujący kupi Twój produkt przez asystenta AI; widać je tutaj oraz w Sprzedaż > Zamówienia.';
 $_['text_orders_none_filter'] = 'Żadne zamówienie nie pasuje do tego filtra.';
+
+// 1.4.1: checkout mode banner on every sudemi page (docs/seller-modes.md)
+$_['text_checkout_shop_title'] = 'Stripe nie jest połączony. Twoje produkty są wyświetlane w sudemi, połącz Stripe';
+$_['text_checkout_shop_text'] = 'Do tego czasu kupujący płacą na Twojej stronie: bezpłatne wyświetlanie, bez prowizji.';
+$_['button_checkout_connect'] = 'Połącz Stripe';
+$_['text_checkout_sudemi_title'] = 'Stripe jest połączony';
+$_['text_checkout_sudemi_text'] = 'Kupujący płacą przez sudemi, a Twoje zamówienia i wypłaty są tutaj.';
+$_['text_checkout_suspended_title'] = 'Twój sklep jest wstrzymany w sudemi, dopóki sprawdzamy ograniczenie nałożone przez dostawcę płatności';
+$_['text_checkout_suspended_text'] = 'Twoje produkty na razie nie są wyświetlane. Napiszemy Ci, czego potrzeba.';
+$_['button_checkout_support'] = 'Skontaktuj się ze wsparciem';
+$_['text_checkout_needs_info'] = 'Stripe potrzebuje od Ciebie więcej informacji.';

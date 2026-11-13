@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.4.1
+
+The checkout mode on every sudemi page (docs/seller-modes.md, owner 2026-11-13). Needs sudemi core
+2026-11-13 (GET /shop with `checkout_mode`); with an older core no banner is shown and nothing else
+changes.
+
+- **Stripe not connected (the shop's own checkout):** a red banner under the sudemi tabs says
+  "Stripe is not connected. Your products are listed on sudemi, Connect Stripe", that buyers pay on
+  the shop's own website until then, and has a **Connect Stripe** button (opens the seller portal's
+  payout page in a new tab). When Stripe asked for more information, one line says so.
+- **Stripe connected (sudemi checkout):** a slim green "Connect Stripe is done".
+- **Paused:** while sudemi reviews a payment provider restriction, a red banner says the shop is
+  paused, with a link to the Support page.
+- The mode is read with the Shop profile call (GET /shop) and kept for one minute, so the banner
+  costs at most one call a minute; a failed call shows no banner and never breaks the page.
+- All texts in the twelve languages.
+
 ## 1.4.0
 
 Everything sudemi holds about the shop, inside the OpenCart admin, and a cleaner look (owner

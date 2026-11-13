@@ -491,3 +491,14 @@ $_['error_request_failed'] = 'The request failed. Try again.';
 $_['text_sodium_missing'] = 'This server is missing the PHP sodium extension, which the connection needs to sign requests. Ask your host to enable it.';
 $_['text_orders_none'] = 'No sudemi orders yet. Orders arrive when a buyer buys one of your products through an AI assistant; they appear here and in Sales > Orders.';
 $_['text_orders_none_filter'] = 'No order matches this filter.';
+
+// 1.4.1: checkout mode banner on every sudemi page (docs/seller-modes.md)
+$_['text_checkout_shop_title'] = 'Stripe is not connected. Your products are listed on sudemi, Connect Stripe';
+$_['text_checkout_shop_text'] = 'Until then buyers pay on your own website: free listing, no commission.';
+$_['button_checkout_connect'] = 'Connect Stripe';
+$_['text_checkout_sudemi_title'] = 'Connect Stripe is done';
+$_['text_checkout_sudemi_text'] = 'Buyers pay through sudemi, and you get your orders and payouts here.';
+$_['text_checkout_suspended_title'] = 'Your shop is paused on sudemi while we review a payment provider restriction';
+$_['text_checkout_suspended_text'] = 'Your products are not shown for now. We e-mail you what is needed.';
+$_['button_checkout_support'] = 'Contact support';
+$_['text_checkout_needs_info'] = 'Stripe needs more information from you.';

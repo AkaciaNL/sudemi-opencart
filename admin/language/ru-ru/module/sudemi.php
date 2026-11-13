@@ -491,3 +491,14 @@ $_['error_request_failed'] = 'Запрос не удался. Попробуйт
 $_['text_sodium_missing'] = 'На этом сервере нет PHP-расширения sodium, которое нужно подключению для подписи запросов. Попросите хостинг его включить.';
 $_['text_orders_none'] = 'Заказов из sudemi пока нет. Заказ приходит, когда покупатель покупает ваш товар через ИИ-ассистента; он появится здесь и в разделе «Продажи > Заказы».';
 $_['text_orders_none_filter'] = 'Ни один заказ не подходит под этот фильтр.';
+
+// 1.4.1: checkout mode banner on every sudemi page (docs/seller-modes.md)
+$_['text_checkout_shop_title'] = 'Stripe не подключён. Ваши товары размещены в sudemi, подключите Stripe';
+$_['text_checkout_shop_text'] = 'До тех пор покупатели платят на вашем сайте: бесплатное размещение, без комиссии.';
+$_['button_checkout_connect'] = 'Подключить Stripe';
+$_['text_checkout_sudemi_title'] = 'Stripe подключён';
+$_['text_checkout_sudemi_text'] = 'Покупатели платят через sudemi, а ваши заказы и выплаты находятся здесь.';
+$_['text_checkout_suspended_title'] = 'Ваш магазин приостановлен в sudemi, пока мы проверяем ограничение платёжного сервиса';
+$_['text_checkout_suspended_text'] = 'Ваши товары пока не показываются. Мы напишем вам, что нужно.';
+$_['button_checkout_support'] = 'Связаться с поддержкой';
+$_['text_checkout_needs_info'] = 'Stripe нужны дополнительные сведения.';

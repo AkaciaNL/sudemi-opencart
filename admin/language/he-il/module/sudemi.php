@@ -491,3 +491,14 @@ $_['error_request_failed'] = 'הבקשה נכשלה. נסו שוב.';
 $_['text_sodium_missing'] = 'בשרת הזה חסרה הרחבת PHP בשם sodium, שהחיבור צריך כדי לחתום על בקשות. בקשו מספק האחסון להפעיל אותה.';
 $_['text_orders_none'] = 'עדיין אין הזמנות מ-sudemi. הזמנה מגיעה כשקונה קונה מוצר שלכם דרך עוזר בינה מלאכותית; היא מופיעה כאן ובמכירות > הזמנות.';
 $_['text_orders_none_filter'] = 'אין הזמנה שמתאימה לסינון הזה.';
+
+// 1.4.1: checkout mode banner on every sudemi page (docs/seller-modes.md)
+$_['text_checkout_shop_title'] = 'Stripe לא מחוברת. המוצרים שלכם מוצגים ב‑sudemi, חברו את Stripe';
+$_['text_checkout_shop_text'] = 'עד אז הקונים משלמים באתר שלכם: הצגה בחינם, בלי עמלה.';
+$_['button_checkout_connect'] = 'חיבור Stripe';
+$_['text_checkout_sudemi_title'] = 'Stripe מחוברת';
+$_['text_checkout_sudemi_text'] = 'הקונים משלמים דרך sudemi, וההזמנות וההעברות שלכם נמצאות כאן.';
+$_['text_checkout_suspended_title'] = 'החנות שלכם מושהית ב‑sudemi בזמן שאנחנו בודקים הגבלה של ספק התשלומים';
+$_['text_checkout_suspended_text'] = 'המוצרים שלכם לא מוצגים בינתיים. נכתוב לכם במייל מה נדרש.';
+$_['button_checkout_support'] = 'פנייה לתמיכה';
+$_['text_checkout_needs_info'] = 'Stripe צריכה מכם מידע נוסף.';

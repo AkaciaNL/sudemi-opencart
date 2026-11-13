@@ -1,5 +1,6 @@
 {# The sudemi header every page of the extension starts with: the mark, the shop, whether sudemi
-   shows its products, and the tabs of the sudemi menu. Autoescaping on; the styles of all sudemi
+   shows its products, and the tabs of the sudemi menu, then the
+   checkout mode banner (1.4.1, docs/seller-modes.md). Autoescaping on; the styles of all sudemi
    pages live here so every page looks the same. Logical properties (margin-inline, inset-inline)
    keep it right in Arabic and Hebrew. #}
 {% autoescape 'html' %}
@@ -57,7 +58,17 @@
 .sudemi-dl{display:grid;grid-template-columns:minmax(9rem,14rem) 1fr;gap:.55rem 1.2rem;margin:0}
 .sudemi-dl dt{color:#5d6470;font-weight:500}
 .sudemi-dl dd{margin:0;overflow-wrap:anywhere}
-@media (max-width:576px){.sudemi-dl{grid-template-columns:1fr}.sudemi-dl dd{margin-bottom:.4rem}.sudemi-kpi-value{font-size:1.2rem}.sudemi-head{padding:.75rem}}
+.sudemi-checkout{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.75rem 1.25rem;border:1px solid;border-inline-start-width:4px;border-radius:.6rem;padding:.8rem 1.1rem;margin-bottom:1rem}
+.sudemi-checkout-body{display:flex;align-items:flex-start;gap:.75rem;min-width:0;flex:1 1 22rem}
+.sudemi-checkout-body>i{font-size:1.1rem;margin-top:.15rem;flex:0 0 auto}
+.sudemi-checkout-title{font-weight:600;color:#16181d;line-height:1.35}
+.sudemi-checkout-text{color:#4a515c;font-size:.875rem;margin-top:.15rem;line-height:1.45}
+.sudemi-checkout .btn{flex:0 0 auto;white-space:nowrap}
+.sudemi-checkout-shop,.sudemi-checkout-suspended{background:#fdf3f2;border-color:#f3c7c3;border-inline-start-color:#b42318}
+.sudemi-checkout-shop>.sudemi-checkout-body>i,.sudemi-checkout-suspended>.sudemi-checkout-body>i{color:#b42318}
+.sudemi-checkout-sudemi{background:#f1faf4;border-color:#c5e8d1;border-inline-start-color:#1b7a3d;padding:.6rem 1.1rem}
+.sudemi-checkout-sudemi>.sudemi-checkout-body>i{color:#1b7a3d}
+@media (max-width:576px){.sudemi-dl{grid-template-columns:1fr}.sudemi-dl dd{margin-bottom:.4rem}.sudemi-kpi-value{font-size:1.2rem}.sudemi-head{padding:.75rem}.sudemi-checkout .btn{width:100%}}
 </style>
 <div class="sudemi-head" id="sudemi-head">
   <div class="sudemi-brand">
@@ -72,4 +83,30 @@
 <nav class="sudemi-tabs" aria-label="{{ nav_label }}" id="sudemi-tabs">
   {% for t in tabs %}<a href="{{ t.href }}" class="{% if t.active %}active{% endif %}" data-tab="{{ t.key }}"{% if t.active %} aria-current="page"{% endif %}><i class="{{ t.icon }}"></i>{{ t.label }}</a>{% endfor %}
 </nav>
+{% if checkout %}
+{% if checkout.mode == 'SHOP' %}
+<div class="sudemi-checkout sudemi-checkout-shop" id="sudemi-checkout" data-sudemi-checkout="SHOP" data-reason="{{ checkout.reason }}" role="alert">
+  <div class="sudemi-checkout-body"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i><div>
+    <div class="sudemi-checkout-title">{{ text_checkout_shop_title }}</div>
+    <div class="sudemi-checkout-text">{% if checkout.needs_info %}<span id="sudemi-checkout-needs-info">{{ text_checkout_needs_info }}</span> {% endif %}{{ text_checkout_shop_text }}</div>
+  </div></div>
+  {% if checkout.url %}<a class="btn btn-primary" id="sudemi-checkout-connect" href="{{ checkout.url }}" target="_blank" rel="noopener noreferrer">{{ button_checkout_connect }} <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a>{% endif %}
+</div>
+{% elseif checkout.mode == 'SUSPENDED' %}
+<div class="sudemi-checkout sudemi-checkout-suspended" id="sudemi-checkout" data-sudemi-checkout="SUSPENDED" role="alert">
+  <div class="sudemi-checkout-body"><i class="fa-solid fa-circle-pause" aria-hidden="true"></i><div>
+    <div class="sudemi-checkout-title">{{ text_checkout_suspended_title }}</div>
+    <div class="sudemi-checkout-text">{{ text_checkout_suspended_text }}</div>
+  </div></div>
+  <a class="btn btn-outline-danger" id="sudemi-checkout-support" href="{{ checkout_support_href }}"><i class="fa-solid fa-life-ring" aria-hidden="true"></i> {{ button_checkout_support }}</a>
+</div>
+{% else %}
+<div class="sudemi-checkout sudemi-checkout-sudemi" id="sudemi-checkout" data-sudemi-checkout="SUDEMI" role="status">
+  <div class="sudemi-checkout-body"><i class="fa-solid fa-circle-check" aria-hidden="true"></i><div>
+    <div class="sudemi-checkout-title">{{ text_checkout_sudemi_title }}</div>
+    <div class="sudemi-checkout-text">{{ text_checkout_sudemi_text }}</div>
+  </div></div>
+</div>
+{% endif %}
+{% endif %}
 {% endautoescape %}
