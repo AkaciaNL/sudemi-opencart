@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.4.2
+
+- **Fix: a long buyer name is no longer cut on the order.** OpenCart keeps the first and last name
+  in fields of 32 characters each and cut a longer first name without a word (the name was split
+  at the last space, so "Zoë O'Brien-Łukasz & Co. 2, Åsa van der Wiśniewska-Kowalczykówna" lost
+  the end of its first part). The split now moves to a space where both parts fit, so every name
+  sudemi allows (up to 64 characters) reaches the order whole.
+
 ## 1.4.1
 
 The checkout mode on every sudemi page (docs/seller-modes.md, owner 2026-11-13). Needs sudemi core

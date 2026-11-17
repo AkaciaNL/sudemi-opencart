@@ -19,6 +19,9 @@ require_once __DIR__ . '/shipping.php';
  */
 class Orders
 {
+    /** OpenCart's oc_order firstname / lastname (and shipping_) columns: VARCHAR(32). */
+    const NAME_MAX = 32;
+
     /** Written on the order so one sudemi order can never produce two local ones. */
     const COMMENT_PREFIX = 'sudemi:';
 
@@ -1074,13 +1077,7 @@ class Orders
         }
 
         $to = $body['ship_to'];
-        $name = isset($to['recipient_name']) ? trim((string) $to['recipient_name']) : '';
-        // OpenCart stores the name split, and a recipient line is not reliably "first last" in
-        // every locale. Everything before the last space is the first name: wrong for some
-        // names, and never loses part of one.
-        $space = strrpos($name, ' ');
-        $first = $space === false ? $name : substr($name, 0, $space);
-        $last = $space === false ? '' : substr($name, $space + 1);
+        list($first, $last) = self::splitName(isset($to['recipient_name']) ? (string) $to['recipient_name'] : '');
 
         $country = isset($to['country']) ? (string) $to['country'] : '';
         list($countryId, $countryName) = $this->country($country);
@@ -1101,6 +1098,42 @@ class Orders
                 shipping_country_id = '" . $countryId . "',
                 date_modified = NOW()
               WHERE order_id = '" . (int) $orderId . "'"
+        );
+    }
+
+    /**
+     * The recipient line as OpenCart's first and last name, each at most NAME_MAX characters.
+     *
+     * OpenCart stores the name split, and a recipient line is not reliably "first last" in every
+     * locale. Everything before the last space is the first name: wrong for some names, and never
+     * loses part of one. OpenCart's name columns hold 32 characters and the database cuts longer
+     * values without a word, so when that split does not fit (1.4.1 and earlier lost the end of
+     * a long first name), the split moves to the last space where both halves fit, and only a
+     * name with no such space is cut into two halves. sudemi allows names of up to 64 characters.
+     *
+     * @param string $name
+     *
+     * @return array{0: string, 1: string} first name, last name ('' for a one-word name)
+     */
+    public static function splitName($name)
+    {
+        $max = self::NAME_MAX;
+        $name = trim((string) preg_replace('/\s+/u', ' ', (string) $name));
+        $words = $name === '' ? array() : explode(' ', $name);
+        for ($at = count($words) - 1; $at >= 1; $at--) {
+            $first = implode(' ', array_slice($words, 0, $at));
+            $last = implode(' ', array_slice($words, $at));
+            if (mb_strlen($first, 'UTF-8') <= $max && mb_strlen($last, 'UTF-8') <= $max) {
+                return array($first, $last);
+            }
+        }
+        if (mb_strlen($name, 'UTF-8') <= $max) {
+            return array($name, '');
+        }
+
+        return array(
+            rtrim(mb_substr($name, 0, $max, 'UTF-8')),
+            trim(mb_substr($name, $max, $max, 'UTF-8')),
         );
     }
 

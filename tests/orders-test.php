@@ -374,5 +374,22 @@ foreach ( glob( __DIR__ . '/../admin/language/*/module/sudemi.php' ) as $file ) 
 	check( "order texts present in $code", isset( $_['text_order_sub_total'], $_['text_order_shipping'], $_['text_order_total'] ) );
 }
 
+// ---- 1.4.2: the name fits OpenCart's 32-character first and last name columns -------------------
+$split = function ( $name ) { return \Sudemi\Orders::splitName( $name ); };
+check( 'splitName: first words / last word as before', array( 'Anna Maria', 'Kowalska' ) === $split( 'Anna Maria Kowalska' ) );
+check( 'splitName: one word, no last name', array( 'Madonna', '' ) === $split( ' Madonna ' ) );
+check( 'splitName: counted in characters, not bytes', array( 'Zoë Łukasz', 'Wiśniewska' ) === $split( 'Zoë Łukasz Wiśniewska' ) );
+$long = "Zoë O'Brien-Łukasz & Co. 2, Åsa van der Wiśniewska-Kowalczykówna";
+check( 'splitName: a 64-character name whose first part is too long moves the split so nothing is cut',
+	array( "Zoë O'Brien-Łukasz & Co. 2, Åsa", 'van der Wiśniewska-Kowalczykówna' ) === $split( $long ) );
+$word = str_repeat( 'Ł', 40 );
+check( 'splitName: a 40-letter single word is cut into 32 + 8, nothing lost', array( str_repeat( 'Ł', 32 ), str_repeat( 'Ł', 8 ) ) === $split( $word ) );
+$parts = $split( str_repeat( 'a', 40 ) . ' ' . str_repeat( 'b', 20 ) );
+check( 'splitName: no space where both halves fit: halves of at most 32', mb_strlen( $parts[0] ) <= 32 && mb_strlen( $parts[1] ) <= 32 && '' !== $parts[1] );
+foreach ( array( $long, $word, str_repeat( 'x ', 32 ), 'A' ) as $name ) {
+	list( $f, $l ) = $split( $name );
+	check( 'splitName: both halves fit 32 characters (' . mb_substr( $name, 0, 12 ) . ')', mb_strlen( $f ) <= 32 && mb_strlen( $l ) <= 32 && '' !== $f );
+}
+
 echo $failures ? "\n$failures check(s) failed\n" : "\nall checks passed\n";
 exit( $failures ? 1 : 0 );
