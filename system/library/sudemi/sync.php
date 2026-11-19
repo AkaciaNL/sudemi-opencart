@@ -237,11 +237,8 @@ class Sync
                 Issues::remember($this->store, $chunk, $issues, isset($result['body']) ? $result['body'] : null, $fresh);
                 $fresh = false;
             }
-            // Nothing listed on this page but something left out: the shop still sees it.
-            $left = $this->takeIssues();
-            if (!empty($left)) {
-                Issues::remember($this->store, [], $left, null, $fresh);
-            }
+            // Nothing listed on this page but something left out: sent on its own (best effort).
+            $this->sendLeftIssues($state['id'], $fresh);
             // The commit takes off sudemi whatever this sync did not send, so what was sent is
             // what sudemi holds once it is committed.
             $this->catalogue->rememberListed(self::byProduct($page, $products));
@@ -413,6 +410,25 @@ class Sync
     }
 
     /** Says in the log which products have more option combinations than are sent. */
+    /**
+     * Issues found while building listings that were all left out (a product not listed): sent on
+     * their own, without products, which sudemi takes from 2026-11-19. Best effort: a core that
+     * refuses a push without products changes nothing here, and the shop sees them all the same.
+     */
+    private function sendLeftIssues($syncId, $fresh = false)
+    {
+        $left = $this->takeIssues();
+        if (empty($left)) {
+            return;
+        }
+        $body = ['products' => []];
+        if ($syncId !== null) {
+            $body['syncId'] = $syncId;
+        }
+        $answer = $this->client->postSigned('/integration/v1/products', Issues::attach($body, $left));
+        Issues::remember($this->store, [], $left, $answer !== null && $answer['status'] === 200 && isset($answer['body']) ? $answer['body'] : null, $fresh);
+    }
+
     /** The catalogue's issues (an older catalogue double in the tests has none). */
     private function takeIssues()
     {
@@ -518,11 +534,8 @@ class Sync
 
             return;
         }
-        // Not listed because of something left out: the shop still sees why.
-        $left = $this->takeIssues();
-        if (!empty($left)) {
-            Issues::remember($this->store, [], $left, null);
-        }
+        // Not listed because of something left out: sudemi and the shop are told why.
+        $this->sendLeftIssues(null);
 
         $update = $this->catalogue->priceAndStock($family);
         if ($update === null) {
