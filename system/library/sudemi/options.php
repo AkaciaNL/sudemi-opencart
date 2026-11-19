@@ -433,6 +433,66 @@ class Options
      * OpenCart itself puts no price on a typed option, so it is the extension's own "Price for
      * sudemi buyers" from the product form, else the price of a value row kept on that option.
      */
+    /**
+     * The typed and chosen options sudemi can ask, and what it cannot (owner 2026-11-19): an
+     * option with a price that lowers the price (a "-" value, a negative add-on) cannot be charged
+     * through sudemi yet. A required one keeps the product off sudemi (blocked, an error issue);
+     * an optional one is left out (a warning issue). More than MAX_TEXTS required ones block the
+     * product; optional ones beyond it are left out. Pure.
+     *
+     * @return array{texts:array,issues:array,blocked:string|null} texts: the plan's options to
+     *               ask; issues: [code, severity, option name, why]
+     */
+    public static function screen(array $plan)
+    {
+        $texts = [];
+        $issues = [];
+        $blocked = null;
+        foreach ($plan['texts'] as $option) {
+            $negative = false;
+            if (in_array($option['type'], self::CHOICE_TYPES, true)) {
+                foreach ($option['values'] as $value) {
+                    $negative = $negative || (float) $value['price'] < 0;
+                }
+            } else {
+                $price = 0.0;
+                if (isset($option['sudemiPrice']) && $option['sudemiPrice'] !== null) {
+                    $price = (float) $option['sudemiPrice'];
+                } else {
+                    foreach ($option['values'] as $value) {
+                        $price += (float) $value['price'];
+                    }
+                }
+                $negative = $price < 0;
+            }
+            if ($negative) {
+                $issues[] = ['addon_negative_price', $option['required'] ? 'error' : 'warning', (string) $option['name'],
+                    'it lowers the price (a discount), which sudemi cannot charge yet'];
+                if ($option['required'] && $blocked === null) {
+                    $blocked = 'addon_negative_price';
+                }
+                continue;
+            }
+            $texts[] = $option;
+        }
+        $required = count(array_filter($texts, function ($o) {
+            return !empty($o['required']);
+        }));
+        if ($required > self::MAX_TEXTS) {
+            $issues[] = ['too_many_required_texts', 'error', 'options', sprintf('%d required texts or choices; sudemi asks at most %d', $required, self::MAX_TEXTS)];
+            $blocked = $blocked === null ? 'too_many_required_texts' : $blocked;
+        } elseif (count($texts) > self::MAX_TEXTS) {
+            usort($texts, function ($a, $b) {
+                return (int) $b['required'] - (int) $a['required'];
+            });
+            foreach (array_slice($texts, self::MAX_TEXTS) as $left) {
+                $issues[] = ['too_many_optional_texts', 'warning', (string) $left['name'], 'sudemi asks at most ' . self::MAX_TEXTS];
+            }
+        }
+
+        return ['texts' => $texts, 'issues' => $issues, 'blocked' => $blocked];
+    }
+
     public static function personalisation(array $plan)
     {
         // At most MAX_TEXTS (sudemi's limit), the required ones first.

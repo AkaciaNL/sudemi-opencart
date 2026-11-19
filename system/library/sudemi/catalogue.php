@@ -220,8 +220,21 @@ class Catalogue
             // false is sent too, so switching it off reaches sudemi. Every combination carries it.
             $listing['personalisationReturnable'] = !empty($row['personalisation_returnable']);
             if (!empty($plan['texts'])) {
+                // What sudemi cannot ask (a "-" price, more than five required) is reported; a
+                // required one keeps the product off sudemi (owner 2026-11-19).
+                $screen = Options::screen($plan);
+                foreach ($screen['issues'] as $found) {
+                    $this->issues[$productId . '|' . $found[0] . '|' . $found[2]] = Issues::make($productId, $found[0], $found[1], $found[2],
+                        ($found[1] === 'error' ? 'Not listed: ' : 'Not asked: ') . '"' . $found[2] . '" ' . $found[3] . '.');
+                }
+                if ($screen['blocked'] !== null) {
+                    continue;
+                }
+                $plan['texts'] = $screen['texts'];
                 // Text the buyer types (a name to print): sudemi asks for it before checkout.
-                $listing['personalisation'] = $this->personalisation($plan, $row['tax_class_id']);
+                if (!empty($plan['texts'])) {
+                    $listing['personalisation'] = $this->personalisation($plan, $row['tax_class_id']);
+                }
             }
             if (!Options::hasOptions($plan)) {
                 $products[] = Withdrawal::apply($listing, $exclusion);

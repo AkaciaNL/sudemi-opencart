@@ -20,9 +20,13 @@ class Issues
     const OPTION_WITHOUT_VALUES = 'option_without_values';
     const VARIANT_CAP = 'variant_cap';
     const MISSING_PRICE = 'missing_price';
+    const ADDON_NEGATIVE_PRICE = 'addon_negative_price';
+    const TOO_MANY_REQUIRED_TEXTS = 'too_many_required_texts';
+    const TOO_MANY_OPTIONAL_TEXTS = 'too_many_optional_texts';
 
     /** The codes the extension page has plain words for (text_issue_<code>). */
-    const CODES = [self::REQUIRED_FILE_UPLOAD, self::OPTION_WITHOUT_VALUES, self::VARIANT_CAP, self::MISSING_PRICE, 'rejected'];
+    const CODES = [self::REQUIRED_FILE_UPLOAD, self::OPTION_WITHOUT_VALUES, self::VARIANT_CAP, self::MISSING_PRICE,
+        self::ADDON_NEGATIVE_PRICE, self::TOO_MANY_REQUIRED_TEXTS, self::TOO_MANY_OPTIONAL_TEXTS, 'rejected'];
 
     const SETTING = 'sudemi_catalogue_issues';
     const MAX_KEPT = 300;

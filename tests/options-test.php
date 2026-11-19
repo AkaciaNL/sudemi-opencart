@@ -318,8 +318,14 @@ $db->options[20][3]['sudemi_price'] = '25.0000';
 $own = ( new \Sudemi\Catalogue( $db, new FakeConfig() ) )->productsByIds( array( 20 ) );
 check( 'the price set on the product form (25.00 + 21% = 30.25) wins over the value row', 3025 === $own[0]['personalisation'][0]['priceMinor'], $own[0]['personalisation'] );
 $db->options[20][3]['sudemi_price'] = '-5.0000';
-$neg = ( new \Sudemi\Catalogue( $db, new FakeConfig() ) )->productsByIds( array( 20 ) );
-check( 'a negative price is sent as no add-on (sudemi only adds)', 0 === $neg[0]['personalisation'][0]['priceMinor'] );
+$negcat = new \Sudemi\Catalogue( $db, new FakeConfig() );
+$neg    = $negcat->productsByIds( array( 20 ) );
+$negiss = $negcat->takeIssues();
+// Owner rule 2026-11-19: never sent as a free add-on (the buyer would pay too much). The optional
+// custom name is not asked; the T-shirt stays listed; a warning issue says why.
+check( 'a negative price on the optional custom name: not asked (never as free), the T-shirt still listed, a warning issue',
+	! empty( $neg ) && ! isset( $neg[0]['personalisation'] ) && 'addon_negative_price' === $negiss[0]['code'] && 'warning' === $negiss[0]['severity'],
+	array( isset( $neg[0]['personalisation'] ), $negiss ) );
 unset( $db->options[20][3]['sudemi_price'] );
 check( 'amounts typed in the form', '20.0000' === Options::parseAmount( '20' ) && '20.5000' === Options::parseAmount( ' 20,50 ' )
 	&& '-1.0000' === Options::parseAmount( '-1' ) && '2.5000' === Options::parseAmount( '+2.5' ) && null === Options::parseAmount( '' )
@@ -616,6 +622,20 @@ $checkout->values['config_stock_checkout'] = 1;
 $backorders = new \Sudemi\Orders( $odb, $checkout, $client, $logger, $store );
 check( 'the shop sells without stock (Stock Checkout on): 4 XL (3 in stock) is taken, as in its storefront',
 	null === $shortfall->invoke( $backorders, array( 'lines' => array( array( 'external_id' => '20:4-8-15', 'quantity' => 4, 'title' => 'x' ) ) ) ) );
+
+// Owner rule 2026-11-19: an option whose price lowers the price (a "-" value) cannot be charged
+// through sudemi. REQUIRED: the product is not listed (an error issue); OPTIONAL: left out (a warning).
+$disc_opt = opt( 61, 'Club discount', 'checkbox', array( pov( 611, 'Member', '3', '-' ) ), true );
+$scr      = Options::screen( Options::plan( array( $disc_opt ) ) );
+check( 'required negative option (a required checkbox with a "-" price): the product is blocked, an error issue',
+	'addon_negative_price' === $scr['blocked'] && 'error' === $scr['issues'][0][1] && array() === $scr['texts'], $scr );
+$wrap_opt = opt( 62, 'Gift wrap', 'select', array( pov( 621, 'Paper', '2', '-' ) ), false );
+$scr      = Options::screen( Options::plan( array( $wrap_opt, $name ) ) );
+check( 'optional negative option: left out with a warning, the product stays listed with the custom name',
+	null === $scr['blocked'] && 'warning' === $scr['issues'][0][1] && 'Gift wrap' === $scr['issues'][0][2] && 1 === count( $scr['texts'] ), $scr );
+$six_req = Options::plan( array_map( function ( $i ) { return opt( 70 + $i, 'Line ' . $i, 'text', array(), true ); }, range( 1, 6 ) ) );
+check( 'six required texts: blocked (too_many_required_texts)', 'too_many_required_texts' === Options::screen( $six_req )['blocked'] );
+check( 'an option without a "-" price: nothing blocked, nothing reported', array( 'texts' => Options::plan( array( $name ) )['texts'], 'issues' => array(), 'blocked' => null ) === Options::screen( Options::plan( array( $name ) ) ) );
 
 if ( $failures > 0 ) {
 	echo "\n", $failures, " check(s) failed\n";
