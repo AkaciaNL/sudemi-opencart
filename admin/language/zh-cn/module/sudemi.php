@@ -77,7 +77,12 @@ $_['text_status_delivered'] = '已送达';
 $_['text_status_cancelled'] = '已取消';
 $_['text_status_refunded'] = '已退款';
 $_['text_history_awaiting'] = '待确认订单：%d。这些买家尚未被扣款。';
-$_['text_options_skipped'] = '有 %d 个带必选选项（例如需要选择尺码）的商品不会在 sudemi 上展示：来自买家 AI 助手的订单不包含任何选项，你将无法知道该发哪一件。请改用 OpenCart 变体（每个变体都是独立商品）来提供它们。';
+$_['text_options_offered'] = '有 %d 个带选项的商品在 sudemi 上架：必选项的每种组合（例如尺码和颜色）分别上架，各有自己的价格和库存。买家填写的文字、日期或时间（例如要印上的名字）由 sudemi 在下单前询问，并写入 OpenCart 订单。';
+$_['text_options_skipped'] = '有 %d 个商品未在 sudemi 上架，因为某个必选选项无法随买家 AI 助手的订单一起发送：';
+$_['text_option_reason_type'] = '必选选项“%s”的类型是 %s：买家的 AI 助手无法上传文件。请将该选项设为非必选（可在下单后向买家索取文件），或将其删除。';
+$_['text_option_reason_empty'] = '必选选项“%s”（%s）没有可选择的值。';
+$_['text_options_capped'] = '有 %d 个商品的必选选项组合超过 %d 种；每个商品只有前 %d 种组合在 sudemi 上架：';
+$_['text_option_capped_item'] = '%s：%d 种组合';
 
 // Product form: right of withdrawal (Directive 2011/83/EU, art. 16)
 $_['entry_withdrawal'] = '撤回权';

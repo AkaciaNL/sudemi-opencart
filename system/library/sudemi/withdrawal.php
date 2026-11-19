@@ -25,7 +25,7 @@ class Withdrawal
 {
     const FIELD = 'sudemi_withdrawal_exclusion';
     const SETTING_SCHEMA = 'sudemi_schema_version';
-    const SCHEMA_VERSION = '1.3.1'; // 1.3.1: the order claim table (review 2026-11-12)
+    const SCHEMA_VERSION = '1.4.3'; // 1.4.3: the listings sent per product (option combinations)
     /** Set when an exclusion changed; the next heartbeat sends the catalogue. */
     const SETTING_RESYNC_DUE = 'sudemi_resync_due';
 
@@ -131,6 +131,16 @@ class Withdrawal
                 `order_id` INT(11) NOT NULL DEFAULT 0,
                 `claimed_at` DATETIME NOT NULL,
                 PRIMARY KEY (`sudemi_order_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
+        );
+        // 1.4.3: the listings last sent for each product (one per option combination), so a change
+        // push notices a combination that went (Catalogue::listedIds).
+        $this->db->query(
+            'CREATE TABLE IF NOT EXISTS `' . DB_PREFIX . 'sudemi_listing` (
+                `product_id` INT(11) NOT NULL,
+                `external_ids` MEDIUMTEXT NOT NULL,
+                `date_modified` DATETIME NOT NULL,
+                PRIMARY KEY (`product_id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
         );
         foreach (self::EVENTS as $event) {

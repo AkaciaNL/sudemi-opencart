@@ -77,7 +77,12 @@ $_['text_status_delivered'] = 'Bezorgd';
 $_['text_status_cancelled'] = 'Geannuleerd';
 $_['text_status_refunded'] = 'Terugbetaald';
 $_['text_history_awaiting'] = 'Bestellingen die op bevestiging wachten: %d. Bij die kopers is nog niets afgeschreven.';
-$_['text_options_skipped'] = '%d product(en) met een verplichte optie (bijvoorbeeld een maat om te kiezen) worden niet aangeboden op sudemi: een bestelling via de AI-assistent van een koper bevat geen optie, dus je zou niet weten welk artikel je moet versturen. Bied ze in plaats daarvan aan als OpenCart-varianten (elke variant is een eigen product).';
+$_['text_options_offered'] = '%d product(en) met opties worden op sudemi aangeboden: één aanbieding per combinatie van de verplichte keuzes (bijvoorbeeld een maat en een kleur), elk met een eigen prijs en voorraad. Tekst, een datum of een tijd die de koper invult, zoals een naam om te bedrukken, vraagt sudemi vóór de bestelling en staat op de OpenCart-bestelling.';
+$_['text_options_skipped'] = '%d product(en) worden niet aangeboden op sudemi, omdat een verplichte optie niet mee kan met een bestelling via de AI-assistent van een koper:';
+$_['text_option_reason_type'] = 'de verplichte optie "%s" is van het type %s: de AI-assistent van een koper kan geen bestand uploaden. Maak de optie niet verplicht (je kunt de koper na de bestelling om het bestand vragen), of verwijder haar.';
+$_['text_option_reason_empty'] = 'de verplichte optie "%s" (%s) heeft geen waarden om uit te kiezen.';
+$_['text_options_capped'] = '%d product(en) hebben meer dan %d combinaties van hun verplichte opties; alleen de eerste %d van elk worden op sudemi aangeboden:';
+$_['text_option_capped_item'] = '%s: %d combinaties';
 
 // Product form: right of withdrawal (Directive 2011/83/EU, art. 16)
 $_['entry_withdrawal'] = 'Herroepingsrecht';

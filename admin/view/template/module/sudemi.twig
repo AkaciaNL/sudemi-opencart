@@ -74,7 +74,11 @@
             <div class="sudemi-card-head"><h2>{{ text_catalogue_title }}</h2></div>
             <div class="sudemi-card-body">
               <p class="sudemi-muted">{{ text_catalogue_intro }}</p>
-              {% if options_skipped %}<div class="alert alert-info">{{ text_options_skipped|format(options_skipped) }}</div>{% endif %}
+              {% if option_report.offered %}<div class="alert alert-info" id="sudemi-options-offered">{{ text_options_offered|format(option_report.offered) }}</div>{% endif %}
+              {% if option_report.skipped_total %}<div class="alert alert-warning" id="sudemi-options-skipped">{{ text_options_skipped|format(option_report.skipped_total) }}
+                <ul class="mb-0">{% for p in option_report.skipped %}<li data-product-id="{{ p.product_id }}"><strong>{{ p.name|e }}</strong>: {{ (p.reason == 'empty' ? text_option_reason_empty : text_option_reason_type)|format(p.option|e, p.type|e) }}</li>{% endfor %}</ul></div>{% endif %}
+              {% if option_report.capped_total %}<div class="alert alert-warning" id="sudemi-options-capped">{{ text_options_capped|format(option_report.capped_total, max_combinations, max_combinations) }}
+                <ul class="mb-0">{% for p in option_report.capped %}<li data-product-id="{{ p.product_id }}">{{ text_option_capped_item|format(p.name|e, p.combinations) }}</li>{% endfor %}</ul></div>{% endif %}
               <button class="btn btn-primary" onclick="sudemiPost('sync')"><i class="fa-solid fa-rotate"></i> {{ button_sync }}</button>
               <a class="btn btn-outline-secondary" href="{{ products_href }}"><i class="fa-solid fa-box-open"></i> {{ text_menu_products }}</a>
             </div>

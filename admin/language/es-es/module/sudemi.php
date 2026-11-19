@@ -77,7 +77,12 @@ $_['text_status_delivered'] = 'Entregado';
 $_['text_status_cancelled'] = 'Cancelado';
 $_['text_status_refunded'] = 'Reembolsado';
 $_['text_history_awaiting'] = 'Pedidos pendientes de confirmar: %d. A esos compradores todavía no se les ha cobrado.';
-$_['text_options_skipped'] = '%d producto(s) con una opción obligatoria (por ejemplo, una talla que elegir) no se ofrecen en sudemi: un pedido del asistente de IA de un comprador no incluye ninguna opción, así que no sabrías qué artículo enviar. Ofrécelos como variantes de OpenCart (cada variante es un producto propio).';
+$_['text_options_offered'] = '%d producto(s) con opciones se ofrecen en sudemi: una oferta por combinación de las opciones obligatorias (por ejemplo, talla y color), cada una con su propio precio y stock. El texto, la fecha o la hora que indica el comprador, como un nombre para imprimir, lo pide sudemi antes del pedido y figura en el pedido de OpenCart.';
+$_['text_options_skipped'] = '%d producto(s) no se ofrecen en sudemi, porque una opción obligatoria no puede enviarse con un pedido hecho a través del asistente de IA de un comprador:';
+$_['text_option_reason_type'] = 'la opción obligatoria "%s" es de tipo %s: el asistente de IA de un comprador no puede subir un archivo. Haga la opción opcional (podrá pedir el archivo al comprador después del pedido) o elimínela.';
+$_['text_option_reason_empty'] = 'la opción obligatoria "%s" (%s) no tiene valores para elegir.';
+$_['text_options_capped'] = '%d producto(s) tienen más de %d combinaciones de sus opciones obligatorias; solo se ofrecen en sudemi las primeras %d de cada uno:';
+$_['text_option_capped_item'] = '%s: %d combinaciones';
 
 // Product form: right of withdrawal (Directive 2011/83/EU, art. 16)
 $_['entry_withdrawal'] = 'Derecho de desistimiento';

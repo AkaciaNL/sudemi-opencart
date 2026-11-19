@@ -77,7 +77,12 @@ $_['text_status_delivered'] = 'Zugestellt';
 $_['text_status_cancelled'] = 'Storniert';
 $_['text_status_refunded'] = 'Erstattet';
 $_['text_history_awaiting'] = 'Bestellungen, die auf Bestätigung warten: %d. Diesen Käufern wurde noch nichts berechnet.';
-$_['text_options_skipped'] = '%d Produkt(e) mit einer Pflichtoption (zum Beispiel einer zu wählenden Größe) werden auf sudemi nicht angeboten: Eine Bestellung über den KI-Assistenten eines Käufers enthält keine Option, Sie wüssten also nicht, welchen Artikel Sie versenden sollen. Bieten Sie sie stattdessen als OpenCart-Varianten an (jede Variante ist ein eigenes Produkt).';
+$_['text_options_offered'] = '%d Produkt(e) mit Optionen werden auf sudemi angeboten: ein Angebot je Kombination der Pflichtauswahlen (zum Beispiel Größe und Farbe), jedes mit eigenem Preis und Bestand. Text, ein Datum oder eine Uhrzeit, die der Käufer angibt, etwa ein Name zum Aufdrucken, fragt sudemi vor der Bestellung ab; sie stehen in der OpenCart-Bestellung.';
+$_['text_options_skipped'] = '%d Produkt(e) werden auf sudemi nicht angeboten, weil eine Pflichtoption nicht mit einer Bestellung über den KI-Assistenten eines Käufers übermittelt werden kann:';
+$_['text_option_reason_type'] = 'die Pflichtoption "%s" hat den Typ %s: Der KI-Assistent eines Käufers kann keine Datei hochladen. Machen Sie die Option optional (Sie können den Käufer nach der Bestellung um die Datei bitten) oder entfernen Sie sie.';
+$_['text_option_reason_empty'] = 'die Pflichtoption "%s" (%s) hat keine Werte zur Auswahl.';
+$_['text_options_capped'] = '%d Produkt(e) haben mehr als %d Kombinationen ihrer Pflichtoptionen; nur die ersten %d je Produkt werden auf sudemi angeboten:';
+$_['text_option_capped_item'] = '%s: %d Kombinationen';
 
 // Product form: right of withdrawal (Directive 2011/83/EU, art. 16)
 $_['entry_withdrawal'] = 'Widerrufsrecht';

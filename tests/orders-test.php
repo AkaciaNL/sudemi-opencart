@@ -126,6 +126,10 @@ class FakeDb {
 		if ( preg_match( "/^SELECT shipping_method FROM oc_order WHERE order_id = '(\d+)' LIMIT 1$/", $sql, $m ) ) {
 			return $this->rows( array( array( 'shipping_method' => $this->orders[ $m[1] ]['shipping'] ?? '' ) ) );
 		}
+		// 1.4.3: no master_id column (OpenCart 3 / before variants), no options on these orders.
+		if ( 0 === strpos( $sql, 'SHOW COLUMNS FROM' ) || 0 === strpos( $sql, 'SELECT oo.product_option_value_id' ) ) {
+			return $this->rows( array() );
+		}
 		if ( preg_match( "/^SELECT product_id, quantity FROM oc_order_product WHERE order_id = '(\d+)'$/", $sql, $m ) ) {
 			return $this->rows( isset( $this->lines[ $m[1] ] ) ? $this->lines[ $m[1] ] : array() );
 		}

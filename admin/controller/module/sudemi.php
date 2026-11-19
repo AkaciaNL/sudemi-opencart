@@ -1575,6 +1575,7 @@ class Sudemi extends \Opencart\System\Engine\Controller
     /** sudemi's order page, ready for the template. */
     private function orderDetail(array $sudemi, array $d): array
     {
+        require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/insights.php';
         $id = isset($d['order_id']) ? (string) $d['order_id'] : (string) $d['id'];
         $money = isset($d['money']) && is_array($d['money']) ? $d['money'] : [];
         $currency = isset($money['currency_code']) ? (string) $money['currency_code'] : 'EUR';
@@ -1591,7 +1592,7 @@ class Sudemi extends \Opencart\System\Engine\Controller
                 'unit' => $format(isset($line['unit_price_minor']) ? $line['unit_price_minor'] : null),
                 'goods' => $format(isset($line['goods_minor']) ? $line['goods_minor'] : null),
                 'external' => $external,
-                'product_href' => ctype_digit($external) ? 'index.php?route=catalog/product.form&product_id=' . $external . '&user_token=' . $token : '',
+                'product_href' => \Sudemi\Insights::productId($external) ? 'index.php?route=catalog/product.form&product_id=' . \Sudemi\Insights::productId($external) . '&user_token=' . $token : '',
             ];
         }
         $timeline = [];
@@ -2047,7 +2048,9 @@ class Sudemi extends \Opencart\System\Engine\Controller
             'transit_days' => (new \Sudemi\Shipping($this->db, $this->config))->transitDays(),
             'shipping_preview' => $this->shippingPreview(),
             'currency' => $this->currencyInfo($sudemi['store']),
-            'options_skipped' => (new \Sudemi\Catalogue($this->db, $this->config))->withRequiredOptions(),
+            // Products with required options: offered per combination, or not and why (1.4.3).
+            'option_report' => (new \Sudemi\Catalogue($this->db, $this->config))->optionReport(),
+            'max_combinations' => \Sudemi\Options::MAX_COMBINATIONS,
             // Printed for the shop owner to paste into their crontab. The token is in it, so
             // the template must not put it anywhere a non-admin can read.
             'cron_url' => $this->shopUrl() . 'index.php?route=extension/sudemi/cron&token='

@@ -15,6 +15,8 @@ require_once __DIR__ . '/currency.php';
 
 require_once __DIR__ . '/withdrawal.php';
 
+require_once __DIR__ . '/options.php';
+
 class Catalogue
 {
     private $db;
@@ -22,6 +24,10 @@ class Catalogue
     private $prefix;
     private $shipping;
     private $weightValues = null;
+    private $options;
+
+    /** Products with more option combinations than are sent: product_id => how many (see takeCapped()). */
+    private $capped = [];
 
     public function __construct($db, $config)
     {
@@ -29,6 +35,7 @@ class Catalogue
         $this->config = $config;
         $this->prefix = DB_PREFIX;
         $this->shipping = new Shipping($db, $config);
+        $this->options = new Options($db, $config);
     }
 
     /**
@@ -111,8 +118,10 @@ class Catalogue
      * Images are sent as URLs on this shop's own origin, never as bytes: sudemi fetches them
      * through its egress guard and refuses anything not on the verified shop, which stops a
      * payload walking it around an internal network one image at a time.
-     */
-    /**
+     *
+     * A product with required options (1.4.3) is one listing per combination of their values
+     * (see Options); a product whose required option is typed rather than chosen has none.
+     *
      * @param int|null   $productId only this product; null for a page of all
      * @param int[]|null $ids       only these products (a page of a full sync, a change push)
      */
@@ -131,34 +140,44 @@ class Catalogue
         $query = $this->db->query(
             'SELECT p.product_id, p.model, ' . $this->legacyCodeColumns() . ' p.price, p.quantity, p.weight,
                     p.weight_class_id, p.tax_class_id, p.shipping, p.image, pd.name, pd.description,
-                    m.name AS manufacturer' . $this->withdrawalColumn() . '
+                    m.name AS manufacturer' . $this->options->variantColumns('p') . $this->withdrawalColumn() . '
                FROM ' . $this->prefix . 'product p
                LEFT JOIN ' . $this->prefix . 'manufacturer m ON (p.manufacturer_id = m.manufacturer_id)' . $this->withdrawalJoin() . '
                LEFT JOIN ' . $this->prefix . 'product_description pd
                  ON (p.product_id = pd.product_id)
               WHERE pd.language_id = ' . $languageId . ' AND p.status = 1' . ($productId !== null ? ' AND p.product_id = ' . (int) $productId : '')
                 . (is_array($ids) ? ' AND p.product_id IN (' . implode(',', $ids) . ')' : '') . '
-                AND p.product_id NOT IN (SELECT po.product_id FROM ' . $this->prefix . 'product_option po WHERE po.required = 1)
               ORDER BY p.product_id ASC
               LIMIT ' . $offset . ', ' . $limit
         );
 
         $codes = $this->codes(array_map(function ($row) { return (int) $row['product_id']; }, $query->rows));
+        $groups = $this->variantGroups(array_map(function ($row) { return (int) $row['product_id']; }, $query->rows));
+        $plans = $this->options->plans($query->rows);
         $products = [];
         foreach ($query->rows as $row) {
             $productId = (int) $row['product_id'];
+            $plan = $plans[$productId];
+            if ($plan['problem'] !== null) {
+                // A required option the buyer types (text, a file, a date): not offered, and the
+                // extension page says so (optionReport()).
+                continue;
+            }
             // OpenCart 4.1 moved SKU/EAN/UPC/MPN from product columns to product_code rows.
             foreach (['sku', 'ean', 'upc', 'mpn'] as $field) {
                 if (!isset($row[$field]) || $row[$field] === '') {
                     $row[$field] = isset($codes[$productId][strtoupper($field)]) ? $codes[$productId][strtoupper($field)] : '';
                 }
             }
-            $products[] = Withdrawal::apply([
+            $listing = [
                 'externalId' => (string) $productId,
                 'sku' => (string) $row['sku'],
                 'gtin' => ((string) $row['ean']) !== '' ? (string) $row['ean'] : (((string) $row['upc']) !== '' ? (string) $row['upc'] : null),
                 'mpn' => (string) $row['mpn'],
                 'title' => self::text($row['name']),
+                // OpenCart 4 variants share their master product's id: sudemi shows them as one
+                // product with a choice of sizes or colours. Null for a product without variants.
+                'itemGroupId' => isset($groups[$productId]) ? (string) $groups[$productId] : null,
                 'description' => self::plain($row['description']),
                 'url' => $this->productUrl($productId),
                 // OpenCart stores prices without tax; buyers are shown and charged the price with it.
@@ -175,15 +194,88 @@ class Catalogue
                 'categoryExternalIds' => $this->categoryIds($productId),
                 'images' => $this->images($productId, (string) $row['image']),
                 'specs' => $this->specs($productId, $languageId),
+            ];
             // Excluded from the right of withdrawal (EU 2011/83 art. 16), with the reason; omitted
             // when the normal right applies. A variant carries its master product's setting.
-            ], isset($row['withdrawal_exclusion']) ? $row['withdrawal_exclusion'] : null);
+            $exclusion = isset($row['withdrawal_exclusion']) ? $row['withdrawal_exclusion'] : null;
+            if (!empty($plan['texts'])) {
+                // Text the buyer types (a name to print): sudemi asks for it before checkout.
+                $listing['personalisation'] = $this->personalisation($plan, $row['tax_class_id']);
+            }
+            if (!Options::hasOptions($plan)) {
+                $products[] = Withdrawal::apply($listing, $exclusion);
+                continue;
+            }
+            if (Options::count($plan) > Options::MAX_COMBINATIONS) {
+                $this->capped[$productId] = Options::count($plan);
+            }
+            foreach (Options::combinations($plan) as $combo) {
+                $products[] = Withdrawal::apply($this->combination($listing, $row, $plan, $combo), $exclusion);
+            }
         }
 
         return $products;
     }
 
-    /** One product's whole listing, as a full sync sends it, or null when it is not listed. */
+    /**
+     * One combination of a product's options as a listing of its own: the options' price, weight
+     * and stock applied as OpenCart's cart applies them, the chosen values first in the specs.
+     */
+    private function combination(array $listing, array $row, array $plan, array $combo)
+    {
+        $productId = (int) $row['product_id'];
+        $picks = Options::picks($plan, $combo);
+        $add = Options::adjustments($picks);
+        $kilograms = $this->kilograms((float) $row['weight'] + $add['weight'], $row['weight_class_id']);
+        $quantity = $add['quantity'] === null ? (int) $row['quantity'] : min((int) $row['quantity'], $add['quantity']);
+        $named = Options::named($picks);
+        $listing['externalId'] = Options::externalId($productId, $combo);
+        $listing['title'] = Options::title($listing['title'], $picks);
+        // One group: the product, or its master product for an OpenCart 4 variant.
+        $listing['itemGroupId'] = $listing['itemGroupId'] !== null ? $listing['itemGroupId'] : (string) $productId;
+        if (!empty($combo)) {
+            // The barcode and part number are the product's, not one size's: sent with every
+            // combination they would tell sudemi the sizes are one and the same item.
+            $listing['gtin'] = null;
+            $listing['mpn'] = '';
+        }
+        $listing['priceMinor'] = $this->minor($this->shipping->withStoreTax($this->effectivePrice($productId, $row['price'], $add['price']), $row['tax_class_id']));
+        $listing['quantity'] = max(0, $quantity);
+        $listing['inStock'] = $quantity > 0;
+        $listing['weightGrams'] = (int) round($kilograms * 1000);
+        $listing['shipping'] = $this->shipping->ratesFor($kilograms, (bool) $row['shipping']);
+        $listing['specs'] = array_merge($named, $listing['specs']);
+        $listing['variantAttributes'] = Options::attributes($picks);
+
+        return $listing;
+    }
+
+    /** sudemi personalisation for the product's text options, the add-on price with tax in minor units. */
+    private function personalisation(array $plan, $taxClassId)
+    {
+        $out = [];
+        foreach (Options::personalisation($plan) as $entry) {
+            $price = $entry['price'] > 0 ? $this->minor($this->shipping->withStoreTax($entry['price'], $taxClassId)) : 0;
+            unset($entry['price']);
+            $out[] = $entry + ['priceMinor' => (int) $price];
+        }
+
+        return $out;
+    }
+
+    /**
+     * Products sent with fewer combinations than they have (more than Options::MAX_COMBINATIONS),
+     * product_id => how many they have; cleared once read, so each page is told once.
+     */
+    public function takeCapped()
+    {
+        $capped = $this->capped;
+        $this->capped = [];
+
+        return $capped;
+    }
+
+    /** One product's (first) listing, as a full sync sends it, or null when it is not listed. */
     public function listing($productId)
     {
         $products = $this->products(0, 1, (int) $productId);
@@ -191,7 +283,7 @@ class Catalogue
         return empty($products) ? null : $products[0];
     }
 
-    /** The listings of these products (enabled, without a required option), in id order. */
+    /** The listings of these products (enabled; one per option combination), in id order. */
     public function productsByIds(array $ids)
     {
         $ids = array_values(array_filter(array_map('intval', $ids)));
@@ -203,15 +295,14 @@ class Catalogue
     }
 
     /**
-     * Ids of the products a full sync sends (enabled, without a required option) after $after,
-     * in id order: where a full sync continues after it stopped.
+     * Ids of the enabled products after $after, in id order: where a full sync continues after it
+     * stopped. A product whose required option cannot be a listing has none (products()).
      */
     public function productIdsAfter($after, $limit)
     {
         $query = $this->db->query(
             'SELECT p.product_id FROM ' . $this->prefix . 'product p
               WHERE p.status = 1 AND p.product_id > ' . (int) $after . '
-                AND p.product_id NOT IN (SELECT po.product_id FROM ' . $this->prefix . 'product_option po WHERE po.required = 1)
               ORDER BY p.product_id ASC LIMIT ' . max(1, (int) $limit)
         );
 
@@ -228,6 +319,29 @@ class Catalogue
             WHERE product_id = ' . (int) $productId);
 
         return !empty($query->row) && (int) $query->row['master_id'] > 0 ? (int) $query->row['master_id'] : (int) $productId;
+    }
+
+    /**
+     * The variant group of each of these products: the master product's id for a variant and for a
+     * master that has variants. Products outside any group are left out.
+     */
+    public function variantGroups(array $ids)
+    {
+        $ids = array_values(array_filter(array_map('intval', $ids)));
+        if (empty($ids) || !$this->hasMasterColumn()) {
+            return [];
+        }
+        $list = implode(',', $ids);
+        $query = $this->db->query('SELECT product_id, master_id FROM ' . $this->prefix . 'product
+            WHERE product_id IN (' . $list . ') AND master_id > 0
+            UNION SELECT DISTINCT master_id, master_id FROM ' . $this->prefix . 'product
+            WHERE master_id IN (' . $list . ')');
+        $groups = [];
+        foreach ($query->rows as $row) {
+            $groups[(int) $row['product_id']] = (int) $row['master_id'];
+        }
+
+        return $groups;
     }
 
     /** The product and, for a master product, every variant of it (any status); empty when deleted. */
@@ -297,8 +411,31 @@ class Catalogue
 
         return hash(
             'sha256',
-            (string) $query->row['n'] . '|' . (string) $query->row['newest'] . '|' . (int) $changes
+            (string) $query->row['n'] . '|' . (string) $query->row['newest'] . '|' . (int) $changes . '|' . $this->optionsFingerprint()
         );
+    }
+
+    /**
+     * The products' options and the shop's option names, folded into a few numbers (1.4.3): an
+     * option renamed under Catalog > Options, or a value's stock changed outside the product form,
+     * changes no product's date_modified, yet changes listings (their titles, their stock).
+     */
+    private function optionsFingerprint()
+    {
+        $parts = [];
+        $tables = [
+            'product_option' => "product_option_id, product_id, option_id, required",
+            'product_option_value' => "product_option_value_id, product_option_id, quantity, subtract, price, price_prefix, weight, weight_prefix",
+            'option_description' => "option_id, language_id, name",
+            'option_value_description' => "option_value_id, language_id, name",
+        ];
+        foreach ($tables as $table => $columns) {
+            $query = $this->db->query('SELECT COUNT(*) AS n, COALESCE(BIT_XOR(CRC32(CONCAT_WS(\'|\', ' . $columns . '))), 0) AS h
+                FROM ' . $this->prefix . $table);
+            $parts[] = empty($query->row) ? '-' : $query->row['n'] . ':' . $query->row['h'];
+        }
+
+        return implode('|', $parts);
     }
 
     public function productCount()
@@ -310,14 +447,19 @@ class Catalogue
         return empty($query->row) ? 0 : (int) $query->row['n'];
     }
 
+    /** A price push for a product listed as itself; null for one listed per option combination. */
     public function priceAndStock($productId)
     {
         $query = $this->db->query(
-            'SELECT product_id, price, tax_class_id, quantity FROM ' . $this->prefix . 'product
-              WHERE product_id = ' . (int) $productId . '
-                AND product_id NOT IN (SELECT po.product_id FROM ' . $this->prefix . 'product_option po WHERE po.required = 1)'
+            'SELECT product_id, price, tax_class_id, quantity' . $this->options->variantColumns('p') . '
+               FROM ' . $this->prefix . 'product p WHERE product_id = ' . (int) $productId
         );
         if (empty($query->row)) {
+            return null;
+        }
+        $plans = $this->options->plans([$query->row]);
+        $plan = $plans[(int) $productId];
+        if ($plan['problem'] !== null || Options::hasOptions($plan)) {
             return null;
         }
 
@@ -495,45 +637,121 @@ class Catalogue
         return rtrim($url, '/');
     }
 
-    /**
-     * Enabled products with a required option (a size to pick, say). They are not offered on
-     * sudemi: an order from a buyer's AI assistant carries no option, so the shop could not tell
-     * which item to send. OpenCart variants (each a product of its own) are the way to offer them.
-     */
-    public function withRequiredOptions()
-    {
-        $query = $this->db->query(
-            'SELECT COUNT(DISTINCT p.product_id) AS n FROM ' . $this->prefix . 'product p
-               JOIN ' . $this->prefix . 'product_option po ON (po.product_id = p.product_id AND po.required = 1)
-              WHERE p.status = 1'
-        );
+    /** At most this many products are named in each list of the extension page's option report. */
+    const REPORT_NAMED = 20;
 
-        return empty($query->row) ? 0 : (int) $query->row['n'];
+    /**
+     * What happens to the enabled products with required options, for the extension page:
+     * 'offered' (how many are sent as one listing per combination), 'skipped' (not offered: a
+     * required option is typed rather than chosen, or has no values; each with the option and
+     * why) and 'capped' (more combinations than Options::MAX_COMBINATIONS; only the first are
+     * sent). The lists name at most REPORT_NAMED products; the *_total counts are complete.
+     */
+    public function optionReport()
+    {
+        $report = ['offered' => 0, 'skipped' => [], 'skipped_total' => 0, 'capped' => [], 'capped_total' => 0];
+        $withOptions = 'SELECT po.product_id FROM ' . $this->prefix . 'product_option po';
+        $master = $this->hasMasterColumn() ? ' OR p.master_id IN (' . $withOptions . ')' : '';
+        $after = 0;
+        do {
+            $query = $this->db->query(
+                'SELECT p.product_id, pd.name' . $this->options->variantColumns('p') . '
+                   FROM ' . $this->prefix . 'product p
+                   LEFT JOIN ' . $this->prefix . 'product_description pd
+                          ON (pd.product_id = p.product_id AND pd.language_id = ' . (int) $this->config->get('config_language_id') . ')
+                  WHERE p.status = 1 AND p.product_id > ' . $after . '
+                    AND (p.product_id IN (' . $withOptions . ')' . $master . ')
+                  ORDER BY p.product_id ASC LIMIT 500'
+            );
+            $plans = $this->options->plans($query->rows);
+            foreach ($query->rows as $row) {
+                $id = (int) $row['product_id'];
+                $after = $id;
+                $plan = $plans[$id];
+                $name = self::text($row['name']) !== '' ? self::text($row['name']) : '#' . $id;
+                if ($plan['problem'] !== null) {
+                    if (++$report['skipped_total'] <= self::REPORT_NAMED) {
+                        $report['skipped'][] = ['product_id' => $id, 'name' => $name] + $plan['problem'];
+                    }
+                    continue;
+                }
+                if (!Options::hasOptions($plan)) {
+                    continue;
+                }
+                ++$report['offered'];
+                if (Options::count($plan) > Options::MAX_COMBINATIONS && ++$report['capped_total'] <= self::REPORT_NAMED) {
+                    $report['capped'][] = ['product_id' => $id, 'name' => $name, 'combinations' => Options::count($plan)];
+                }
+            }
+        } while (count($query->rows) === 500);
+
+        return $report;
+    }
+
+    /**
+     * The listings last sent for these products (1.4.3), product_id => external ids; a product
+     * never sent since is left out. What lets a change push notice that a listing went (an option
+     * value removed) and have the next full sync take it off sudemi.
+     */
+    public function listedIds(array $productIds)
+    {
+        $ids = array_values(array_filter(array_map('intval', $productIds)));
+        if (empty($ids) || !$this->hasTable('sudemi_listing')) {
+            return [];
+        }
+        $query = $this->db->query('SELECT product_id, external_ids FROM ' . $this->prefix . 'sudemi_listing
+            WHERE product_id IN (' . implode(',', $ids) . ')');
+        $out = [];
+        foreach ($query->rows as $row) {
+            $out[(int) $row['product_id']] = (string) $row['external_ids'] === '' ? [] : explode(',', (string) $row['external_ids']);
+        }
+
+        return $out;
+    }
+
+    /** Remembers the listings just sent: product_id => external ids (see listedIds()). */
+    public function rememberListed(array $listed)
+    {
+        if (empty($listed) || !$this->hasTable('sudemi_listing')) {
+            return;
+        }
+        $known = $this->listedIds(array_keys($listed));
+        foreach ($listed as $productId => $externalIds) {
+            $externalIds = array_values(array_map('strval', $externalIds));
+            if (isset($known[(int) $productId]) && $known[(int) $productId] === $externalIds) {
+                continue;
+            }
+            $this->db->query('REPLACE INTO ' . $this->prefix . 'sudemi_listing (product_id, external_ids, date_modified)
+                VALUES (' . (int) $productId . ", '" . $this->db->escape(implode(',', $externalIds)) . "', NOW())");
+        }
     }
 
     /**
      * The price the storefront charges for one item today: an active special, else an active
      * single-item discount, else the base price -- for the shop's default customer group, as
-     * OpenCart's own catalog model computes it. Sending the base price showed products on sudemi
-     * dearer than in the shop while a special ran.
+     * OpenCart's own cart computes it, with the chosen options' price ($optionPrice, signed) added
+     * where the cart adds it. Sending the base price showed products on sudemi dearer than in the
+     * shop while a special ran.
      */
-    private function effectivePrice($productId, $basePrice)
+    private function effectivePrice($productId, $basePrice, $optionPrice = 0.0)
     {
+        $optionPrice = (float) $optionPrice;
         $group = (int) $this->config->get('config_customer_group_id');
         $active = "((date_start = '0000-00-00' OR date_start < NOW()) AND (date_end = '0000-00-00' OR date_end > NOW()))";
         if ($this->hasTable('product_special')) {
-            // OpenCart 4.0: specials have their own table, prices are absolute.
+            // OpenCart 4.0: specials have their own table, prices are absolute; options on top.
             $special = $this->db->query('SELECT price FROM ' . $this->prefix . 'product_special
                 WHERE product_id = ' . (int) $productId . ' AND customer_group_id = ' . $group . ' AND ' . $active . '
                 ORDER BY priority ASC, price ASC LIMIT 1');
 
-            return empty($special->row) ? (float) $basePrice : (float) $special->row['price'];
+            return (empty($special->row) ? (float) $basePrice : (float) $special->row['price']) + $optionPrice;
         }
         if (!$this->hasTable('product_discount')) {
-            return (float) $basePrice;
+            return (float) $basePrice + $optionPrice;
         }
-        // OpenCart 4.1: specials and discounts share product_discount; type F = fixed price,
-        // P = percentage off, S = amount off.
+        // OpenCart 4.1: specials and discounts share product_discount; type F = fixed price (plus
+        // the options), P = percentage off, S = amount off (both of the price with the options).
+        $price = (float) $basePrice + $optionPrice;
         foreach ([1, 0] as $isSpecial) {
             $row = $this->db->query('SELECT price, type FROM ' . $this->prefix . 'product_discount
                 WHERE product_id = ' . (int) $productId . ' AND customer_group_id = ' . $group . '
@@ -543,17 +761,17 @@ class Catalogue
                 $value = (float) $row->row['price'];
                 $type = (string) $row->row['type'];
                 if ($type === 'P') {
-                    return (float) $basePrice - (float) $basePrice * $value / 100;
+                    return $price - $price * $value / 100;
                 }
                 if ($type === 'S') {
-                    return (float) $basePrice - $value;
+                    return $price - $value;
                 }
 
-                return $value;
+                return $value + $optionPrice;
             }
         }
 
-        return (float) $basePrice;
+        return $price;
     }
 
     private $tables = [];

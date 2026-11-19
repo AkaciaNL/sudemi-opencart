@@ -75,6 +75,7 @@ check( 'every reason of protocol 4e is known', 7 === count( Insights::REASONS ) 
 // ---- Product ids.
 check( 'a numeric external id is an OpenCart product', 53 === Insights::productId( '53' ) );
 check( 'anything else is not', 0 === Insights::productId( '53-2' ) && 0 === Insights::productId( '0' ) && 0 === Insights::productId( '' ) );
+check( 'an option combination is its product (1.4.3)', 53 === Insights::productId( '53:12-14' ) && 0 === Insights::productId( '53:' ) && 0 === Insights::productId( '53:0' ) );
 
 // ---- Numbers.
 check( 'conversion from basis points', '6.4' === Insights::conversion( 643 ) && '0.0' === Insights::conversion( 0 ) );

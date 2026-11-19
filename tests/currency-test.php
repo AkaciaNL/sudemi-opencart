@@ -106,8 +106,11 @@ class FakeDb {
 		if ( preg_match( "/^SELECT currency_id, code, value, status FROM oc_currency WHERE code = '([A-Z]{3})' LIMIT 1$/", $sql, $m ) ) {
 			return $this->rows( isset( $this->currencies[ $m[1] ] ) ? array( $this->currencies[ $m[1] ] ) : array() );
 		}
-		if ( preg_match( "/^SELECT p.quantity, p.status, p.subtract, pd.name FROM oc_product p/", $sql ) ) {
-			return $this->rows( array( array( 'quantity' => 10, 'status' => 1, 'subtract' => 1, 'name' => 'Mug' ) ) );
+		if ( preg_match( "/^SELECT p.product_id, p.quantity, p.subtract, p.status, pd.name FROM oc_product p .* WHERE p.product_id = (\d+)$/", $sql, $m ) ) {
+			return $this->rows( array( array( 'product_id' => (int) $m[1], 'quantity' => 10, 'status' => 1, 'subtract' => 1, 'name' => 'Mug' ) ) );
+		}
+		if ( 0 === strpos( $sql, 'SELECT po.product_option_id' ) ) {
+			return $this->rows( array() ); // a product without options
 		}
 		if ( 0 === strpos( $sql, 'SHOW ' ) ) {
 			return $this->rows( array() );

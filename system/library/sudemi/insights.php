@@ -192,10 +192,10 @@ class Insights
         );
     }
 
-    /** The OpenCart product id an external id names ("53"), or 0. */
+    /** The OpenCart product id an external id names ("53", or "53:12-14" for an option combination), or 0. */
     public static function productId($externalId)
     {
-        return preg_match('/^[1-9]\d{0,9}$/', (string) $externalId) ? (int) $externalId : 0;
+        return preg_match('/^([1-9]\d{0,9})(?::[1-9]\d{0,9}(?:-[1-9]\d{0,9})*)?$/', (string) $externalId, $m) ? (int) $m[1] : 0;
     }
 
     /** Orders per 100 product views, one decimal ("6.4"), from basis points. */

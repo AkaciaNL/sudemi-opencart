@@ -3,6 +3,7 @@ namespace Sudemi;
 
 require_once __DIR__ . '/currency.php';
 require_once __DIR__ . '/shipping.php';
+require_once __DIR__ . '/options.php';
 
 /**
  * Answering sudemi's question: can this shop actually fulfil the order?
@@ -689,32 +690,72 @@ class Orders
         }
 
         foreach ($lines as $line) {
-            $productId = isset($line['external_id']) ? (int) $line['external_id'] : 0;
-            if ($productId <= 0) {
+            $title = isset($line['title']) ? (string) $line['title'] : 'an item';
+            $item = $this->lineItem($line);
+            if ($item === null) {
                 return 'an item on the order is no longer sold here';
             }
-            $query = $this->db->query(
-                "SELECT p.quantity, p.status, p.subtract, pd.name
-                   FROM " . $this->prefix . "product p
-                   LEFT JOIN " . $this->prefix . "product_description pd
-                          ON pd.product_id = p.product_id
-                         AND pd.language_id = '" . (int) $this->config->get('config_language_id') . "'
-                  WHERE p.product_id = '" . (int) $productId . "'"
-            );
-            if (!$query->num_rows || !(int) $query->row['status']) {
-                return sprintf(
-                    '"%s" is no longer sold here',
-                    isset($line['title']) ? (string) $line['title'] : 'an item'
-                );
+            if (!(int) $item['row']['status'] || $item['picks'] === null) {
+                // Disabled, or the combination of options it names is gone (a value removed, an
+                // option added): the shop could not tell which item to send.
+                return sprintf('"%s" is no longer sold here', $title);
+            }
+            if ($item['texts'] === null) {
+                return sprintf('"%s" needs the text the buyer did not give', $title);
             }
             $quantity = isset($line['quantity']) ? (int) $line['quantity'] : 1;
             // subtract = 0 means this product does not track stock at all, so there is no
             // shortfall to find: the merchant has said it is always available.
-            if ((int) $query->row['subtract'] && (int) $query->row['quantity'] < $quantity) {
-                return sprintf('"%s" is out of stock', $query->row['name']);
+            if ((int) $item['row']['subtract'] && (int) $item['row']['quantity'] < $quantity) {
+                return sprintf('"%s" is out of stock', Options::text($item['row']['name']));
+            }
+            // Each chosen option value that keeps stock, as the storefront's cart checks it.
+            foreach ($item['picks'] as $pick) {
+                if ($pick['value']['subtract'] && $pick['value']['quantity'] < $quantity) {
+                    return sprintf('"%s" is out of stock', $title);
+                }
             }
         }
         return null;
+    }
+
+    /**
+     * The OpenCart product an order line names, with the options its external id chooses
+     * ("12:51-60", see Options): ['row' => product row, 'picks' => the options to write on the
+     * order (empty for a product without options), or null when they no longer make a valid
+     * choice; 'texts' => order_option rows for the text the buyer typed, null when a required one
+     * is missing]. Null when the line names no product of this shop.
+     */
+    private function lineItem(array $line)
+    {
+        $parsed = Options::parse(isset($line['external_id']) ? (string) $line['external_id'] : '');
+        if ($parsed === null) {
+            return null;
+        }
+        $found = $this->options()->planOf($parsed['product_id']);
+        if ($found === null) {
+            return null;
+        }
+        $plan = $found['plan'];
+        $combo = $plan['problem'] === null ? Options::selection($plan, $parsed['values']) : null;
+
+        return [
+            'row' => $found['row'],
+            'picks' => $combo === null ? null : Options::picks($plan, $combo),
+            // What the buyer typed for the product's text options (sudemi personalisation).
+            'texts' => $plan['problem'] === null ? Options::personalRows($plan, isset($line['personalisation']) ? $line['personalisation'] : []) : [],
+        ];
+    }
+
+    private $options = null;
+
+    private function options()
+    {
+        if ($this->options === null) {
+            $this->options = new Options($this->db, $this->config);
+        }
+
+        return $this->options;
     }
 
     /**
@@ -789,9 +830,18 @@ class Orders
         $goodsNet = 0;
         $taxes = [];
         foreach ($pending['lines'] as $index => $line) {
-            $productId = isset($line['external_id']) ? (int) $line['external_id'] : 0;
+            $item = $this->lineItem($line);
+            $parsed = Options::parse(isset($line['external_id']) ? (string) $line['external_id'] : '');
+            $productId = $parsed !== null ? $parsed['product_id'] : 0;
             $quantity = isset($line['quantity']) ? (int) $line['quantity'] : 1;
             $name = isset($line['title']) ? (string) $line['title'] : '';
+            $picks = $item !== null && $item['picks'] !== null ? $item['picks'] : [];
+            if ((!empty($picks) || !empty($item['texts'])) && Options::text($item['row']['name']) !== '') {
+                // The product's own name, its options below it, as a storefront order shows them
+                // (sudemi's title has the options in it).
+                $name = Options::text($item['row']['name']);
+            }
+            $masterId = $item !== null && isset($item['row']['master_id']) ? (int) $item['row']['master_id'] : 0;
             $price = 0.0;
             $lineTotal = 0.0;
             $unitTax = 0.0;
@@ -814,7 +864,8 @@ class Orders
             $this->db->query(
                 "INSERT INTO " . $this->prefix . "order_product SET
                     order_id = '" . $orderId . "',
-                    product_id = '" . $productId . "',
+                    product_id = '" . $productId . "',"
+                    . ($this->options()->hasColumn('order_product', 'master_id') ? " master_id = '" . $masterId . "'," : '') . "
                     name = '" . $this->db->escape($name) . "',
                     model = '',
                     quantity = '" . $quantity . "',
@@ -823,14 +874,45 @@ class Orders
                     tax = '" . (float) $unitTax . "',
                     reward = '0'"
             );
+            $orderProductId = (int) $this->db->getLastId();
+            // The chosen options, as the storefront's checkout writes them: the order page shows
+            // "Size: M, Colour: Red" under the line and the stock below comes off those values.
+            $texts = $item !== null && $item['texts'] !== null ? $item['texts'] : [];
+            foreach (array_merge(Options::orderRows($picks), $texts) as $option) {
+                $this->db->query(
+                    "INSERT INTO " . $this->prefix . "order_option SET
+                        order_id = '" . $orderId . "',
+                        order_product_id = '" . $orderProductId . "',
+                        product_option_id = '" . (int) $option['product_option_id'] . "',
+                        product_option_value_id = '" . (int) $option['product_option_value_id'] . "',
+                        name = '" . $this->db->escape($option['name']) . "',
+                        value = '" . $this->db->escape($option['value']) . "',
+                        type = '" . $this->db->escape($option['type']) . "'"
+                );
+            }
             // Taken now, with the order, so this storefront cannot sell the same unit while the
             // confirmation is in flight. Put back only when sudemi says the order ended unpaid. Guarded by
-            // subtract so a product the merchant does not track is left alone.
+            // subtract so a product the merchant does not track is left alone. As OpenCart's own
+            // checkout: the variant's master product and each chosen option value too.
             $this->db->query(
                 "UPDATE " . $this->prefix . "product
                     SET quantity = quantity - '" . $quantity . "'
                   WHERE product_id = '" . $productId . "' AND subtract = '1'"
             );
+            if ($masterId > 0) {
+                $this->db->query(
+                    "UPDATE " . $this->prefix . "product
+                        SET quantity = quantity - '" . $quantity . "'
+                      WHERE product_id = '" . $masterId . "' AND subtract = '1'"
+                );
+            }
+            foreach ($picks as $pick) {
+                $this->db->query(
+                    "UPDATE " . $this->prefix . "product_option_value
+                        SET quantity = quantity - '" . $quantity . "'
+                      WHERE product_option_value_id = '" . (int) $pick['value']['product_option_value_id'] . "' AND subtract = '1'"
+                );
+            }
         }
 
         if ($paid !== null) {
@@ -1438,6 +1520,32 @@ class Orders
                   WHERE product_id = '" . (int) $line['product_id'] . "' AND subtract = '1'"
             );
         }
+        // A variant's master product and the chosen option values (1.4.3), taken with the order.
+        if ($this->options()->hasColumn('order_product', 'master_id')) {
+            $masters = $this->db->query(
+                "SELECT master_id, quantity FROM " . $this->prefix . "order_product
+                  WHERE order_id = '" . (int) $orderId . "' AND master_id > 0"
+            );
+            foreach ($masters->rows as $line) {
+                $this->db->query(
+                    "UPDATE " . $this->prefix . "product
+                        SET quantity = quantity + '" . (int) $line['quantity'] . "'
+                      WHERE product_id = '" . (int) $line['master_id'] . "' AND subtract = '1'"
+                );
+            }
+        }
+        $options = $this->db->query(
+            "SELECT oo.product_option_value_id, op.quantity FROM " . $this->prefix . "order_option oo
+               JOIN " . $this->prefix . "order_product op ON (op.order_product_id = oo.order_product_id)
+              WHERE oo.order_id = '" . (int) $orderId . "'"
+        );
+        foreach ($options->rows as $line) {
+            $this->db->query(
+                "UPDATE " . $this->prefix . "product_option_value
+                    SET quantity = quantity + '" . (int) $line['quantity'] . "'
+                  WHERE product_option_value_id = '" . (int) $line['product_option_value_id'] . "' AND subtract = '1'"
+            );
+        }
     }
 
     private function setStatus($orderId, $statusId)
@@ -2027,6 +2135,8 @@ class Orders
                 'title' => isset($line['title']) ? (string) $line['title'] : '',
                 'quantity' => isset($line['quantity']) ? (int) $line['quantity'] : 1,
                 'unit_price_minor' => isset($line['unit_price_minor']) ? $line['unit_price_minor'] : null,
+                // What the buyer typed for the product's text options (1.4.3).
+                'personalisation' => isset($line['personalisation']) && is_array($line['personalisation']) ? $line['personalisation'] : array(),
             );
         }
 

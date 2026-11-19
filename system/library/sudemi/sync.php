@@ -13,6 +13,7 @@
 namespace Sudemi;
 
 require_once __DIR__ . '/currency.php';
+require_once __DIR__ . '/options.php';
 
 class Sync
 {
@@ -166,6 +167,9 @@ class Sync
             'cursor' => 0,
             'sent' => 0,
             'started' => time(),
+            // A sync belongs to the connection that opened it: after connecting again, sudemi
+            // knows no sync of the old connection (it answered 422 and the first sync was lost).
+            'install' => (string) $this->client->installId(),
         ];
         $this->saveState($state);
         $this->sendShop();
@@ -214,15 +218,21 @@ class Sync
                 return $this->commit($state);
             }
             $products = $this->catalogue->productsByIds($page);
-            if (!empty($products)) {
+            $this->logCapped();
+            // A product with options is a listing per combination, so a page of products can be
+            // more listings than sudemi takes in one request (500).
+            foreach (array_chunk($products, 500) as $chunk) {
                 $result = $this->client->postSigned('/integration/v1/products', [
                     'syncId' => $state['id'],
-                    'products' => $products,
+                    'products' => $chunk,
                 ]);
                 if ($result === null || $result['status'] !== 200) {
                     return $this->failed($result, 'A batch failed');
                 }
             }
+            // The commit takes off sudemi whatever this sync did not send, so what was sent is
+            // what sudemi holds once it is committed.
+            $this->catalogue->rememberListed(self::byProduct($page, $products));
             // Moved on only once the page is in: a step stopped halfway sends it again, which
             // sudemi takes as the same products once more.
             $state['cursor'] = (int) end($page);
@@ -308,7 +318,18 @@ class Sync
         $raw = $this->store->read(self::SETTING_STATE);
         $state = is_string($raw) && $raw !== '' ? json_decode($raw, true) : null;
 
-        return is_array($state) && !empty($state['id']) ? $state : null;
+        if (!is_array($state) || empty($state['id'])) {
+            return null;
+        }
+        if (isset($state['install']) && (string) $state['install'] !== (string) $this->client->installId()) {
+            // Left by an earlier connection: forgotten, and a full sync is asked for afresh.
+            $this->store->delete(self::SETTING_STATE);
+            $this->store->write(Withdrawal::SETTING_RESYNC_DUE, 1);
+
+            return null;
+        }
+
+        return $state;
     }
 
     private function saveState(array $state)
@@ -362,6 +383,37 @@ class Sync
         $this->store->write(self::SETTING_UNLISTED, json_encode($unlisted));
     }
 
+    /** The external ids of these listings per product: product_id => ids, [] for a product without any. */
+    public static function byProduct(array $productIds, array $listings)
+    {
+        $out = [];
+        foreach ($productIds as $id) {
+            $out[(int) $id] = [];
+        }
+        foreach ($listings as $listing) {
+            $parsed = Options::parse($listing['externalId']);
+            if ($parsed !== null && isset($out[$parsed['product_id']])) {
+                $out[$parsed['product_id']][] = (string) $listing['externalId'];
+            }
+        }
+
+        return $out;
+    }
+
+    /** Says in the log which products have more option combinations than are sent. */
+    private function logCapped()
+    {
+        if (!method_exists($this->catalogue, 'takeCapped')) {
+            return;
+        }
+        foreach ($this->catalogue->takeCapped() as $productId => $count) {
+            $this->logger->warn(sprintf(
+                'Product %d has %d combinations of its required options; only the first %d are offered on sudemi.',
+                $productId, $count, Options::MAX_COMBINATIONS
+            ));
+        }
+    }
+
     /** Products changed in this request, pushed once when it ends; see pushChange(). */
     private static $changed = [];
     private static $pushWith = null;
@@ -413,9 +465,10 @@ class Sync
 
     /**
      * One family's listings, sent whole: the product, or the master product and every variant
-     * (each variant is a product of its own and its own listing). A member without a listing
-     * (disabled, with a required option) counts as a removal the first time it is seen so; with
-     * no listing at all the product goes as a price push without the revision.
+     * (each variant is a product of its own), each as one listing or one per combination of its
+     * required options. A member without a listing (disabled, a required option that is typed)
+     * counts as a removal the first time it is seen so, and so does a combination that went;
+     * with no listing at all the product goes as a price push without the revision.
      */
     public function pushFamily($family, $queue, $heartbeat)
     {
@@ -430,9 +483,18 @@ class Sync
         foreach ($this->catalogue->productsByIds($members) as $listing) {
             $listings[$listing['externalId']] = $listing;
         }
+        $this->logCapped();
+        $now = self::byProduct($members, array_values($listings));
+        $before = $this->catalogue->listedIds($members);
         foreach ($members as $id) {
-            $this->markListed($id, isset($listings[(string) $id]));
+            $this->markListed($id, !empty($now[$id]));
+            // A listing sent before and not now (an option value removed, an option made required,
+            // a product given options): only a full sync's commit takes it off sudemi.
+            if (!empty($now[$id]) && isset($before[$id]) && array_diff($before[$id], $now[$id])) {
+                $this->noteRemoval();
+            }
         }
+        $this->catalogue->rememberListed(array_filter($now));
         if (!empty($listings)) {
             $this->pushListings(array_values($listings), $queue, $heartbeat);
 

@@ -77,7 +77,12 @@ $_['text_status_delivered'] = 'Livrée';
 $_['text_status_cancelled'] = 'Annulée';
 $_['text_status_refunded'] = 'Remboursée';
 $_['text_history_awaiting'] = 'Commandes en attente de confirmation : %d. Ces acheteurs n’ont pas encore été débités.';
-$_['text_options_skipped'] = '%d produit(s) avec une option obligatoire (par exemple une taille à choisir) ne sont pas proposés sur sudemi : une commande passée par l’assistant IA d’un acheteur ne contient aucune option, vous ne sauriez donc pas quel article envoyer. Proposez-les plutôt comme variantes OpenCart (chaque variante est un produit à part entière).';
+$_['text_options_offered'] = '%d produit(s) avec options sont proposés sur sudemi : une offre par combinaison des choix obligatoires (par exemple une taille et une couleur), chacune avec son propre prix et son propre stock. Le texte, la date ou l\'heure que l\'acheteur indique, comme un nom à imprimer, est demandé par sudemi avant la commande et figure sur la commande OpenCart.';
+$_['text_options_skipped'] = '%d produit(s) ne sont pas proposés sur sudemi, car une option obligatoire ne peut pas être transmise avec une commande passée par l\'assistant IA d\'un acheteur :';
+$_['text_option_reason_type'] = 'l\'option obligatoire « %s » est de type %s : l\'assistant IA d\'un acheteur ne peut pas envoyer de fichier. Rendez l\'option facultative (vous pourrez demander le fichier à l\'acheteur après la commande) ou supprimez-la.';
+$_['text_option_reason_empty'] = 'l\'option obligatoire « %s » (%s) n\'a aucune valeur à choisir.';
+$_['text_options_capped'] = '%d produit(s) ont plus de %d combinaisons de leurs options obligatoires ; seules les %d premières de chacun sont proposées sur sudemi :';
+$_['text_option_capped_item'] = '%s : %d combinaisons';
 
 // Product form: right of withdrawal (Directive 2011/83/EU, art. 16)
 $_['entry_withdrawal'] = 'Droit de rétractation';

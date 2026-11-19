@@ -8,7 +8,7 @@ The plugin is free. There is no monthly fee.
 
 ## What the plugin does
 
-- **Lists your catalogue on sudemi**: categories, products with their descriptions and specifications, photos, prices, stock and delivery prices. OpenCart 4 variant products are listed one by one, each with its own price and stock. A product that needs a required option chosen before it can be bought is not listed, because an assistant cannot choose for the buyer.
+- **Lists your catalogue on sudemi**: categories, products with their descriptions and specifications, photos, prices, stock and delivery prices. OpenCart 4 variant products and every combination of a product's required options (a size and a colour, say) are listed one by one in one group, each with its own price and stock, and the order arrives with the options chosen. Text, dates and times the buyer types (a name to print) are asked for by the assistant and are on the order. A product with a required file upload is not listed, because an assistant cannot upload a file; the extension page names it.
 - **Keeps it current**: a price or stock change is sent the moment you save it, so sudemi and your shop agree within seconds, not after the next import.
 - **Checks in every few minutes**, so sudemi only shows your products while your shop is online and its prices are current.
 - **Brings sudemi into your OpenCart admin**: statistics, the products as sudemi holds them, orders, delivery prices, payouts, your shop profile and support, under **sudemi** in the OpenCart admin's left menu.

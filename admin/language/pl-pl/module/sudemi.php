@@ -77,7 +77,12 @@ $_['text_status_delivered'] = 'Dostarczone';
 $_['text_status_cancelled'] = 'Anulowane';
 $_['text_status_refunded'] = 'Zwrócone';
 $_['text_history_awaiting'] = 'Zamówienia czekające na potwierdzenie: %d. Tych kupujących jeszcze nie obciążono.';
-$_['text_options_skipped'] = 'Produkty z wymaganą opcją (np. rozmiarem do wyboru): %d. Nie są oferowane w sudemi: zamówienie od asystenta AI kupującego nie zawiera opcji, więc nie wiedziałbyś, który artykuł wysłać. Zamiast tego oferuj je jako warianty OpenCart (każdy wariant to osobny produkt).';
+$_['text_options_offered'] = 'Produkty z opcjami oferowane w sudemi: %d. Każda kombinacja wymaganych wyborów (na przykład rozmiar i kolor) to osobna oferta z własną ceną i stanem. O tekst, datę lub godzinę, które podaje kupujący, na przykład imię do nadruku, sudemi pyta przed zamówieniem; są one w zamówieniu OpenCart.';
+$_['text_options_skipped'] = 'Produkty nieoferowane w sudemi: %d. Wymagana opcja nie może zostać przesłana z zamówieniem złożonym przez asystenta AI kupującego:';
+$_['text_option_reason_type'] = 'wymagana opcja "%s" jest typu %s: asystent AI kupującego nie może przesłać pliku. Ustaw opcję jako nieobowiązkową (o plik możesz poprosić kupującego po zamówieniu) albo ją usuń.';
+$_['text_option_reason_empty'] = 'wymagana opcja "%s" (%s) nie ma wartości do wyboru.';
+$_['text_options_capped'] = 'Liczba produktów: %d. Mają ponad %d kombinacji wymaganych opcji; w sudemi oferowane jest tylko pierwsze %d kombinacji każdego z nich:';
+$_['text_option_capped_item'] = '%s: kombinacje: %d';
 
 // Product form: right of withdrawal (Directive 2011/83/EU, art. 16)
 $_['entry_withdrawal'] = 'Prawo odstąpienia od umowy';

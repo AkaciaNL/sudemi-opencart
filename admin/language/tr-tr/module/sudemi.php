@@ -77,7 +77,12 @@ $_['text_status_delivered'] = 'Teslim edildi';
 $_['text_status_cancelled'] = 'İptal edildi';
 $_['text_status_refunded'] = 'İade edildi';
 $_['text_history_awaiting'] = 'Onay bekleyen siparişler: %d. Bu alıcılardan henüz ücret alınmadı.';
-$_['text_options_skipped'] = 'Zorunlu seçeneği olan %d ürün (örneğin seçilmesi gereken bir beden) sudemi\'de sunulmaz: alıcının yapay zekâ asistanından gelen siparişte seçenek bulunmaz, bu yüzden hangi ürünü göndereceğinizi bilemezsiniz. Bunun yerine bunları OpenCart varyantları olarak sunun (her varyant ayrı bir üründür).';
+$_['text_options_offered'] = 'Seçenekli %d ürün sudemi\'de sunulur: zorunlu seçimlerin her kombinasyonu (örneğin beden ve renk) kendi fiyatı ve stoğuyla ayrı bir ilandır. Alıcının girdiği metin, tarih veya saat, örneğin baskı için bir isim, siparişten önce sudemi tarafından sorulur ve OpenCart siparişinde yer alır.';
+$_['text_options_skipped'] = '%d ürün sudemi\'de sunulmuyor, çünkü zorunlu bir seçenek alıcının yapay zekâ asistanından gelen bir siparişle gönderilemez:';
+$_['text_option_reason_type'] = 'zorunlu "%s" seçeneğinin türü %s: alıcının yapay zekâ asistanı dosya yükleyemez. Seçeneği isteğe bağlı yapın (dosyayı siparişten sonra alıcıdan isteyebilirsiniz) veya kaldırın.';
+$_['text_option_reason_empty'] = 'zorunlu "%s" (%s) seçeneğinin seçilecek değeri yok.';
+$_['text_options_capped'] = '%d ürünün zorunlu seçeneklerinin %d\'den fazla kombinasyonu var; her birinin yalnızca ilk %d kombinasyonu sudemi\'de sunulur:';
+$_['text_option_capped_item'] = '%s: %d kombinasyon';
 
 // Product form: right of withdrawal (Directive 2011/83/EU, art. 16)
 $_['entry_withdrawal'] = 'Cayma hakkı';

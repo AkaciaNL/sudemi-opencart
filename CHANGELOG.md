@@ -1,5 +1,35 @@
 # Changelog
 
+## 1.4.3
+
+- **Sizes and colours shown as one product.** The variants of an OpenCart 4 product (its master
+  product and every variant of it) are sent as one group, so AI assistants show the product once
+  with its sizes and colours to choose from, instead of one result per size.
+- **Products with options are offered on sudemi.** Before, a product with a required option (a
+  size or colour to pick, the way most OpenCart shops sell variants) was left out. Now every
+  combination of its required choices (select, radio, checkbox, image) is a listing of its own,
+  in one group: its price with the options' price (+/-) and tax, any special on top as the cart
+  computes it; its stock the lowest of the chosen values that keep stock; its weight with the
+  options' weight; the chosen values first in its details. At most 100 combinations per product;
+  the extension page and the log name a product that has more. An OpenCart 4 variant carries the
+  values it fixes.
+- **Text the buyer types.** Text, textarea, date, time and date-time options (required or not)
+  are sent as personalisation: the buyer's assistant asks for them (dates and times with their
+  format, a text with its maximum length from the option's validation) and the add-on price of a
+  value row kept on the option. A product with a required file option is not offered (an AI
+  assistant cannot upload a file); the extension page says which product and why, in all twelve
+  languages.
+- **Orders carry the options.** An order for a combination is written as a storefront order is:
+  the options and the typed text on the order line, the stock taken off the product, the variant's
+  master product and every chosen value that keeps stock (and put back when the order ends unpaid).
+  An order for a combination that no longer exists, or without a required text, is declined.
+- **Option changes reach sudemi.** Saving a product sends all its combinations; a combination that
+  went (a value removed) is taken off sudemi by the full sync that follows. Renaming an option or a
+  value in Catalog > Options changes the catalogue revision, so sudemi asks for a full sync.
+- **Fix: the first catalogue sync after connecting again.** A full sync interrupted before the shop
+  was connected again was continued under the new connection, which sudemi refused; the catalogue
+  then waited for the next heartbeat. It is now started afresh.
+
 ## 1.4.2
 
 - **Fix: a long buyer name is no longer cut on the order.** OpenCart keeps the first and last name
