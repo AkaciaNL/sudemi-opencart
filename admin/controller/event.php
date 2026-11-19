@@ -78,7 +78,12 @@ class Event extends \Opencart\System\Engine\Controller
                 return;
             }
             $services = $this->services();
-            if ($services['withdrawal']->set($productId, $data[\Sudemi\Withdrawal::FIELD])) {
+            $changed = $services['withdrawal']->set($productId, $data[\Sudemi\Withdrawal::FIELD]);
+            // "Accept returns of personalised items" (1.4.4, owner decision 2), posted with it.
+            if (array_key_exists(\Sudemi\Withdrawal::FIELD_RETURNABLE, $data)) {
+                $changed = $services['withdrawal']->setReturnable($productId, $data[\Sudemi\Withdrawal::FIELD_RETURNABLE]) || $changed;
+            }
+            if ($changed) {
                 $services['store']->write(\Sudemi\Withdrawal::SETTING_RESYNC_DUE, 1);
             }
         } catch (\Throwable $e) {
@@ -114,6 +119,14 @@ class Event extends \Opencart\System\Engine\Controller
                 . '<label for="input-sudemi-withdrawal" class="col-sm-2 col-form-label">' . $label('entry_withdrawal') . '</label>'
                 . '<div class="col-sm-10"><select name="' . \Sudemi\Withdrawal::FIELD . '" id="input-sudemi-withdrawal" class="form-select">'
                 . $options . '</select><div class="form-text">' . $label('help_withdrawal') . '</div></div></div>';
+            // 1.4.4 (owner decision 2): off by default; the hidden 0 posts when it is unticked.
+            $returnable = $productId > 0 && $services['withdrawal']->isReturnable($productId);
+            $field .= '<div class="row mb-3" id="sudemi-personalisation-returnable">'
+                . '<label class="col-sm-2 col-form-label" for="input-sudemi-personalisation-returnable">' . $label('entry_personalisation_returnable') . '</label>'
+                . '<div class="col-sm-10"><div class="form-check form-switch form-switch-lg">'
+                . '<input type="hidden" name="' . \Sudemi\Withdrawal::FIELD_RETURNABLE . '" value="0"/>'
+                . '<input type="checkbox" name="' . \Sudemi\Withdrawal::FIELD_RETURNABLE . '" value="1" id="input-sudemi-personalisation-returnable" class="form-check-input"' . ($returnable ? ' checked' : '') . '/>'
+                . '</div><div class="form-text">' . $label('help_personalisation_returnable') . '</div></div></div>';
 
             // The last fieldset of the Data tab, which ends right before the Links tab.
             $links = strpos($output, 'id="tab-links"');

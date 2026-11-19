@@ -201,6 +201,9 @@ class Catalogue
             // Excluded from the right of withdrawal (EU 2011/83 art. 16), with the reason; omitted
             // when the normal right applies. A variant carries its master product's setting.
             $exclusion = isset($row['withdrawal_exclusion']) ? $row['withdrawal_exclusion'] : null;
+            // The shop accepts returns of personalised items of this product (owner decision 2):
+            // false is sent too, so switching it off reaches sudemi. Every combination carries it.
+            $listing['personalisationReturnable'] = !empty($row['personalisation_returnable']);
             if (!empty($plan['texts'])) {
                 // Text the buyer types (a name to print): sudemi asks for it before checkout.
                 $listing['personalisation'] = $this->personalisation($plan, $row['tax_class_id']);
@@ -723,18 +726,24 @@ class Catalogue
     /** The right-of-withdrawal exclusion, from the master product for a variant (none before the table exists). */
     private function withdrawalColumn()
     {
-        return $this->hasTable('sudemi_product') ? ', sw.withdrawal_exclusion' : '';
+        return ($this->hasTable('sudemi_product') ? ', sw.withdrawal_exclusion' : '')
+            // 1.4.4: the shop accepts returns of personalised items (the master product's for a variant).
+            . ($this->hasTable('sudemi_product_returnable') ? ', IF(sr.product_id IS NULL, 0, 1) AS personalisation_returnable' : '');
     }
 
     private function withdrawalJoin()
     {
-        if (!$this->hasTable('sudemi_product')) {
-            return '';
-        }
         $master = $this->db->query("SHOW COLUMNS FROM `" . $this->prefix . "product` LIKE 'master_id'");
         $owner = empty($master->row) ? 'p.product_id' : 'IF(p.master_id > 0, p.master_id, p.product_id)';
+        $join = '';
+        if ($this->hasTable('sudemi_product')) {
+            $join .= ' LEFT JOIN ' . $this->prefix . 'sudemi_product sw ON (sw.product_id = ' . $owner . ')';
+        }
+        if ($this->hasTable('sudemi_product_returnable')) {
+            $join .= ' LEFT JOIN ' . $this->prefix . 'sudemi_product_returnable sr ON (sr.product_id = ' . $owner . ')';
+        }
 
-        return ' LEFT JOIN ' . $this->prefix . 'sudemi_product sw ON (sw.product_id = ' . $owner . ')';
+        return $join;
     }
 
     /** OpenCart 4.0 has sku/upc/ean/mpn columns on product; 4.1 has none (see codes()). */

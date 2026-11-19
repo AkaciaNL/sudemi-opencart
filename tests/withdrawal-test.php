@@ -43,5 +43,26 @@ check( 'an empty stored value: the field is omitted', ! array_key_exists( 'withd
 check( 'an unknown stored value is never sent', ! array_key_exists( 'withdrawalExclusion', \Sudemi\Withdrawal::apply( $product, 'whatever' ) ) );
 check( 'the JSON carries the field', false !== strpos( (string) json_encode( $with ), '"withdrawalExclusion":"custom"' ) );
 
+// 1.4.4, owner decision 2: "Accept returns of personalised items", off by default. The posted
+// checkbox (with its hidden 0) is read safely, and the label and help exist in all 12 languages.
+foreach ( array( '1', 'on', 1, true, 'yes' ) as $on ) {
+	check( 'checked: ' . var_export( $on, true ) . ' is on', \Sudemi\Withdrawal::checked( $on ) );
+}
+foreach ( array( '0', '', null, 0, false, 'off', array( '1' ) ) as $off ) {
+	check( 'checked: ' . var_export( $off, true ) . ' is off', ! \Sudemi\Withdrawal::checked( $off ) );
+}
+foreach ( glob( __DIR__ . '/../admin/language/*/module/sudemi.php' ) as $file ) {
+	$_    = array();
+	$lang = basename( dirname( dirname( $file ) ) );
+	include $file;
+	foreach ( array( 'entry_personalisation_returnable', 'help_personalisation_returnable' ) as $key ) {
+		check( "$lang: $key present", isset( $_[ $key ] ) && '' !== trim( $_[ $key ] ) );
+		check( "$lang: $key without a long dash", ! isset( $_[ $key ] ) || false === strpos( $_[ $key ], "\u{2014}" ) );
+	}
+}
+check( 'twelve languages', 12 === count( glob( __DIR__ . '/../admin/language/*/module/sudemi.php' ) ) );
+$catalogue = (string) file_get_contents( __DIR__ . '/../system/library/sudemi/catalogue.php' );
+check( 'the listing sends personalisationReturnable', false !== strpos( $catalogue, "\$listing['personalisationReturnable'] = !empty(\$row['personalisation_returnable']);" ) );
+
 echo $failures ? "\n$failures check(s) failed\n" : "\nall checks passed\n";
 exit( $failures ? 1 : 0 );

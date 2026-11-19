@@ -25,7 +25,15 @@ class Withdrawal
 {
     const FIELD = 'sudemi_withdrawal_exclusion';
     const SETTING_SCHEMA = 'sudemi_schema_version';
-    const SCHEMA_VERSION = '1.4.3-2'; // 1.4.3: the listings sent per product, typed-option prices
+    const SCHEMA_VERSION = '1.4.4-1'; // 1.4.4: accept returns of personalised items, per product
+
+    /**
+     * Owner decision 2 (2026-11-19): an item made with a text the buyer typed is not returnable by
+     * default (EU 2011/83 art. 16(c)). A shop may accept returns of it anyway, per product
+     * ("Accept returns of personalised items", off by default): a row in sudemi_product_returnable
+     * means on. The listing sends personalisationReturnable.
+     */
+    const FIELD_RETURNABLE = 'sudemi_personalisation_returnable';
     /** Set when an exclusion changed; the next heartbeat sends the catalogue. */
     const SETTING_RESYNC_DUE = 'sudemi_resync_due';
 
@@ -154,6 +162,14 @@ class Withdrawal
                 KEY `product_id` (`product_id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
         );
+        // 1.4.4: the products whose personalised items the shop takes back (owner decision 2).
+        $this->db->query(
+            'CREATE TABLE IF NOT EXISTS `' . DB_PREFIX . 'sudemi_product_returnable` (
+                `product_id` INT(11) NOT NULL,
+                `date_modified` DATETIME NOT NULL,
+                PRIMARY KEY (`product_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
+        );
         foreach (self::EVENTS as $event) {
             $exists = $this->db->query("SELECT `event_id` FROM `" . DB_PREFIX . "event` WHERE `code` = '"
                 . $this->db->escape($event[0]) . "'");
@@ -213,6 +229,58 @@ class Withdrawal
         if ($this->hasTable()) {
             $this->db->query('DELETE FROM `' . DB_PREFIX . 'sudemi_product` WHERE product_id = ' . (int) $productId);
         }
+        if ($this->hasReturnableTable()) {
+            $this->db->query('DELETE FROM `' . DB_PREFIX . 'sudemi_product_returnable` WHERE product_id = ' . (int) $productId);
+        }
+    }
+
+    /** Whether the shop accepts returns of this product when personalised (off before the table exists). */
+    public function isReturnable($productId)
+    {
+        if (!$this->hasReturnableTable()) {
+            return false;
+        }
+        $query = $this->db->query('SELECT product_id FROM `' . DB_PREFIX . 'sudemi_product_returnable` WHERE product_id = ' . (int) $productId);
+
+        return !empty($query->row);
+    }
+
+    /**
+     * Stores the setting.
+     *
+     * @return bool whether the stored value changed
+     */
+    public function setReturnable($productId, $on)
+    {
+        $productId = (int) $productId;
+        $on = self::checked($on);
+        if ($productId <= 0 || !$this->hasReturnableTable() || $this->isReturnable($productId) === $on) {
+            return false;
+        }
+        if ($on) {
+            $this->db->query('REPLACE INTO `' . DB_PREFIX . 'sudemi_product_returnable` (product_id, date_modified) VALUES (' . $productId . ', NOW())');
+        } else {
+            $this->db->query('DELETE FROM `' . DB_PREFIX . 'sudemi_product_returnable` WHERE product_id = ' . $productId);
+        }
+
+        return true;
+    }
+
+    /** A posted checkbox value: "1", "on", true are on; anything else off. Pure. */
+    public static function checked($value)
+    {
+        return true === $value || 1 === $value || in_array(strtolower(trim((string) (is_scalar($value) ? $value : ''))), ['1', 'on', 'yes', 'true'], true);
+    }
+
+    private $returnableExists = null;
+
+    public function hasReturnableTable()
+    {
+        if ($this->returnableExists !== true) {
+            $this->returnableExists = $this->db->query("SHOW TABLES LIKE '" . $this->db->escape(DB_PREFIX . 'sudemi_product_returnable') . "'")->num_rows > 0;
+        }
+
+        return $this->returnableExists;
     }
 
     private $tableExists = null;

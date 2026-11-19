@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.4.4
+
+- **New per-product setting "Accept returns of personalised items"** (product form, Data tab, under
+  the right of withdrawal; off by default). An item made with a text the buyer typed is not
+  returnable by default on sudemi, as EU law allows (Directive 2011/83/EU, art. 16(c)), and buyers
+  are told before paying; switch it on to accept returns of such items on that product. Every
+  listing of the product (each combination, a variant through its master product) sends
+  personalisationReturnable, so switching it off reaches sudemi too. The label and help text are in
+  all twelve languages.
+
 ## 1.4.3
 
 - **Sizes and colours shown as one product.** The variants of an OpenCart 4 product (its master
