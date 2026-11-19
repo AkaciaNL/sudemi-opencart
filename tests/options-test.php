@@ -167,7 +167,7 @@ class CatalogueDb {
 		if ( preg_match( "/^SHOW COLUMNS FROM `oc_product` LIKE '(master_id|variant|override)'$/", $sql ) ) {
 			return $this->rows( array( array( 'Field' => 'x' ) ) );
 		}
-		if ( preg_match( "/^SHOW TABLES LIKE 'oc_(product_discount|sudemi_listing)'$/", $sql ) ) {
+		if ( preg_match( "/^SHOW TABLES LIKE 'oc_(product_discount|sudemi_listing|sudemi_option_price)'$/", $sql ) ) {
 			return $this->rows( array( array( 'x' => 1 ) ) );
 		}
 		if ( 0 === strpos( $sql, 'SHOW ' ) ) {
@@ -275,6 +275,55 @@ check( 'specs start with the chosen values; variantAttributes the same', array( 
 	&& array( 'name' => 'Material', 'value' => 'Cotton' ) === $xl['variantAttributes'][2] );
 check( 'personalisation: the custom name, optional, its add-on with VAT (20 + 21% = 24.20)',
 	array( array( 'key' => '204', 'label' => 'Custom name', 'required' => false, 'maxLength' => 200, 'priceMinor' => 2420 ) ) === $xl['personalisation'], $xl['personalisation'] ?? null );
+// The extension's own "Price for sudemi buyers" (product form) wins over a value row; never negative.
+$db->options[20][3]['sudemi_price'] = '25.0000';
+$own = ( new \Sudemi\Catalogue( $db, new FakeConfig() ) )->productsByIds( array( 20 ) );
+check( 'the price set on the product form (25.00 + 21% = 30.25) wins over the value row', 3025 === $own[0]['personalisation'][0]['priceMinor'], $own[0]['personalisation'] );
+$db->options[20][3]['sudemi_price'] = '-5.0000';
+$neg = ( new \Sudemi\Catalogue( $db, new FakeConfig() ) )->productsByIds( array( 20 ) );
+check( 'a negative price is sent as no add-on (sudemi only adds)', 0 === $neg[0]['personalisation'][0]['priceMinor'] );
+unset( $db->options[20][3]['sudemi_price'] );
+check( 'amounts typed in the form', '20.0000' === Options::parseAmount( '20' ) && '20.5000' === Options::parseAmount( ' 20,50 ' )
+	&& '-1.0000' === Options::parseAmount( '-1' ) && '2.5000' === Options::parseAmount( '+2.5' ) && null === Options::parseAmount( '' )
+	&& null === Options::parseAmount( 'twenty' ) && null === Options::parseAmount( '1e5' ) && '2.50' === Options::amount( '2.5000' ) );
+
+/** Records what savePrices writes. */
+class PriceDb {
+	public $writes = array();
+	public $prices = array(); // product_option_id => price
+	public function escape( $v ) {
+		return addslashes( (string) $v );
+	}
+	public function query( $sql ) {
+		$sql = preg_replace( '/\s+/', ' ', trim( $sql ) );
+		$rows = array();
+		if ( 0 === strpos( $sql, 'SHOW TABLES' ) ) {
+			$rows = array( array( 'x' => 1 ) );
+		} elseif ( 0 === strpos( $sql, 'SELECT product_option_id, option_id FROM oc_product_option WHERE product_id = 20' ) ) {
+			$rows = array( array( 'product_option_id' => 204, 'option_id' => 304 ), array( 'product_option_id' => 201, 'option_id' => 301 ) );
+		} elseif ( 0 === strpos( $sql, 'SELECT po.option_id, sop.price' ) ) {
+			foreach ( $this->prices as $po => $price ) {
+				$rows[] = array( 'option_id' => $po + 100, 'price' => $price );
+			}
+		} else {
+			$this->writes[] = $sql;
+			if ( preg_match( "/^REPLACE INTO `oc_sudemi_option_price` .* VALUES \((\d+), 20, '([^']*)', NOW\(\)\)$/", $sql, $m ) ) {
+				$this->prices[ (int) $m[1] ] = $m[2];
+			}
+			return true;
+		}
+		return (object) array( 'num_rows' => count( $rows ), 'row' => $rows ? $rows[0] : array(), 'rows' => $rows );
+	}
+}
+$pdb    = new PriceDb();
+$prices = new Options( $pdb, new FakeConfig() );
+check( 'the form\'s price is stored against the option OpenCart saved (product_option_id 204)', true === $prices->savePrices( 20, array( 304 => '20,00', 999 => '5' ) )
+	&& array( 204 => '20.0000' ) === $pdb->prices && array( 304 => '20.00' ) === $prices->formPrices( 20 ) );
+check( 'saved again unchanged: nothing changed; options the product no longer has are cleaned up', false === $prices->savePrices( 20, array( 304 => '20' ) )
+	&& false !== strpos( end( $pdb->writes ), 'WHERE product_id = 20 AND product_option_id NOT IN (204,201)' ) );
+$prices->savePrices( 20, array( 304 => '' ) );
+check( 'emptied: removed', false !== strpos( implode( "\n", $pdb->writes ), 'DELETE FROM `oc_sudemi_option_price` WHERE product_option_id = 204' ) );
+
 // A 10% special (OpenCart 4.1, type P) is taken off the price with the options, as the cart does.
 $db->discount = array( 'price' => '10', 'type' => 'P' );
 $sale         = ( new \Sudemi\Catalogue( $db, new FakeConfig() ) )->productsByIds( array( 20 ) );

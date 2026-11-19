@@ -83,6 +83,8 @@ $_['text_option_reason_type'] = 'la opción obligatoria "%s" es de tipo %s: el a
 $_['text_option_reason_empty'] = 'la opción obligatoria "%s" (%s) no tiene valores para elegir.';
 $_['text_options_capped'] = '%d producto(s) tienen más de %d combinaciones de sus opciones obligatorias; solo se ofrecen en sudemi las primeras %d de cada uno:';
 $_['text_option_capped_item'] = '%s: %d combinaciones';
+$_['entry_option_price'] = 'Precio para compradores de sudemi';
+$_['help_option_price'] = 'Se suma al precio del artículo cuando un comprador en sudemi rellena este campo, sin impuestos como el precio del producto (por ejemplo 20.00 por un nombre para imprimir). La caja de su propia tienda no lo cobra: OpenCart no tiene precio para este tipo de opción.';
 
 // Product form: right of withdrawal (Directive 2011/83/EU, art. 16)
 $_['entry_withdrawal'] = 'Derecho de desistimiento';

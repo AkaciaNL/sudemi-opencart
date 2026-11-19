@@ -83,6 +83,8 @@ $_['text_option_reason_type'] = '必选选项“%s”的类型是 %s：买家的
 $_['text_option_reason_empty'] = '必选选项“%s”（%s）没有可选择的值。';
 $_['text_options_capped'] = '有 %d 个商品的必选选项组合超过 %d 种；每个商品只有前 %d 种组合在 sudemi 上架：';
 $_['text_option_capped_item'] = '%s：%d 种组合';
+$_['entry_option_price'] = 'sudemi 买家价格';
+$_['help_option_price'] = '当 sudemi 上的买家填写此项时加到商品价格上，与商品价格一样不含税（例如印名字收 20.00）。您自己商店的结账不收此费用：OpenCart 不支持这类选项的价格。';
 
 // Product form: right of withdrawal (Directive 2011/83/EU, art. 16)
 $_['entry_withdrawal'] = '撤回权';

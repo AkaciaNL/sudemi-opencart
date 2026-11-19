@@ -83,6 +83,8 @@ $_['text_option_reason_type'] = 'אפשרות החובה "%s" היא מסוג %s
 $_['text_option_reason_empty'] = 'לאפשרות החובה "%s" (%s) אין ערכים לבחירה.';
 $_['text_options_capped'] = 'מספר המוצרים: %d. לכל אחד מהם יותר מ-%d צירופים של אפשרויות החובה; רק %d הצירופים הראשונים של כל אחד מוצעים ב-sudemi:';
 $_['text_option_capped_item'] = '%s: %d צירופים';
+$_['entry_option_price'] = 'מחיר לקוני sudemi';
+$_['help_option_price'] = 'מתווסף למחיר הפריט כשקונה ב-sudemi ממלא את השדה, ללא מס כמו מחיר המוצר (למשל 20.00 על שם להדפסה). הקופה של החנות שלכם אינה גובה אותו: ל-OpenCart אין מחיר לסוג אפשרות כזה.';
 
 // Product form: right of withdrawal (Directive 2011/83/EU, art. 16)
 $_['entry_withdrawal'] = 'זכות ביטול';

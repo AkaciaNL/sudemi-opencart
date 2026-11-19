@@ -25,7 +25,7 @@ class Withdrawal
 {
     const FIELD = 'sudemi_withdrawal_exclusion';
     const SETTING_SCHEMA = 'sudemi_schema_version';
-    const SCHEMA_VERSION = '1.4.3'; // 1.4.3: the listings sent per product (option combinations)
+    const SCHEMA_VERSION = '1.4.3-2'; // 1.4.3: the listings sent per product, typed-option prices
     /** Set when an exclusion changed; the next heartbeat sends the catalogue. */
     const SETTING_RESYNC_DUE = 'sudemi_resync_due';
 
@@ -141,6 +141,17 @@ class Withdrawal
                 `external_ids` MEDIUMTEXT NOT NULL,
                 `date_modified` DATETIME NOT NULL,
                 PRIMARY KEY (`product_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
+        );
+        // 1.4.3: "Price for sudemi buyers" of a typed option (text, a date), set on the product form.
+        $this->db->query(
+            'CREATE TABLE IF NOT EXISTS `' . DB_PREFIX . 'sudemi_option_price` (
+                `product_option_id` INT(11) NOT NULL,
+                `product_id` INT(11) NOT NULL,
+                `price` DECIMAL(15,4) NOT NULL,
+                `date_modified` DATETIME NOT NULL,
+                PRIMARY KEY (`product_option_id`),
+                KEY `product_id` (`product_id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
         );
         foreach (self::EVENTS as $event) {

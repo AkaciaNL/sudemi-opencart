@@ -83,6 +83,8 @@ $_['text_option_reason_type'] = 'wymagana opcja "%s" jest typu %s: asystent AI k
 $_['text_option_reason_empty'] = 'wymagana opcja "%s" (%s) nie ma wartości do wyboru.';
 $_['text_options_capped'] = 'Liczba produktów: %d. Mają ponad %d kombinacji wymaganych opcji; w sudemi oferowane jest tylko pierwsze %d kombinacji każdego z nich:';
 $_['text_option_capped_item'] = '%s: kombinacje: %d';
+$_['entry_option_price'] = 'Cena dla kupujących w sudemi';
+$_['help_option_price'] = 'Doliczana do ceny artykułu, gdy kupujący w sudemi wypełni to pole, bez podatku jak cena produktu (na przykład 20.00 za imię do nadruku). Kasa Twojego sklepu jej nie pobiera: OpenCart nie ma ceny dla tego rodzaju opcji.';
 
 // Product form: right of withdrawal (Directive 2011/83/EU, art. 16)
 $_['entry_withdrawal'] = 'Prawo odstąpienia od umowy';

@@ -10,9 +10,9 @@
  *   Custom name, max 20 characters, +20.00                     (optional text)
  *
  * 5 x 5 x 2 = 50 listings on sudemi, from 20.00 to 35.00 before tax, and the custom name as
- * personalisation. OpenCart itself puts no price on a text option: the +20.00 is kept as a value
- * row of that option, which is how the extension reads it. Saving the product in the OpenCart admin
- * drops that row, so run this script again after such a save.
+ * personalisation. OpenCart itself puts no price on a text option: the +20.00 is the extension's
+ * "Price for sudemi buyers" (shown under the option on the product form, kept when the product is
+ * saved in the admin). Install or upgrade the extension to 1.4.3 first.
  *
  * Run inside the shop's container, from OpenCart's folder (the one with config.php):
  *
@@ -158,7 +158,9 @@ foreach (OPTIONS as $option) {
     }
 }
 
-// The custom name: optional text, at most 20 characters, +20.00 (a value row the extension reads).
+// The custom name: optional text, at most 20 characters, +20.00 for sudemi buyers. Stored as the
+// extension's "Price for sudemi buyers" (1.4.3, survives saving the product in the admin); without
+// the extension's table (an older extension), as a value row of the option, which it also reads.
 list($name, $type, $sort, $validation, $price) = TEXT;
 list($textId) = option($name, $type, $sort, [], $validation);
 $po = one("SELECT product_option_id FROM `{$p}product_option` WHERE product_id = $product AND option_id = $textId");
@@ -167,8 +169,13 @@ if (!$po) {
     $po = one('SELECT LAST_INSERT_ID()');
 }
 q("DELETE FROM `{$p}product_option_value` WHERE product_option_id = $po");
-q("INSERT INTO `{$p}product_option_value` SET product_option_id = $po, product_id = $product, option_id = $textId, option_value_id = 0,
-    quantity = 0, subtract = 0, price = $price, price_prefix = '+', points = 0, points_prefix = '+', weight = 0, weight_prefix = '+'");
+if (one("SHOW TABLES LIKE " . e($p . 'sudemi_option_price'))) {
+    q("REPLACE INTO `{$p}sudemi_option_price` (product_option_id, product_id, price, date_modified) VALUES ($po, $product, $price, NOW())");
+} else {
+    echo "the extension's option price table is missing (extension older than 1.4.3): the price is kept as a value row\n";
+    q("INSERT INTO `{$p}product_option_value` SET product_option_id = $po, product_id = $product, option_id = $textId, option_value_id = 0,
+        quantity = 0, subtract = 0, price = $price, price_prefix = '+', points = 0, points_prefix = '+', weight = 0, weight_prefix = '+'");
+}
 
 $combinations = (int) one("SELECT ROUND(EXP(SUM(LN(n)))) FROM (SELECT COUNT(*) AS n FROM `{$p}product_option_value` pov
     JOIN `{$p}product_option` po ON po.product_option_id = pov.product_option_id

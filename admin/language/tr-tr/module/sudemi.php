@@ -83,6 +83,8 @@ $_['text_option_reason_type'] = 'zorunlu "%s" seçeneğinin türü %s: alıcın�
 $_['text_option_reason_empty'] = 'zorunlu "%s" (%s) seçeneğinin seçilecek değeri yok.';
 $_['text_options_capped'] = '%d ürünün zorunlu seçeneklerinin %d\'den fazla kombinasyonu var; her birinin yalnızca ilk %d kombinasyonu sudemi\'de sunulur:';
 $_['text_option_capped_item'] = '%s: %d kombinasyon';
+$_['entry_option_price'] = 'sudemi alıcıları için fiyat';
+$_['help_option_price'] = 'sudemi\'deki bir alıcı bunu doldurduğunda ürünün fiyatına eklenir, ürün fiyatı gibi vergisiz (örneğin baskı için bir isim için 20.00). Kendi mağazanızın ödeme sayfası bunu almaz: OpenCart\'ta bu tür bir seçeneğin fiyatı yoktur.';
 
 // Product form: right of withdrawal (Directive 2011/83/EU, art. 16)
 $_['entry_withdrawal'] = 'Cayma hakkı';

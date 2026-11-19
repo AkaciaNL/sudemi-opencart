@@ -83,6 +83,8 @@ $_['text_option_reason_type'] = 'the required option "%s" is of type %s: a buyer
 $_['text_option_reason_empty'] = 'the required option "%s" (%s) has no values to choose from.';
 $_['text_options_capped'] = '%d product(s) have more than %d combinations of their required options; only the first %d of each are offered on sudemi:';
 $_['text_option_capped_item'] = '%s: %d combinations';
+$_['entry_option_price'] = 'Price for sudemi buyers';
+$_['help_option_price'] = 'Added to the item\'s price when a buyer on sudemi fills this in, without tax like the product price (for example 20.00 for a name to print). Your own shop\'s checkout does not charge it: OpenCart has no price for this kind of option.';
 
 // Product form: right of withdrawal (Directive 2011/83/EU, art. 16)
 $_['entry_withdrawal'] = 'Right of withdrawal';

@@ -15,8 +15,10 @@
   values it fixes.
 - **Text the buyer types.** Text, textarea, date, time and date-time options (required or not)
   are sent as personalisation: the buyer's assistant asks for them (dates and times with their
-  format, a text with its maximum length from the option's validation) and the add-on price of a
-  value row kept on the option. A product with a required file option is not offered (an AI
+  format, a text with its maximum length from the option's validation). OpenCart has no price for
+  such an option, so the product form gets a "Price for sudemi buyers" field under each one (kept
+  when the product is saved again); without it, a price kept as a value row of the option (as some
+  option-price extensions do) is used. A product with a required file option is not offered (an AI
   assistant cannot upload a file); the extension page says which product and why, in all twelve
   languages.
 - **Orders carry the options.** An order for a combination is written as a storefront order is:

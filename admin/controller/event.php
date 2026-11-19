@@ -31,6 +31,7 @@ class Event extends \Opencart\System\Engine\Controller
     {
         $productId = is_numeric($output) ? (int) $output : 0;
         $this->saveWithdrawal($productId, isset($args[0]) && is_array($args[0]) ? $args[0] : []);
+        $this->saveOptionPrices($productId, isset($args[0]) && is_array($args[0]) ? $args[0] : []);
         $this->push($productId);
     }
 
@@ -38,7 +39,26 @@ class Event extends \Opencart\System\Engine\Controller
     {
         $productId = isset($args[0]) ? (int) $args[0] : 0;
         $this->saveWithdrawal($productId, isset($args[1]) && is_array($args[1]) ? $args[1] : []);
+        $this->saveOptionPrices($productId, isset($args[1]) && is_array($args[1]) ? $args[1] : []);
         $this->push($productId);
+    }
+
+    /**
+     * The "Price for sudemi buyers" of the product's typed options (text, a date), from the
+     * product form, stored after OpenCart saved the options, before the push that carries them.
+     * Only when the form sent the field: a product saved any other way keeps its prices.
+     */
+    private function saveOptionPrices(int $productId, array $data): void
+    {
+        try {
+            require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/options.php';
+            if ($productId <= 0 || !isset($data[\Sudemi\Options::PRICE_FIELD]) || !is_array($data[\Sudemi\Options::PRICE_FIELD])) {
+                return;
+            }
+            (new \Sudemi\Options($this->db, $this->config))->savePrices($productId, $data[\Sudemi\Options::PRICE_FIELD]);
+        } catch (\Throwable $e) {
+            $this->report('Option prices for product ' . $productId . ' could not be saved: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -108,10 +128,60 @@ class Event extends \Opencart\System\Engine\Controller
                 return;
             }
             $output = substr($output, 0, $at) . $field . substr($output, $at);
+            $output = $this->withOptionPrices($output, $productId, $label);
         } catch (\Throwable $e) {
             // A product form that cannot render because of us is worse than a missing field.
             return;
         }
+    }
+
+    /**
+     * A "Price for sudemi buyers" field under each typed option (text, textarea, date, time,
+     * datetime) on the Option tab: OpenCart has no price for those, and a buyer on sudemi pays it
+     * when they fill the option in (a name to print). Added by a small script, so it also appears
+     * under an option the merchant adds while the form is open; posted with the form as
+     * sudemi_option_price[option_id].
+     */
+    private function withOptionPrices(string $output, int $productId, callable $label): string
+    {
+        require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/options.php';
+        $prices = (new \Sudemi\Options($this->db, $this->config))->formPrices($productId);
+        $config = json_encode([
+            'prices' => (object) $prices,
+            'types' => \Sudemi\Options::TEXT_TYPES,
+            'field' => \Sudemi\Options::PRICE_FIELD,
+            'label' => html_entity_decode($label('entry_option_price'), ENT_QUOTES, 'UTF-8'),
+            'help' => html_entity_decode($label('help_option_price'), ENT_QUOTES, 'UTF-8'),
+        ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+        $script = '<script id="sudemi-option-price">(function () {
+  var c = ' . $config . ';
+  function add() {
+    document.querySelectorAll(\'input[name^="product_option["][name$="[type]"]\').forEach(function (type) {
+      if (c.types.indexOf(type.value) < 0) { return; }
+      var row = type.name.slice(0, -6);
+      var option = document.querySelector(\'input[name="\' + row + \'[option_id]"]\');
+      if (!option) { return; }
+      var name = c.field + \'[\' + option.value + \']\';
+      if (document.querySelector(\'input[name="\' + name + \'"]\')) { return; }
+      var anchor = document.querySelector(\'[name="\' + row + \'[value]"]\') || type;
+      var box = anchor.parentNode;
+      var div = document.createElement(\'div\');
+      div.className = \'mb-3 sudemi-option-price\';
+      div.innerHTML = \'<label class="form-label"></label><input type="text" class="form-control" placeholder="0.00"/><div class="form-text"></div>\';
+      div.querySelector(\'label\').textContent = c.label;
+      div.querySelector(\'.form-text\').textContent = c.help;
+      var input = div.querySelector(\'input\');
+      input.name = name;
+      input.value = c.prices[option.value] || \'\';
+      box.parentNode.insertBefore(div, box.nextSibling);
+    });
+  }
+  add();
+  new MutationObserver(add).observe(document.getElementById(\'form-product\') || document.body, {childList: true, subtree: true});
+})();</script>';
+        $end = strrpos($output, '</body>');
+
+        return $end === false ? $output . $script : substr($output, 0, $end) . $script . substr($output, $end);
     }
 
     /**

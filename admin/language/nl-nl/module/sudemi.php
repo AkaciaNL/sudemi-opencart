@@ -83,6 +83,8 @@ $_['text_option_reason_type'] = 'de verplichte optie "%s" is van het type %s: de
 $_['text_option_reason_empty'] = 'de verplichte optie "%s" (%s) heeft geen waarden om uit te kiezen.';
 $_['text_options_capped'] = '%d product(en) hebben meer dan %d combinaties van hun verplichte opties; alleen de eerste %d van elk worden op sudemi aangeboden:';
 $_['text_option_capped_item'] = '%s: %d combinaties';
+$_['entry_option_price'] = 'Prijs voor sudemi-kopers';
+$_['help_option_price'] = 'Komt bij de prijs van het artikel als een koper op sudemi dit invult, zonder btw zoals de productprijs (bijvoorbeeld 20.00 voor een naam om te bedrukken). De kassa van je eigen winkel rekent dit niet: OpenCart kent geen prijs voor dit soort optie.';
 
 // Product form: right of withdrawal (Directive 2011/83/EU, art. 16)
 $_['entry_withdrawal'] = 'Herroepingsrecht';

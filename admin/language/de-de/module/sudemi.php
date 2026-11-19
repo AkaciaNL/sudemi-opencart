@@ -83,6 +83,8 @@ $_['text_option_reason_type'] = 'die Pflichtoption "%s" hat den Typ %s: Der KI-A
 $_['text_option_reason_empty'] = 'die Pflichtoption "%s" (%s) hat keine Werte zur Auswahl.';
 $_['text_options_capped'] = '%d Produkt(e) haben mehr als %d Kombinationen ihrer Pflichtoptionen; nur die ersten %d je Produkt werden auf sudemi angeboten:';
 $_['text_option_capped_item'] = '%s: %d Kombinationen';
+$_['entry_option_price'] = 'Preis für sudemi-Käufer';
+$_['help_option_price'] = 'Wird zum Preis des Artikels addiert, wenn ein Käufer auf sudemi dies ausfüllt, ohne Steuer wie der Produktpreis (zum Beispiel 20.00 für einen Namen zum Aufdrucken). Die Kasse Ihres eigenen Shops berechnet ihn nicht: OpenCart kennt für diese Art von Option keinen Preis.';
 
 // Product form: right of withdrawal (Directive 2011/83/EU, art. 16)
 $_['entry_withdrawal'] = 'Widerrufsrecht';

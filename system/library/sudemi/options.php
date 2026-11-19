@@ -145,9 +145,11 @@ class Options
         $languageId = (int) $this->config->get('config_language_id');
         $query = $this->db->query(
             'SELECT po.product_option_id, po.product_id, po.option_id, po.required, o.type, od.name'
-                . ($this->hasColumn('option', 'validation') ? ', o.validation' : '') . '
+                . ($this->hasColumn('option', 'validation') ? ', o.validation' : '')
+                . ($this->hasPriceTable() ? ', sop.price AS sudemi_price' : '') . '
                FROM ' . $this->prefix . 'product_option po
-               LEFT JOIN `' . $this->prefix . 'option` o ON (o.option_id = po.option_id)
+               LEFT JOIN `' . $this->prefix . 'option` o ON (o.option_id = po.option_id)'
+                . ($this->hasPriceTable() ? ' LEFT JOIN `' . $this->prefix . self::PRICE_TABLE . '` sop ON (sop.product_option_id = po.product_option_id)' : '') . '
                LEFT JOIN ' . $this->prefix . 'option_description od
                       ON (od.option_id = po.option_id AND od.language_id = ' . $languageId . ')
               WHERE po.product_id IN (' . implode(',', $ids) . ')
@@ -168,6 +170,8 @@ class Options
                     'type' => strtolower((string) $row['type']),
                     'required' => (bool) (int) $row['required'],
                     'maxLength' => self::maxLength(isset($row['validation']) ? $row['validation'] : ''),
+                    // The "Price for sudemi buyers" set on the product form (typed options), or null.
+                    'sudemiPrice' => isset($row['sudemi_price']) && $row['sudemi_price'] !== null ? (float) $row['sudemi_price'] : null,
                     'values' => [],
                 ],
             ];
@@ -193,6 +197,97 @@ class Options
         }
 
         return $options;
+    }
+
+    /** The extension's own price of a typed option (1.4.3), keyed by product_option_id. */
+    const PRICE_TABLE = 'sudemi_option_price';
+
+    /** The name of the product form's field: sudemi_option_price[option_id]. */
+    const PRICE_FIELD = 'sudemi_option_price';
+
+    private $priceTable = null;
+
+    public function hasPriceTable()
+    {
+        if ($this->priceTable === null) {
+            $this->priceTable = $this->db->query("SHOW TABLES LIKE '" . $this->db->escape($this->prefix . self::PRICE_TABLE) . "'")->num_rows > 0;
+        }
+
+        return $this->priceTable;
+    }
+
+    /** A product's typed-option prices for the form: option_id => price ('' when none). */
+    public function formPrices($productId)
+    {
+        if ((int) $productId <= 0 || !$this->hasPriceTable()) {
+            return [];
+        }
+        $query = $this->db->query('SELECT po.option_id, sop.price FROM `' . $this->prefix . self::PRICE_TABLE . '` sop
+            JOIN ' . $this->prefix . 'product_option po ON (po.product_option_id = sop.product_option_id)
+            WHERE sop.product_id = ' . (int) $productId);
+        $out = [];
+        foreach ($query->rows as $row) {
+            $out[(int) $row['option_id']] = self::amount($row['price']);
+        }
+
+        return $out;
+    }
+
+    /**
+     * Stores the prices the product form sent (option_id => amount; '' removes it), against the
+     * product_option_id OpenCart gave each option in this save, and drops the rows of options the
+     * product no longer has.
+     *
+     * @return bool whether anything changed
+     */
+    public function savePrices($productId, array $posted)
+    {
+        $productId = (int) $productId;
+        if ($productId <= 0 || !$this->hasPriceTable()) {
+            return false;
+        }
+        $current = [];
+        foreach ($this->db->query('SELECT product_option_id, option_id FROM ' . $this->prefix . 'product_option
+            WHERE product_id = ' . $productId)->rows as $row) {
+            $current[(int) $row['option_id']] = (int) $row['product_option_id'];
+        }
+        $before = $this->formPrices($productId);
+        $changed = false;
+        foreach ($posted as $optionId => $raw) {
+            $optionId = (int) $optionId;
+            if (!isset($current[$optionId])) {
+                continue;
+            }
+            $amount = self::parseAmount($raw);
+            if ($amount === null) {
+                $this->db->query('DELETE FROM `' . $this->prefix . self::PRICE_TABLE . '` WHERE product_option_id = ' . $current[$optionId]);
+            } else {
+                $this->db->query('REPLACE INTO `' . $this->prefix . self::PRICE_TABLE . '` (product_option_id, product_id, price, date_modified)
+                    VALUES (' . $current[$optionId] . ', ' . $productId . ", '" . $amount . "', NOW())");
+            }
+            $changed = $changed || (isset($before[$optionId]) ? $before[$optionId] : '') !== ($amount === null ? '' : self::amount($amount));
+        }
+        $this->db->query('DELETE FROM `' . $this->prefix . self::PRICE_TABLE . '` WHERE product_id = ' . $productId
+            . (empty($current) ? '' : ' AND product_option_id NOT IN (' . implode(',', $current) . ')'));
+
+        return $changed;
+    }
+
+    /** A typed amount ("20", "20,50", "+2.5", "-1") as a number string, null when empty or not a number. */
+    public static function parseAmount($raw)
+    {
+        $raw = str_replace([' ', ','], ['', '.'], trim((string) $raw));
+        if ($raw === '' || !preg_match('/^[+-]?\d{1,9}(\.\d{1,4})?$/', $raw)) {
+            return null;
+        }
+
+        return number_format((float) $raw, 4, '.', '');
+    }
+
+    /** An amount for the form field: "20.00", "2.5" stays "2.50". */
+    public static function amount($value)
+    {
+        return number_format((float) $value, 2, '.', '');
     }
 
     /** Whether a column exists on one of OpenCart's tables (cached). */
@@ -315,9 +410,9 @@ class Options
 
     /**
      * The text options as sudemi personalisation: [{key, label, required, maxLength, price}], key
-     * the product_option_id. price is the signed add-on before tax (Catalogue turns it into
-     * priceMinor): OpenCart itself puts no price on a typed option, so it is the price of a value
-     * row the shop keeps on that option, 0 without one.
+     * the product_option_id. price is the add-on before tax (Catalogue turns it into priceMinor):
+     * OpenCart itself puts no price on a typed option, so it is the extension's own "Price for
+     * sudemi buyers" from the product form, else the price of a value row kept on that option.
      */
     public static function personalisation(array $plan)
     {
@@ -328,10 +423,18 @@ class Options
         });
 
         return array_map(function ($option) {
+            // The price set on the product form for sudemi buyers; without one, a value row kept on
+            // the option (how some option-price extensions store it); else nothing.
             $price = 0.0;
-            foreach ($option['values'] as $value) {
-                $price += $value['price'];
+            if (isset($option['sudemiPrice']) && $option['sudemiPrice'] !== null) {
+                $price = $option['sudemiPrice'];
+            } else {
+                foreach ($option['values'] as $value) {
+                    $price += $value['price'];
+                }
             }
+            // sudemi adds a price when the text is filled in, never takes one off.
+            $price = max(0.0, $price);
 
             $format = isset(self::FORMATS[$option['type']]) ? self::FORMATS[$option['type']] : null;
             $note = $format === null ? '' : ' (' . $format['note'] . ')';

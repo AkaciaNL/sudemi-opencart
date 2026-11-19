@@ -83,6 +83,8 @@ $_['text_option_reason_type'] = 'الخيار الإلزامي "%s" من الن�
 $_['text_option_reason_empty'] = 'الخيار الإلزامي "%s" (%s) ليست له قيم للاختيار.';
 $_['text_options_capped'] = 'عدد المنتجات: %d. لكل منها أكثر من %d تركيبة من خياراتها الإلزامية؛ لا يُعرض على sudemi إلا أول %d تركيبة لكل منها:';
 $_['text_option_capped_item'] = '%s: %d تركيبة';
+$_['entry_option_price'] = 'السعر لمشتري sudemi';
+$_['help_option_price'] = 'يُضاف إلى سعر المنتج عندما يملأ مشترٍ على sudemi هذا الحقل، دون ضريبة مثل سعر المنتج (مثلًا 20.00 لاسم يُطبع). لا يحتسبه الدفع في متجرك: لا يوجد في OpenCart سعر لهذا النوع من الخيارات.';
 
 // Product form: right of withdrawal (Directive 2011/83/EU, art. 16)
 $_['entry_withdrawal'] = 'حق الانسحاب';
