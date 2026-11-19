@@ -16,6 +16,7 @@ require_once __DIR__ . '/currency.php';
 require_once __DIR__ . '/withdrawal.php';
 
 require_once __DIR__ . '/options.php';
+require_once __DIR__ . '/issues.php';
 
 class Catalogue
 {
@@ -28,6 +29,18 @@ class Catalogue
 
     /** Products with more option combinations than are sent: product_id => how many (see takeCapped()). */
     private $capped = [];
+
+    /** What was left out while building the listings, for the push's issues (Issues); see takeIssues(). */
+    private $issues = [];
+
+    /** The issues found since the last call, emptied. */
+    public function takeIssues()
+    {
+        $issues = array_values($this->issues);
+        $this->issues = [];
+
+        return $issues;
+    }
 
     public function __construct($db, $config)
     {
@@ -161,7 +174,9 @@ class Catalogue
             $plan = $plans[$productId];
             if ($plan['problem'] !== null) {
                 // A required option the buyer types (text, a file, a date): not offered, and the
-                // extension page says so (optionReport()).
+                // extension page says so (optionReport()); sudemi is told with the push (issues).
+                $issue = Issues::forProblem($productId, $plan['problem']);
+                $this->issues[$productId . '|' . $issue['code']] = $issue;
                 continue;
             }
             // OpenCart 4.1 moved SKU/EAN/UPC/MPN from product columns to product_code rows.
@@ -214,6 +229,9 @@ class Catalogue
             }
             if (Options::count($plan) > Options::MAX_COMBINATIONS) {
                 $this->capped[$productId] = Options::count($plan);
+                $this->issues[$productId . '|' . Issues::VARIANT_CAP] = Issues::make($productId, Issues::VARIANT_CAP, 'warning', 'options',
+                    sprintf('%d combinations of the required options; only the first %d are listed.', Options::count($plan), Options::MAX_COMBINATIONS),
+                    ['combinations' => Options::count($plan), 'listed' => Options::MAX_COMBINATIONS]);
             }
             foreach (Options::combinations($plan) as $combo) {
                 $products[] = Withdrawal::apply($this->combination($listing, $row, $plan, $combo), $exclusion);

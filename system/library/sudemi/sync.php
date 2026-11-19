@@ -12,6 +12,8 @@
 
 namespace Sudemi;
 
+require_once __DIR__ . '/issues.php';
+
 require_once __DIR__ . '/currency.php';
 require_once __DIR__ . '/options.php';
 
@@ -221,14 +223,24 @@ class Sync
             $this->logCapped();
             // A product with options is a listing per combination, so a page of products can be
             // more listings than sudemi takes in one request (500).
+            // What was left out of this page goes with its first request (Issues).
+            $fresh = (int) $state['sent'] === 0 && (int) $state['cursor'] === 0;
             foreach (array_chunk($products, 500) as $chunk) {
-                $result = $this->client->postSigned('/integration/v1/products', [
+                $issues = $this->takeIssues();
+                $result = $this->client->postSigned('/integration/v1/products', Issues::attach([
                     'syncId' => $state['id'],
                     'products' => $chunk,
-                ]);
+                ], $issues));
                 if ($result === null || $result['status'] !== 200) {
                     return $this->failed($result, 'A batch failed');
                 }
+                Issues::remember($this->store, $chunk, $issues, isset($result['body']) ? $result['body'] : null, $fresh);
+                $fresh = false;
+            }
+            // Nothing listed on this page but something left out: the shop still sees it.
+            $left = $this->takeIssues();
+            if (!empty($left)) {
+                Issues::remember($this->store, [], $left, null, $fresh);
             }
             // The commit takes off sudemi whatever this sync did not send, so what was sent is
             // what sudemi holds once it is committed.
@@ -401,6 +413,12 @@ class Sync
     }
 
     /** Says in the log which products have more option combinations than are sent. */
+    /** The catalogue's issues (an older catalogue double in the tests has none). */
+    private function takeIssues()
+    {
+        return method_exists($this->catalogue, 'takeIssues') ? $this->catalogue->takeIssues() : [];
+    }
+
     private function logCapped()
     {
         if (!method_exists($this->catalogue, 'takeCapped')) {
@@ -500,6 +518,11 @@ class Sync
 
             return;
         }
+        // Not listed because of something left out: the shop still sees why.
+        $left = $this->takeIssues();
+        if (!empty($left)) {
+            Issues::remember($this->store, [], $left, null);
+        }
 
         $update = $this->catalogue->priceAndStock($family);
         if ($update === null) {
@@ -548,7 +571,12 @@ class Sync
                     $body['catalogueRevision'] = $revision;
                 }
             }
-            $response = $this->client->postSigned('/integration/v1/products', $body);
+            // What was left out of this product goes with its first request (Issues).
+            $issues = $i === 0 ? $this->takeIssues() : [];
+            $response = $this->client->postSigned('/integration/v1/products', Issues::attach($body, $issues));
+            if ($response !== null && $response['status'] === 200) {
+                Issues::remember($this->store, $batch, $issues, isset($response['body']) ? $response['body'] : null);
+            }
             if ($response === null || $response['status'] !== 200) {
                 $clean = false;
                 foreach ($batch as $listing) {

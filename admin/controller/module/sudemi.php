@@ -2050,6 +2050,8 @@ class Sudemi extends \Opencart\System\Engine\Controller
             'currency' => $this->currencyInfo($sudemi['store']),
             // Products with required options: offered per combination, or not and why (1.4.3).
             'option_report' => (new \Sudemi\Catalogue($this->db, $this->config))->optionReport(),
+            // What the extension left out and what sudemi refused, from the last pushes (1.4.4).
+            'catalogue_issues' => $this->catalogueIssues($sudemi['store']),
             'max_combinations' => \Sudemi\Options::MAX_COMBINATIONS,
             // Printed for the shop owner to paste into their crontab. The token is in it, so
             // the template must not put it anywhere a non-admin can read.
@@ -2182,5 +2184,35 @@ class Sudemi extends \Opencart\System\Engine\Controller
 
         return compact('store', 'logger', 'keys', 'client', 'pairing', 'catalogue', 'sync',
             'queue', 'orders', 'heartbeat', 'withdrawal', 'support', 'requests');
+    }
+
+    /**
+     * The kept catalogue issues (Sudemi\Issues), newest first, at most 100, with the product's
+     * name and the plain words for each code in the admin's language.
+     */
+    private function catalogueIssues($store): array
+    {
+        require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/issues.php';
+        $text = $this->load->language('extension/sudemi/module/sudemi');
+        $rows = [];
+        foreach (array_slice(array_reverse(\Sudemi\Issues::all($store)), 0, 100) as $issue) {
+            $productId = \Sudemi\Issues::productId($issue['externalId']);
+            $name = '';
+            if ($productId > 0) {
+                $query = $this->db->query('SELECT name FROM `' . DB_PREFIX . 'product_description` WHERE product_id = ' . $productId
+                    . ' AND language_id = ' . (int) $this->config->get('config_language_id'));
+                $name = isset($query->row['name']) ? html_entity_decode((string) $query->row['name'], ENT_QUOTES, 'UTF-8') : '';
+            }
+            $key = 'text_issue_' . (string) $issue['code'];
+            $rows[] = [
+                'product_id' => $productId,
+                'product' => $name !== '' ? $name : (string) $issue['externalId'],
+                'status' => $issue['severity'] === 'error' ? $text['text_issue_not_listed'] : $text['text_issue_partly'],
+                'what' => isset($text[$key]) ? $text[$key] : $text['text_issue_other'],
+                'details' => ((string) $issue['field'] !== '' ? $issue['field'] . ': ' : '') . (string) $issue['message'],
+            ];
+        }
+
+        return $rows;
     }
 }

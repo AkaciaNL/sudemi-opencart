@@ -2,6 +2,10 @@
 
 ## 1.4.4
 
+- **What the extension leaves out is reported, to sudemi and to you.** A product with a required
+  file option or a required option without values (not listed), and a product with more option
+  combinations than sudemi lists: each catalogue push now tells sudemi (issues), and the extension
+  page lists them with what sudemi refused, in plain words, in all twelve languages.
 - **New per-product setting "Accept returns of personalised items"** (product form, Data tab, under
   the right of withdrawal; off by default). An item made with a text the buyer typed is not
   returnable by default on sudemi, as EU law allows (Directive 2011/83/EU, art. 16(c)), and buyers
