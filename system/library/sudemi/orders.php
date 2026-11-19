@@ -701,17 +701,28 @@ class Orders
                 return sprintf('"%s" is no longer sold here', $title);
             }
             if ($item['texts'] === null) {
-                return sprintf('"%s" needs the text the buyer did not give', $title);
+                return sprintf('"%s" needs a choice or text the buyer did not give', $title);
             }
             $quantity = isset($line['quantity']) ? (int) $line['quantity'] : 1;
+            if ($this->config->get('config_stock_checkout')) {
+                // The shop sells without stock ("Stock Checkout" on): its storefront takes the
+                // order, and so does this (sudemi offered it as a backorder).
+                continue;
+            }
             // subtract = 0 means this product does not track stock at all, so there is no
             // shortfall to find: the merchant has said it is always available.
             if ((int) $item['row']['subtract'] && (int) $item['row']['quantity'] < $quantity) {
                 return sprintf('"%s" is out of stock', Options::text($item['row']['name']));
             }
-            // Each chosen option value that keeps stock, as the storefront's cart checks it.
+            // Each chosen option value that keeps stock (and each chosen choice), as the
+            // storefront's cart checks it.
             foreach ($item['picks'] as $pick) {
                 if ($pick['value']['subtract'] && $pick['value']['quantity'] < $quantity) {
+                    return sprintf('"%s" is out of stock', $title);
+                }
+            }
+            foreach ($item['texts'] as $row) {
+                if (!empty($row['subtract']) && (int) $row['quantity'] < $quantity) {
                     return sprintf('"%s" is out of stock', $title);
                 }
             }
@@ -906,11 +917,20 @@ class Orders
                       WHERE product_id = '" . $masterId . "' AND subtract = '1'"
                 );
             }
-            foreach ($picks as $pick) {
+            $valueIds = array_map(function ($pick) {
+                return (int) $pick['value']['product_option_value_id'];
+            }, $picks);
+            foreach ($texts as $row) {
+                // A chosen choice (gift wrap, a ticked checkbox) is a value with its own stock.
+                if ((int) $row['product_option_value_id'] > 0) {
+                    $valueIds[] = (int) $row['product_option_value_id'];
+                }
+            }
+            foreach ($valueIds as $valueId) {
                 $this->db->query(
                     "UPDATE " . $this->prefix . "product_option_value
                         SET quantity = quantity - '" . $quantity . "'
-                      WHERE product_option_value_id = '" . (int) $pick['value']['product_option_value_id'] . "' AND subtract = '1'"
+                      WHERE product_option_value_id = '" . $valueId . "' AND subtract = '1'"
                 );
             }
         }

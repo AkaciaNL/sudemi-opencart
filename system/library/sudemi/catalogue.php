@@ -140,6 +140,7 @@ class Catalogue
         $query = $this->db->query(
             'SELECT p.product_id, p.model, ' . $this->legacyCodeColumns() . ' p.price, p.quantity, p.weight,
                     p.weight_class_id, p.tax_class_id, p.shipping, p.image, pd.name, pd.description,
+                    p.subtract, p.minimum, p.stock_status_id, p.date_available, p.length, p.width, p.height, p.length_class_id,
                     m.name AS manufacturer' . $this->options->variantColumns('p') . $this->withdrawalColumn() . '
                FROM ' . $this->prefix . 'product p
                LEFT JOIN ' . $this->prefix . 'manufacturer m ON (p.manufacturer_id = m.manufacturer_id)' . $this->withdrawalJoin() . '
@@ -181,7 +182,7 @@ class Catalogue
                 'description' => self::plain($row['description']),
                 'url' => $this->productUrl($productId),
                 // OpenCart stores prices without tax; buyers are shown and charged the price with it.
-                'priceMinor' => $this->minor($this->shipping->withStoreTax($this->effectivePrice($productId, $row['price']), $row['tax_class_id'])),
+                'priceMinor' => null, // with the sale and quantity prices below (pricing())
                 'currency' => $this->config->get('config_currency'),
                 'inStock' => ((int) $row['quantity']) > 0,
                 'quantity' => (int) $row['quantity'],
@@ -195,6 +196,8 @@ class Catalogue
                 'images' => $this->images($productId, (string) $row['image']),
                 'specs' => $this->specs($productId, $languageId),
             ];
+            $listing = array_merge($listing, $this->pricing($productId, $row['price'], $row['tax_class_id']),
+                $this->availability($row, (int) $row['quantity']), $this->extras($row));
             // Excluded from the right of withdrawal (EU 2011/83 art. 16), with the reason; omitted
             // when the normal right applies. A variant carries its master product's setting.
             $exclusion = isset($row['withdrawal_exclusion']) ? $row['withdrawal_exclusion'] : null;
@@ -239,7 +242,12 @@ class Catalogue
             $listing['gtin'] = null;
             $listing['mpn'] = '';
         }
-        $listing['priceMinor'] = $this->minor($this->shipping->withStoreTax($this->effectivePrice($productId, $row['price'], $add['price']), $row['tax_class_id']));
+        foreach (['regularPriceMinor', 'salePriceMinor', 'salePriceFrom', 'salePriceUntil', 'quantityPrices',
+                     'availability', 'availabilityDate', 'availabilityText', 'allowBackorders'] as $key) {
+            unset($listing[$key]);
+        }
+        $listing = array_merge($listing, $this->pricing($productId, $row['price'], $row['tax_class_id'], $add['price']),
+            $this->availability($row, $quantity));
         $listing['quantity'] = max(0, $quantity);
         $listing['inStock'] = $quantity > 0;
         $listing['weightGrams'] = (int) round($kilograms * 1000);
@@ -250,14 +258,250 @@ class Catalogue
         return $listing;
     }
 
-    /** sudemi personalisation for the product's text options, the add-on price with tax in minor units. */
+    /**
+     * The price fields of a listing, as OpenCart's cart prices it for the shop's default customer
+     * group, with tax, in minor units: priceMinor (today's price for one item); with a special
+     * (running or the next one to come) regularPriceMinor, salePriceMinor and its window
+     * (salePriceFrom / salePriceUntil, so sudemi starts and ends it on time); quantityPrices from
+     * the product's discounts for 2 or more. $optionPrice: the chosen options' price (+/-).
+     */
+    private function pricing($productId, $basePrice, $taxClassId, $optionPrice = 0.0)
+    {
+        $minor = function ($price) use ($taxClassId) {
+            return $this->minor($this->shipping->withStoreTax(max(0.0, (float) $price), $taxClassId));
+        };
+        $current = $this->effectivePrice($productId, $basePrice, $optionPrice);
+        $out = ['priceMinor' => $minor($current)];
+        $rules = $this->priceRules($productId);
+        $base = (float) $basePrice + (float) $optionPrice;
+        // Without a special, today's price (a single-item discount included) is the regular one.
+        $regular = $rules['single'] !== null ? $this->ruled($rules['single'], $base, $optionPrice) : $base;
+        $sale = null;
+        foreach ($rules['specials'] as $special) {
+            if ($special['until'] === null || $special['until'] > time()) {
+                $sale = $special;
+                break;
+            }
+        }
+        if ($sale !== null) {
+            $out['regularPriceMinor'] = $minor($regular);
+            $out['salePriceMinor'] = $minor($this->ruled($sale, $base, $optionPrice));
+            if ($sale['from'] !== null) {
+                $out['salePriceFrom'] = date(DATE_ATOM, $sale['from']);
+            }
+            if ($sale['until'] !== null) {
+                $out['salePriceUntil'] = date(DATE_ATOM, $sale['until']);
+            }
+        }
+        $tiers = [];
+        foreach ($rules['tiers'] as $tier) {
+            $quantity = (int) $tier['quantity'];
+            if ($quantity >= 2 && $quantity <= 100000 && !isset($tiers[$quantity]) && count($tiers) < 20) {
+                $tiers[$quantity] = ['minQuantity' => $quantity, 'priceMinor' => $minor($this->ruled($tier, $base, $optionPrice))];
+            }
+        }
+        if (!empty($tiers)) {
+            ksort($tiers);
+            $out['quantityPrices'] = array_values($tiers);
+        }
+
+        return $out;
+    }
+
+    /** A special or discount applied to a price with its options, as the cart applies it. */
+    private function ruled(array $rule, $price, $optionPrice)
+    {
+        if ($rule['type'] === 'P') {
+            return $price - $price * $rule['price'] / 100;
+        }
+        if ($rule['type'] === 'S') {
+            return $price - $rule['price'];
+        }
+
+        // An absolute price (OpenCart 4.0, or 4.1's type F): the options on top.
+        return $rule['price'] + $optionPrice;
+    }
+
+    private $rules = [];
+
+    /**
+     * A product's specials and discounts for the default customer group, read once per product:
+     * 'specials' (running or to come, soonest first, each with from / until as timestamps, until
+     * exclusive as OpenCart's "date_end > NOW()"), 'single' (an active discount for one item, 4.1)
+     * and 'tiers' (active discounts for 2 or more, by quantity then priority).
+     */
+    private function priceRules($productId)
+    {
+        $productId = (int) $productId;
+        if (isset($this->rules[$productId])) {
+            return $this->rules[$productId];
+        }
+        $group = (int) $this->config->get('config_customer_group_id');
+        $notEnded = "(date_end = '0000-00-00' OR date_end IS NULL OR date_end > NOW())";
+        $active = "((date_start = '0000-00-00' OR date_start IS NULL OR date_start < NOW()) AND " . $notEnded . ')';
+        $out = ['specials' => [], 'single' => null, 'tiers' => []];
+        $rule = function ($row, $type = 'F') {
+            $day = function ($date) {
+                return $date === null || $date === '' || strpos((string) $date, '0000') === 0 ? null : strtotime($date . ' 00:00:00');
+            };
+
+            return ['price' => (float) $row['price'], 'type' => isset($row['type']) ? (string) $row['type'] : $type,
+                'quantity' => isset($row['quantity']) ? (int) $row['quantity'] : 1,
+                'from' => isset($row['date_start']) ? $day($row['date_start']) : null,
+                'until' => isset($row['date_end']) ? $day($row['date_end']) : null];
+        };
+        if ($this->hasTable('product_special')) {
+            // OpenCart 4.0: specials in their own table, absolute prices; discounts absolute too.
+            foreach ($this->db->query('SELECT price, date_start, date_end FROM ' . $this->prefix . 'product_special
+                WHERE product_id = ' . $productId . ' AND customer_group_id = ' . $group . ' AND ' . $notEnded . '
+                ORDER BY (date_start = \'0000-00-00\' OR date_start < NOW()) DESC, date_start ASC, priority ASC, price ASC')->rows as $row) {
+                $out['specials'][] = $rule($row);
+            }
+            if ($this->hasTable('product_discount')) {
+                foreach ($this->db->query('SELECT quantity, price FROM ' . $this->prefix . 'product_discount
+                    WHERE product_id = ' . $productId . ' AND customer_group_id = ' . $group . ' AND quantity > 1 AND ' . $active . '
+                    ORDER BY quantity ASC, priority ASC, price ASC')->rows as $row) {
+                    $out['tiers'][] = $rule($row);
+                }
+            }
+        } elseif ($this->hasTable('product_discount')) {
+            // OpenCart 4.1: specials and discounts share product_discount (special = 1 / 0), each
+            // a fixed price (F), a percentage off (P) or an amount off (S).
+            foreach ($this->db->query('SELECT price, type, quantity, date_start, date_end FROM ' . $this->prefix . 'product_discount
+                WHERE product_id = ' . $productId . ' AND customer_group_id = ' . $group . ' AND special = 1 AND quantity <= 1 AND ' . $notEnded . '
+                ORDER BY (date_start = \'0000-00-00\' OR date_start IS NULL OR date_start < NOW()) DESC, date_start ASC, priority ASC, price ASC')->rows as $row) {
+                $out['specials'][] = $rule($row);
+            }
+            foreach ($this->db->query('SELECT price, type, quantity FROM ' . $this->prefix . 'product_discount
+                WHERE product_id = ' . $productId . ' AND customer_group_id = ' . $group . ' AND special = 0 AND ' . $active . '
+                ORDER BY quantity ASC, priority ASC, price ASC')->rows as $row) {
+                if ((int) $row['quantity'] <= 1) {
+                    $out['single'] = $out['single'] !== null ? $out['single'] : $rule($row);
+                } else {
+                    $out['tiers'][] = $rule($row);
+                }
+            }
+        }
+
+        return $this->rules[$productId] = $out;
+    }
+
+    /**
+     * What sudemi tells a buyer about stock, as OpenCart's storefront handles it: in stock; when
+     * the count is out, the shop's stock status text ("2-3 Days", "Pre-Order"), and either taken as
+     * a backorder / pre-order (the shop's "Stock Checkout" is on, or it does not count this product)
+     * or not sold. A product that only becomes available later (Date Available) is a pre-order.
+     */
+    private function availability(array $row, $quantity)
+    {
+        $checkout = (bool) $this->config->get('config_stock_checkout');
+        $available = isset($row['date_available']) ? strtotime((string) $row['date_available']) : false;
+        if ($available !== false && $available > time()) {
+            return ['availability' => 'preorder', 'availabilityDate' => date('Y-m-d', $available), 'allowBackorders' => true];
+        }
+        if (isset($row['subtract']) && !(int) $row['subtract']) {
+            // The shop does not count this product's stock: always for sale.
+            return ['availability' => 'in_stock', 'allowBackorders' => true];
+        }
+        if ($quantity > 0) {
+            return ['availability' => 'in_stock', 'allowBackorders' => $checkout];
+        }
+        $status = $this->stockStatus(isset($row['stock_status_id']) ? (int) $row['stock_status_id'] : 0);
+        $out = ['availability' => 'out_of_stock', 'allowBackorders' => $checkout];
+        if ($checkout) {
+            $out['availability'] = preg_match('/pre.?order|vorbestell|precommand|preventa|prenota|przedsprzeda|предзаказ|ön.?sipari|预购|预订|طلب مسبق|הזמנה מוקדמת|voorbestel/iu', $status) ? 'preorder' : 'backorder';
+        }
+        if ($status !== '') {
+            $out['availabilityText'] = mb_substr($status, 0, 100, 'UTF-8');
+        }
+
+        return $out;
+    }
+
+    private $stockStatuses = null;
+
+    /** The shop's stock status text (Catalog > Stock Statuses) in the store language, '' when none. */
+    private function stockStatus($id)
+    {
+        if ($this->stockStatuses === null) {
+            $this->stockStatuses = [];
+            foreach ($this->db->query('SELECT stock_status_id, name FROM ' . $this->prefix . 'stock_status
+                WHERE language_id = ' . (int) $this->config->get('config_language_id'))->rows as $status) {
+                $this->stockStatuses[(int) $status['stock_status_id']] = self::text($status['name']);
+            }
+        }
+
+        return isset($this->stockStatuses[$id]) ? $this->stockStatuses[$id] : '';
+    }
+
+    /** The minimum quantity (OpenCart's "Minimum Quantity") and the dimensions in millimetres. */
+    private function extras(array $row)
+    {
+        $out = [];
+        if (isset($row['minimum']) && (int) $row['minimum'] > 1) {
+            $out['minQuantity'] = min(100000, (int) $row['minimum']);
+        }
+        foreach (['length' => 'lengthMm', 'width' => 'widthMm', 'height' => 'heightMm'] as $column => $field) {
+            $mm = isset($row[$column]) ? $this->millimetres($row[$column], isset($row['length_class_id']) ? $row['length_class_id'] : 0) : 0;
+            if ($mm >= 1 && $mm <= 100000) {
+                $out[$field] = $mm;
+            }
+        }
+
+        return $out;
+    }
+
+    private $lengthValues = null;
+
+    /** A length in millimetres from its length class (OpenCart: to = from * to.value / from.value); 0 when unknown. */
+    private function millimetres($length, $lengthClassId)
+    {
+        if ((float) $length <= 0) {
+            return 0;
+        }
+        if ($this->lengthValues === null) {
+            $this->lengthValues = ['mm' => null, 'byId' => []];
+            $query = $this->db->query(
+                'SELECT lc.length_class_id, lc.value, lcd.unit FROM ' . $this->prefix . 'length_class lc
+                   LEFT JOIN ' . $this->prefix . 'length_class_description lcd ON (lc.length_class_id = lcd.length_class_id)
+                  WHERE lcd.language_id = ' . (int) $this->config->get('config_language_id')
+            );
+            $units = [];
+            foreach ($query->rows as $class) {
+                $this->lengthValues['byId'][(int) $class['length_class_id']] = (float) $class['value'];
+                $units[strtolower((string) $class['unit'])] = (float) $class['value'];
+            }
+            // A class's value is how many of it make the default unit, so mm's value is that of a
+            // known class times the millimetres in one of it (a shop without an "mm" class too).
+            foreach (['mm' => 1, 'cm' => 10, 'm' => 1000, 'in' => 25.4] as $unit => $mm) {
+                if (!empty($units[$unit])) {
+                    $this->lengthValues['mm'] = $units[$unit] * $mm;
+                    break;
+                }
+            }
+        }
+        $from = isset($this->lengthValues['byId'][(int) $lengthClassId]) ? $this->lengthValues['byId'][(int) $lengthClassId] : null;
+        $mm = $this->lengthValues['mm'];
+
+        return $from && $mm ? (int) round((float) $length * $mm / $from) : 0;
+    }
+
+    /** sudemi personalisation (texts, dates, choices), the add-on prices with tax in minor units. */
     private function personalisation(array $plan, $taxClassId)
     {
         $out = [];
+        $minor = function ($price) use ($taxClassId) {
+            return $price > 0 ? (int) $this->minor($this->shipping->withStoreTax($price, $taxClassId)) : 0;
+        };
         foreach (Options::personalisation($plan) as $entry) {
-            $price = $entry['price'] > 0 ? $this->minor($this->shipping->withStoreTax($entry['price'], $taxClassId)) : 0;
+            $price = $minor($entry['price']);
             unset($entry['price']);
-            $out[] = $entry + ['priceMinor' => (int) $price];
+            if (isset($entry['choices'])) {
+                $entry['choices'] = array_map(function ($choice) use ($minor) {
+                    return ['key' => $choice['key'], 'label' => $choice['label'], 'priceMinor' => $minor($choice['price'])];
+                }, $entry['choices']);
+            }
+            $out[] = $entry + ['priceMinor' => $price];
         }
 
         return $out;
@@ -451,7 +695,7 @@ class Catalogue
     public function priceAndStock($productId)
     {
         $query = $this->db->query(
-            'SELECT product_id, price, tax_class_id, quantity' . $this->options->variantColumns('p') . '
+            'SELECT product_id, price, tax_class_id, quantity, subtract, stock_status_id, date_available' . $this->options->variantColumns('p') . '
                FROM ' . $this->prefix . 'product p WHERE product_id = ' . (int) $productId
         );
         if (empty($query->row)) {
@@ -462,14 +706,18 @@ class Catalogue
         if ($plan['problem'] !== null || Options::hasOptions($plan)) {
             return null;
         }
+        $pricing = $this->pricing((int) $query->row['product_id'], $query->row['price'], $query->row['tax_class_id']);
+        // sudemi ends a running sale on a price update without the sale fields: they are sent.
+        unset($pricing['quantityPrices']);
+        $availability = $this->availability($query->row, (int) $query->row['quantity']);
+        unset($availability['availabilityDate'], $availability['availabilityText']);
 
-        return [
+        return array_merge([
             'externalId' => (string) $query->row['product_id'],
-            'priceMinor' => $this->minor($this->shipping->withStoreTax($this->effectivePrice((int) $query->row['product_id'], $query->row['price']), $query->row['tax_class_id'])),
             'currency' => $this->config->get('config_currency'),
             'inStock' => ((int) $query->row['quantity']) > 0,
             'quantity' => (int) $query->row['quantity'],
-        ];
+        ], $pricing, $availability);
     }
 
     /** The right-of-withdrawal exclusion, from the master product for a variant (none before the table exists). */

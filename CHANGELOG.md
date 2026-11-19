@@ -21,6 +21,17 @@
   option-price extensions do) is used. A product with a required file option is not offered (an AI
   assistant cannot upload a file); the extension page says which product and why, in all twelve
   languages.
+- **Choices the buyer picks.** An optional option with a list (gift wrap: paper +3.00, box +5.00)
+  and a checkbox (several may be ticked, required or not) are sent as personalisation choices, each
+  value with its own price; the order carries the chosen values as options and their stock comes
+  off. A value without stock is not offered.
+- **Prices, quantities and stock as the shop has them.** A special with dates is sent as a sale
+  with its start and end, so sudemi starts and ends it on time (before, a special that ended kept
+  its price on sudemi until the next full sync); discounts for 2 or more are quantity prices; the
+  minimum quantity, and the size in millimetres. Out of stock: the shop's stock status text ("2-3
+  Days"), sold as a backorder or pre-order when the shop sells without stock ("Stock Checkout"; such
+  an order is no longer declined), or when it does not count the product's stock; a product
+  available from a later date is a pre-order.
 - **Orders carry the options.** An order for a combination is written as a storefront order is:
   the options and the typed text on the order line, the stock taken off the product, the variant's
   master product and every chosen value that keeps stock (and put back when the order ends unpaid).

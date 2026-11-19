@@ -552,13 +552,12 @@ class Sync
             if ($response === null || $response['status'] !== 200) {
                 $clean = false;
                 foreach ($batch as $listing) {
-                    $queue->enqueue([
-                        'externalId' => $listing['externalId'],
-                        'priceMinor' => $listing['priceMinor'],
-                        'currency' => $listing['currency'],
-                        'inStock' => $listing['inStock'],
-                        'quantity' => $listing['quantity'],
-                    ]);
+                    // With the sale and availability: a price update without the sale fields
+                    // would end a sale on sudemi.
+                    $queue->enqueue(array_intersect_key($listing, array_flip([
+                        'externalId', 'priceMinor', 'currency', 'inStock', 'quantity', 'regularPriceMinor',
+                        'salePriceMinor', 'salePriceFrom', 'salePriceUntil', 'availability', 'allowBackorders',
+                    ])));
                 }
             } elseif (!empty($response['body']['rejected'])) {
                 $clean = false;

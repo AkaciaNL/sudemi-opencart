@@ -34,6 +34,7 @@ class Options
     /** sudemi takes at most this many texts per listing, each at most MAX_TEXT characters long. */
     const MAX_TEXTS = 5;
     const MAX_TEXT = 200;
+    const MAX_CHOICES = 100;
 
     /** Option types whose answer is one of a list of values (image: OpenCart 3's picture list). */
     const CHOICE_TYPES = ['select', 'radio', 'checkbox', 'image'];
@@ -344,10 +345,11 @@ class Options
     /**
      * What a product's options mean for its listings.
      *
-     * 'choices': the required choice options the buyer picks one value of (one listing per
-     * combination). 'fixed': the options an OpenCart 4 variant sets to its own values (every
-     * listing of the variant carries them). 'texts': the text and textarea options (required or
-     * not; dates and times too), which the buyer fills in through sudemi's personalisation.
+     * 'choices': the required select, radio and image options the buyer picks one value of (one
+     * listing per combination). 'fixed': the options an OpenCart 4 variant sets to its own values
+     * (every listing of the variant carries them). 'texts': what the buyer fills in or picks
+     * through sudemi's personalisation: text, textarea, date, time and datetime options, checkboxes
+     * (several may be ticked) and optional choices, required or not.
      * 'problem': why the product cannot be offered (a required file option, or a required choice
      * without values), null when it can.
      *
@@ -373,6 +375,23 @@ class Options
                 if (!empty($values)) {
                     $option['values'] = $values;
                     $plan['fixed'][] = $option;
+                }
+                continue;
+            }
+            if (in_array($option['type'], self::CHOICE_TYPES, true)
+                && ($option['type'] === 'checkbox' || !$option['required'])) {
+                // A checkbox (several may be ticked) and an optional choice (gift wrap +3.00) are
+                // sudemi personalisation choices: the buyer picks, each choice with its own price.
+                // A value without stock (and keeping stock) is not offered, as the storefront hides it.
+                $option['values'] = array_values(array_filter($option['values'], function ($value) {
+                    return !$value['subtract'] || $value['quantity'] > 0;
+                }));
+                if (!empty($option['values'])) {
+                    $plan['texts'][] = $option;
+                } elseif ($option['required']) {
+                    $plan['problem'] = ['option' => $option['name'], 'type' => $option['type'], 'reason' => 'empty'];
+
+                    return $plan;
                 }
                 continue;
             }
@@ -423,6 +442,20 @@ class Options
         });
 
         return array_map(function ($option) {
+            if (in_array($option['type'], self::CHOICE_TYPES, true)) {
+                return [
+                    'key' => (string) $option['product_option_id'],
+                    'label' => self::label($option['name']),
+                    'required' => (bool) $option['required'],
+                    'type' => $option['type'] === 'checkbox' ? 'multi_choice' : 'choice',
+                    // Only a text needs it; a core that does not know choices yet reads the item
+                    // as a text, and without it would refuse the whole product.
+                    'maxLength' => self::MAX_TEXT,
+                    'price' => 0.0,
+                    // Each value its own price (+/-; sudemi only adds, so a "-" is no add-on).
+                    'choices' => self::choiceList($option['values']),
+                ];
+            }
             // The price set on the product form for sudemi buyers; without one, a value row kept on
             // the option (how some option-price extensions store it); else nothing.
             $price = 0.0;
@@ -447,10 +480,38 @@ class Options
                 // A date or time says how to write it: "Delivery date (YYYY-MM-DD)".
                 'label' => mb_substr($option['name'], 0, 100 - strlen($note), 'UTF-8') . $note,
                 'required' => (bool) $option['required'],
+                'type' => $format === null ? 'text' : $option['type'],
                 'maxLength' => $max === null ? self::MAX_TEXT : min($max, self::MAX_TEXT),
                 'price' => $price,
             ];
         }, array_slice($texts, 0, self::MAX_TEXTS));
+    }
+
+    /**
+     * A choice option's values as sudemi choices: at most MAX_CHOICES, each label once (sudemi
+     * tells the buyer's pick by its label too), a value without a name named by its id.
+     */
+    private static function choiceList(array $values)
+    {
+        $out = [];
+        $seen = [];
+        foreach ($values as $value) {
+            $label = self::label($value['name']);
+            $label = $label !== '' ? $label : '#' . $value['product_option_value_id'];
+            if (isset($seen[mb_strtolower($label, 'UTF-8')]) || count($out) >= self::MAX_CHOICES) {
+                continue;
+            }
+            $seen[mb_strtolower($label, 'UTF-8')] = true;
+            $out[] = ['key' => (string) $value['product_option_value_id'], 'label' => $label, 'price' => max(0.0, $value['price'])];
+        }
+
+        return $out;
+    }
+
+    /** A label as sudemi takes it: at most 100 characters, without the angle brackets it refuses. */
+    private static function label($name)
+    {
+        return mb_substr(trim(str_replace(['<', '>'], '', (string) $name)), 0, 100, 'UTF-8');
     }
 
     /**
@@ -462,32 +523,84 @@ class Options
     {
         $byKey = [];
         foreach (is_array($given) ? $given : [] as $entry) {
-            if (is_array($entry) && isset($entry['key'], $entry['value']) && is_scalar($entry['value'])) {
-                $byKey[(string) $entry['key']] = trim((string) $entry['value']);
+            if (is_array($entry) && isset($entry['key'])) {
+                $byKey[(string) $entry['key']] = $entry;
             }
         }
         $rows = [];
         foreach ($plan['texts'] as $option) {
-            $value = isset($byKey[(string) $option['product_option_id']]) ? $byKey[(string) $option['product_option_id']] : '';
-            if ($value !== '' && isset(self::FORMATS[$option['type']])) {
-                $value = self::formatted($value, $option['type']);
-            }
-            if ($value === '') {
+            $entry = isset($byKey[(string) $option['product_option_id']]) ? $byKey[(string) $option['product_option_id']] : null;
+            $picked = in_array($option['type'], self::CHOICE_TYPES, true)
+                ? self::chosenRows($option, $entry)
+                : self::typedRow($option, $entry);
+            if ($picked === []) {
                 if ($option['required']) {
                     return null;
                 }
                 continue;
             }
-            if ($option['maxLength'] !== null && mb_strlen($value, 'UTF-8') > $option['maxLength']) {
-                $value = mb_substr($value, 0, $option['maxLength'], 'UTF-8');
+            $rows = array_merge($rows, $picked);
+        }
+
+        return $rows;
+    }
+
+    /** The row for a typed option ([] when not given or not valid). */
+    private static function typedRow(array $option, $entry)
+    {
+        $value = is_array($entry) && isset($entry['value']) && is_scalar($entry['value']) ? trim((string) $entry['value']) : '';
+        if ($value !== '' && isset(self::FORMATS[$option['type']])) {
+            $value = self::formatted($value, $option['type']);
+        }
+        if ($value === '') {
+            return [];
+        }
+        if ($option['maxLength'] !== null && mb_strlen($value, 'UTF-8') > $option['maxLength']) {
+            $value = mb_substr($value, 0, $option['maxLength'], 'UTF-8');
+        }
+
+        return [[
+            'product_option_id' => $option['product_option_id'],
+            'product_option_value_id' => 0,
+            'name' => $option['name'],
+            'value' => $value,
+            'type' => $option['type'],
+            'subtract' => false,
+            'quantity' => 0,
+        ]];
+    }
+
+    /**
+     * The rows for the values chosen of a choice option (choice_keys, else choice_key; a radio or
+     * select takes one): [] when none of them is a value of the option.
+     */
+    private static function chosenRows(array $option, $entry)
+    {
+        $keys = [];
+        if (is_array($entry) && isset($entry['choice_keys'])) {
+            $keys = is_array($entry['choice_keys']) ? $entry['choice_keys'] : explode(',', (string) $entry['choice_keys']);
+        } elseif (is_array($entry) && isset($entry['choice_key'])) {
+            $keys = [$entry['choice_key']];
+        }
+        $keys = array_values(array_unique(array_map(function ($key) {
+            return trim((string) $key);
+        }, $keys)));
+        $rows = [];
+        foreach ($option['values'] as $value) {
+            if (in_array((string) $value['product_option_value_id'], $keys, true)) {
+                $rows[] = [
+                    'product_option_id' => $option['product_option_id'],
+                    'product_option_value_id' => $value['product_option_value_id'],
+                    'name' => $option['name'],
+                    'value' => $value['name'],
+                    'type' => $option['type'],
+                    'subtract' => $value['subtract'],
+                    'quantity' => $value['quantity'],
+                ];
             }
-            $rows[] = [
-                'product_option_id' => $option['product_option_id'],
-                'product_option_value_id' => 0,
-                'name' => $option['name'],
-                'value' => $value,
-                'type' => $option['type'],
-            ];
+        }
+        if ($option['type'] !== 'checkbox' && count($rows) > 1) {
+            $rows = array_slice($rows, 0, 1);
         }
 
         return $rows;

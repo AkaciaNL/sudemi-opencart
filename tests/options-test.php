@@ -56,8 +56,8 @@ $colour = opt( 2, 'Colour', 'radio', array( pov( 21, 'White' ), pov( 22, 'Black'
 $name   = opt( 3, 'Custom name', 'text', array(), false, '/^.{1,20}$/' );
 $note   = opt( 4, 'Gift note', 'select', array( pov( 41, 'Yes' ) ), false );
 $plan   = Options::plan( array( $size, $colour, $name, $note ) );
-check( 'plan: the required choices, the text option apart, the optional choice ignored',
-	2 === count( $plan['choices'] ) && 1 === count( $plan['texts'] ) && null === $plan['problem'] && array() === $plan['fixed'] );
+check( 'plan: the required choices make combinations; the text and the optional choice are personalisation',
+	2 === count( $plan['choices'] ) && 2 === count( $plan['texts'] ) && null === $plan['problem'] && array() === $plan['fixed'] );
 check( 'count: 3 sizes x 4 colours = 12', 12 === Options::count( $plan ) );
 $combos = Options::combinations( $plan );
 check( '12 combinations, the first option changes slowest', 12 === count( $combos )
@@ -103,11 +103,11 @@ check( 'maxLength from the validation pattern', 20 === Options::maxLength( '/^.{
 $priced = opt( 3, 'Custom name', 'text', array( pov( 31, '', '20', '+' ) ), false, '/^.{1,20}$/' );
 $tee    = Options::plan( array( $size, $priced ) );
 check( 'personalisation: key = product_option_id, label, optional, maxLength, the add-on price',
-	array( array( 'key' => '3', 'label' => 'Custom name', 'required' => false, 'maxLength' => 20, 'price' => 20.0 ) ) === Options::personalisation( $tee ),
+	array( array( 'key' => '3', 'label' => 'Custom name', 'required' => false, 'type' => 'text', 'maxLength' => 20, 'price' => 20.0 ) ) === Options::personalisation( $tee ),
 	Options::personalisation( $tee ) );
 $texts = Options::personalRows( $tee, array( array( 'key' => '3', 'label' => 'Custom name', 'value' => ' AJAX AMSTERDAM ' ) ) );
 check( 'the typed text becomes an order_option row (type text)', array( array( 'product_option_id' => 3, 'product_option_value_id' => 0,
-	'name' => 'Custom name', 'value' => 'AJAX AMSTERDAM', 'type' => 'text' ) ) === $texts, $texts );
+	'name' => 'Custom name', 'value' => 'AJAX AMSTERDAM', 'type' => 'text', 'subtract' => false, 'quantity' => 0 ) ) === $texts, $texts );
 check( 'too long: cut to maxLength', 20 === mb_strlen( Options::personalRows( $tee, array( array( 'key' => '3', 'value' => str_repeat( 'É', 30 ) ) ) )[0]['value'] ) );
 check( 'optional and not given: no row', array() === Options::personalRows( $tee, array() ) && array() === Options::personalRows( $tee, 'nonsense' ) );
 $must = Options::plan( array( opt( 5, 'Engraving', 'textarea', array(), true ) ) );
@@ -121,13 +121,35 @@ check( 'at most 5 texts (sudemi\'s limit), the required one first; no limit in t
 check( 'a label is at most 100 characters', 100 === mb_strlen( Options::personalisation( Options::plan( array( opt( 9, str_repeat( 'é', 120 ), 'date', array(), false ) ) ) )[0]['label'] ) );
 check( 'a required text is not a problem: it is personalisation', null === $must['problem'] && ! Options::hasOptions( $must ) );
 
+// Choices the buyer picks (owner 2026-11-19, capture everything): an optional priced select, a checkbox.
+$wrap  = opt( 80, 'Gift wrap', 'radio', array( pov( 81, 'Paper', '3', '+' ), pov( 82, 'Box', '5', '+', 0 ), pov( 83, 'Discount', '1', '-' ) ), false );
+$extra = opt( 90, 'Extras', 'checkbox', array( pov( 91, 'Card', '1.5', '+' ), pov( 92, 'Ribbon', '2', '+', 0, 0 ) ), true );
+$gift  = Options::plan( array( $size, $wrap, $extra ) );
+$given = Options::personalisation( $gift );
+check( 'an optional radio is a choice, a required checkbox a multi_choice; no combinations for them', 3 === Options::count( $gift ) && 2 === count( $given )
+	&& 'multi_choice' === $given[0]['type'] && true === $given[0]['required'] && 'choice' === $given[1]['type'] && false === $given[1]['required'], $given );
+check( 'choices: key = product_option_value_id, label, price; a value out of stock is left out; a "-" price is no add-on',
+	array( array( 'key' => '81', 'label' => 'Paper', 'price' => 3.0 ), array( 'key' => '83', 'label' => 'Discount', 'price' => 0.0 ) ) === $given[1]['choices']
+	&& array( '91', '92' ) === array_column( $given[0]['choices'], 'key' ), $given );
+$rows = Options::personalRows( $gift, array( array( 'key' => '90', 'type' => 'multi_choice', 'choice_keys' => array( '91', '92' ), 'value' => 'Card, Ribbon' ),
+	array( 'key' => '80', 'type' => 'choice', 'choice_key' => '81', 'value' => 'Paper' ) ) );
+check( 'the chosen choices become order_option rows with their values (two ticks, one radio)', 3 === count( $rows )
+	&& array( 81, 91, 92 ) === array_column( $rows, 'product_option_value_id' )
+	&& 'Ribbon' === $rows[2]['value'] && 'checkbox' === $rows[1]['type'] && 'radio' === $rows[0]['type'], $rows );
+check( 'choice_keys as a comma list too; the required checkbox missing or unknown: null; a radio takes one',
+	2 === count( Options::personalRows( $gift, array( array( 'key' => '90', 'choice_keys' => '91,92' ) ) ) )
+	&& null === Options::personalRows( $gift, array() ) && null === Options::personalRows( $gift, array( array( 'key' => '90', 'choice_keys' => array( '99' ) ) ) )
+	&& 2 === count( Options::personalRows( $gift, array( array( 'key' => '90', 'choice_key' => '91' ), array( 'key' => '80', 'choice_keys' => array( '81', '83' ) ) ) ) ) );
+check( 'a required checkbox with every value out of stock: not offered', 'empty' === Options::plan( array(
+	opt( 95, 'Extras', 'checkbox', array( pov( 96, 'Card', '1', '+', 0 ) ), true ) ) )['problem']['reason'] );
+
 // Not offered.
 $file = Options::plan( array( $size, opt( 6, 'Logo', 'file', array() ) ) );
 check( 'a required file option: a problem naming it', array( 'option' => 'Logo', 'type' => 'file', 'reason' => 'type' ) === $file['problem'] );
 check( 'an optional date option: no problem', null === Options::plan( array( $size, opt( 6, 'When', 'date', array(), false ) ) )['problem'] );
 $dated = Options::plan( array( opt( 8, 'Delivery date', 'date', array(), true ), opt( 9, 'Pick-up', 'datetime', array(), false ) ) );
 check( 'dates and times are personalisation with their format in the label', null === $dated['problem']
-	&& array( 'key' => '8', 'label' => 'Delivery date (YYYY-MM-DD)', 'required' => true, 'maxLength' => 10, 'price' => 0.0 ) === Options::personalisation( $dated )[0]
+	&& array( 'key' => '8', 'label' => 'Delivery date (YYYY-MM-DD)', 'required' => true, 'type' => 'date', 'maxLength' => 10, 'price' => 0.0 ) === Options::personalisation( $dated )[0]
 	&& 'Pick-up (YYYY-MM-DD HH:MM)' === Options::personalisation( $dated )[1]['label'], Options::personalisation( $dated ) );
 check( 'a date is kept as OpenCart stores it; a datetime with T too; a wrong one is not given',
 	'2026-12-24' === Options::personalRows( $dated, array( array( 'key' => '8', 'value' => '2026-12-24' ) ) )[0]['value']
@@ -154,6 +176,8 @@ class CatalogueDb {
 	public $options  = array(); // product_id => [option rows]
 	public $values   = array(); // product_option_id => [value rows]
 	public $discount = null;
+	public $specials = array();
+	public $tiers    = array();
 	public $listed   = array();
 	public $writes   = array();
 	public function escape( $v ) {
@@ -195,6 +219,18 @@ class CatalogueDb {
 			}
 			return $this->rows( $rows );
 		}
+		if ( preg_match( '/^SELECT price, type, quantity, date_start, date_end FROM oc_product_discount .* special = 1 /', $sql ) ) {
+			return $this->rows( $this->specials );
+		}
+		if ( preg_match( '/^SELECT price, type, quantity FROM oc_product_discount .* special = 0 /', $sql ) ) {
+			return $this->rows( $this->tiers );
+		}
+		if ( preg_match( '/^SELECT lc.length_class_id/', $sql ) ) {
+			return $this->rows( array( array( 'length_class_id' => 1, 'value' => 1, 'unit' => 'cm' ), array( 'length_class_id' => 3, 'value' => 0.3937, 'unit' => 'in' ) ) );
+		}
+		if ( preg_match( '/^SELECT stock_status_id, name FROM oc_stock_status/', $sql ) ) {
+			return $this->rows( array( array( 'stock_status_id' => 6, 'name' => '2-3 Days' ), array( 'stock_status_id' => 8, 'name' => 'Pre-Order' ) ) );
+		}
 		if ( preg_match( '/^SELECT price, type FROM oc_product_discount .* AND special = 1 /', $sql ) ) {
 			return $this->rows( $this->discount ? array( $this->discount ) : array() );
 		}
@@ -234,7 +270,9 @@ class FakeConfig {
 function product( $id, $name, $price, $qty, array $extra = array() ) {
 	return $extra + array( 'product_id' => $id, 'model' => 'M' . $id, 'sku' => 'SKU' . $id, 'ean' => '8710000000000', 'upc' => '', 'mpn' => 'MPN' . $id,
 		'price' => $price, 'quantity' => $qty, 'weight' => '0.2', 'weight_class_id' => 1, 'tax_class_id' => 9, 'shipping' => 0, 'image' => '',
-		'name' => $name, 'description' => '', 'manufacturer' => '', 'master_id' => 0, 'variant' => '', 'override' => '' );
+		'name' => $name, 'description' => '', 'manufacturer' => '', 'master_id' => 0, 'variant' => '', 'override' => '',
+		'subtract' => 1, 'minimum' => 1, 'stock_status_id' => 6, 'date_available' => '2020-01-01', 'length' => '30', 'width' => '20', 'height' => '0.5',
+		'length_class_id' => 1 );
 }
 function option_row( $poid, $pid, $name, $type, $required = 1 ) {
 	return array( 'product_option_id' => $poid, 'product_id' => $pid, 'option_id' => $poid + 100, 'required' => $required, 'type' => $type, 'name' => $name );
@@ -274,7 +312,7 @@ check( 'the product\'s barcode and part number are not sent with a combination',
 check( 'specs start with the chosen values; variantAttributes the same', array( 'name' => 'Size', 'values' => array( 'XL' ) ) === $xl['specs'][0]
 	&& array( 'name' => 'Material', 'value' => 'Cotton' ) === $xl['variantAttributes'][2] );
 check( 'personalisation: the custom name, optional, its add-on with VAT (20 + 21% = 24.20)',
-	array( array( 'key' => '204', 'label' => 'Custom name', 'required' => false, 'maxLength' => 200, 'priceMinor' => 2420 ) ) === $xl['personalisation'], $xl['personalisation'] ?? null );
+	array( array( 'key' => '204', 'label' => 'Custom name', 'required' => false, 'type' => 'text', 'maxLength' => 200, 'priceMinor' => 2420 ) ) === $xl['personalisation'], $xl['personalisation'] ?? null );
 // The extension's own "Price for sudemi buyers" (product form) wins over a value row; never negative.
 $db->options[20][3]['sudemi_price'] = '25.0000';
 $own = ( new \Sudemi\Catalogue( $db, new FakeConfig() ) )->productsByIds( array( 20 ) );
@@ -332,6 +370,59 @@ $db->discount = array( 'price' => '15', 'type' => 'F' );
 $fixed        = ( new \Sudemi\Catalogue( $db, new FakeConfig() ) )->productsByIds( array( 20 ) );
 check( 'fixed special 15 + options 13 = 28.00 + 21% = 33.88', 3388 === $fixed[ array_search( '20:4-8-15', array_column( $fixed, 'externalId' ), true ) ]['priceMinor'] );
 $db->discount = null;
+
+check( 'dimensions in mm from the length class (30 x 20 x 0.5 cm); no minimum of 1 sent; in stock, no backorders',
+	300 === $xl['lengthMm'] && 200 === $xl['widthMm'] && 5 === $xl['heightMm'] && ! isset( $xl['minQuantity'] )
+	&& 'in_stock' === $xl['availability'] && false === $xl['allowBackorders'] && ! isset( $xl['salePriceMinor'] ) && ! isset( $xl['quantityPrices'] ) );
+
+// A special with dates is a sale window (sudemi starts and ends it on time); discounts for 2+ are quantity prices.
+$from         = date( 'Y-m-d', time() - 86400 );
+$until        = date( 'Y-m-d', time() + 7 * 86400 );
+$db->specials = array( array( 'price' => '10', 'type' => 'P', 'quantity' => 1, 'date_start' => $from, 'date_end' => $until ) );
+$db->discount = array( 'price' => '10', 'type' => 'P' ); // what effectivePrice reads for today
+$db->tiers    = array( array( 'price' => '5', 'type' => 'S', 'quantity' => 3 ), array( 'price' => '20', 'type' => 'P', 'quantity' => 10 ),
+	array( 'price' => '1', 'type' => 'S', 'quantity' => 3 ) );
+$db->products[0]['minimum'] = 2;
+$sale = ( new \Sudemi\Catalogue( $db, new FakeConfig() ) )->productsByIds( array( 20 ) );
+$sx   = $sale[ array_search( '20:4-8-15', array_column( $sale, 'externalId' ), true ) ];
+check( 'sale: 33.00 regular (39.93), 10% off while it runs (35.94), from and until as the shop set them (until exclusive)',
+	3594 === $sx['priceMinor'] && 3993 === $sx['regularPriceMinor'] && 3594 === $sx['salePriceMinor']
+	&& date( DATE_ATOM, strtotime( $from . ' 00:00:00' ) ) === $sx['salePriceFrom'] && date( DATE_ATOM, strtotime( $until . ' 00:00:00' ) ) === $sx['salePriceUntil'], $sx );
+check( 'quantity prices: 3+ at 33 - 5 = 28.00 (33.88), 10+ at 20% off = 26.40 (31.94); one tier per quantity; minimum 2 sent',
+	array( array( 'minQuantity' => 3, 'priceMinor' => 3388 ), array( 'minQuantity' => 10, 'priceMinor' => 3194 ) ) === $sx['quantityPrices'] && 2 === $sx['minQuantity'], $sx['quantityPrices'] );
+$db->specials = array( array( 'price' => '15', 'type' => 'F', 'quantity' => 1, 'date_start' => date( 'Y-m-d', time() + 3 * 86400 ), 'date_end' => '0000-00-00' ) );
+$db->discount = null;
+$soon = ( new \Sudemi\Catalogue( $db, new FakeConfig() ) )->productsByIds( array( 20 ) );
+$so   = $soon[ array_search( '20:4-8-15', array_column( $soon, 'externalId' ), true ) ];
+check( 'a special still to come: today\'s price, the sale (15 + options 13 = 28.00, 33.88) from its day, open-ended',
+	3993 === $so['priceMinor'] && 3388 === $so['salePriceMinor'] && isset( $so['salePriceFrom'] ) && ! isset( $so['salePriceUntil'] ), $so );
+$db->specials = array();
+$db->tiers    = array();
+$db->products[0]['minimum'] = 1;
+
+// Availability as the storefront handles it.
+$config = new FakeConfig();
+$db->products[1] = product( 22, 'Lamp', '10.0000', 0, array( 'stock_status_id' => 6 ) );
+$lamp = function () use ( $db, &$config ) {
+	$l = ( new \Sudemi\Catalogue( $db, $config ) )->productsByIds( array( 22 ) );
+	return $l ? $l[0] : array();
+};
+$l = $lamp();
+check( 'out of stock, no stock checkout: out_of_stock with the shop\'s words', 'out_of_stock' === $l['availability'] && false === $l['allowBackorders'] && '2-3 Days' === $l['availabilityText'], $l );
+$config->values['config_stock_checkout'] = 1;
+$l = $lamp();
+check( 'out of stock with stock checkout on: a backorder ("2-3 Days")', 'backorder' === $l['availability'] && true === $l['allowBackorders'], $l );
+$db->products[1]['stock_status_id'] = 8;
+$l = $lamp();
+check( 'stock status "Pre-Order": a pre-order', 'preorder' === $l['availability'] && 'Pre-Order' === $l['availabilityText'] );
+$db->products[1]['date_available'] = date( 'Y-m-d', time() + 10 * 86400 );
+$l = $lamp();
+check( 'available from a later date: a pre-order with that date', 'preorder' === $l['availability'] && $db->products[1]['date_available'] === $l['availabilityDate'] );
+$db->products[1] = product( 22, 'Lamp', '10.0000', 0, array( 'subtract' => 0 ) );
+unset( $config->values['config_stock_checkout'] );
+$l = $lamp();
+check( 'stock not counted (Subtract Stock: No): in stock, always taken', 'in_stock' === $l['availability'] && true === $l['allowBackorders'] );
+$db->products[1] = product( 21, 'Logo mug', '9.0000', 4 );
 
 // More than the cap: told once.
 $db->values[203][] = pov( 17, 'Silk', '30' );
@@ -480,13 +571,17 @@ $odb          = new OrderDb();
 $odb->products = $db->products;
 $odb->options  = $db->options;
 $odb->values   = $db->values;
+// An optional gift wrap (radio, priced) the buyer picked as a choice on sudemi.
+$odb->options[20][] = option_row( 205, 20, 'Gift wrap', 'radio', 0 );
+$odb->values[205]   = array( pov( 61, 'Paper', '3' ), pov( 62, 'Box', '5', '+', 1 ) );
 $orders       = new \Sudemi\Orders( $odb, new FakeConfig(), $client, $logger, $store );
 $shortfall    = new ReflectionMethod( \Sudemi\Orders::class, 'firstShortfall' );
 $shortfall->setAccessible( true );
 $create       = new ReflectionMethod( \Sudemi\Orders::class, 'createLocalOrder' );
 $create->setAccessible( true );
 $line         = array( 'external_id' => '20:4-8-15', 'quantity' => 1, 'title' => 'T-shirt (Size: XL, Colour: Red, Material: Cotton)',
-	'personalisation' => array( array( 'key' => '204', 'label' => 'Custom name', 'value' => 'AJAX AMSTERDAM' ) ) );
+	'personalisation' => array( array( 'key' => '204', 'label' => 'Custom name', 'value' => 'AJAX AMSTERDAM' ),
+		array( 'key' => '205', 'label' => 'Gift wrap', 'value' => 'Paper', 'type' => 'choice', 'choice_key' => '61', 'choice_keys' => array( '61' ) ) ) );
 check( 'an order for XL / Red / Cotton can be supplied', null === $shortfall->invoke( $orders, array( 'lines' => array( $line ) ) ) );
 check( 'a combination that is gone (Navy removed, an unknown value): no longer sold here',
 	'"x" is no longer sold here' === $shortfall->invoke( $orders, array( 'lines' => array( array( 'external_id' => '20:4-99-15', 'quantity' => 1, 'title' => 'x' ) ) ) ) );
@@ -498,16 +593,29 @@ $op      = $odb->written( 'INSERT INTO oc_order_product SET' );
 check( 'the order line: the product, its own name, master_id 0', 1 === count( $op ) && false !== strpos( $op[0], "product_id = '20'" )
 	&& false !== strpos( $op[0], "master_id = '0'" ) && false !== strpos( $op[0], "name = 'T-shirt'" ), $op );
 $oo = $odb->written( 'INSERT INTO oc_order_option SET' );
-check( 'order_option: Size XL, Colour Red, Material Cotton and the custom name, on the order line', 4 === count( $oo )
+check( 'order_option: Size XL, Colour Red, Material Cotton and the custom name, on the order line', 5 === count( $oo )
 	&& false !== strpos( $oo[0], "product_option_id = '201', product_option_value_id = '4', name = 'Size', value = 'XL', type = 'select'" )
 	&& false !== strpos( $oo[1], "name = 'Colour', value = 'Red', type = 'radio'" )
 	&& false !== strpos( $oo[2], "name = 'Material', value = 'Cotton'" )
 	&& false !== strpos( $oo[3], "product_option_id = '204', product_option_value_id = '0', name = 'Custom name', value = 'AJAX AMSTERDAM', type = 'text'" )
 	&& false !== strpos( $oo[0], "order_product_id = '" . ( $orderId + 1 ) . "'" ), $oo );
 $stock = $odb->written( 'UPDATE oc_product_option_value' );
-check( 'stock comes off each chosen value that keeps stock (XL, Red, Cotton)', 3 === count( $stock )
+check( 'stock comes off each chosen value that keeps stock (XL, Red, Cotton; the gift wrap below)', 4 === count( $stock )
 	&& false !== strpos( $stock[0], "product_option_value_id = '4' AND subtract = '1'" ) && false !== strpos( $stock[2], "product_option_value_id = '15'" ), $stock );
 check( 'and off the product', 1 === count( $odb->written( "UPDATE oc_product SET quantity = quantity - '1' WHERE product_id = '20'" ) ) );
+check( 'the gift wrap chosen on sudemi is on the order line with its value, and its stock comes off', 5 === count( $oo )
+	&& false !== strpos( $oo[4], "product_option_id = '205', product_option_value_id = '61', name = 'Gift wrap', value = 'Paper', type = 'radio'" )
+	&& 1 === count( $odb->written( "UPDATE oc_product_option_value SET quantity = quantity - '1' WHERE product_option_value_id = '61' AND subtract = '1'" ) ), $oo );
+$box = $line;
+$box['personalisation'][1]['choice_key'] = '62';
+unset( $box['personalisation'][1]['choice_keys'] );
+check( 'a chosen choice with not enough stock (Box: 1, 2 ordered): out of stock', '"x" is out of stock' === $shortfall->invoke( $orders,
+	array( 'lines' => array( array( 'title' => 'x', 'quantity' => 2 ) + $box ) ) ) );
+$checkout = new FakeConfig();
+$checkout->values['config_stock_checkout'] = 1;
+$backorders = new \Sudemi\Orders( $odb, $checkout, $client, $logger, $store );
+check( 'the shop sells without stock (Stock Checkout on): 4 XL (3 in stock) is taken, as in its storefront',
+	null === $shortfall->invoke( $backorders, array( 'lines' => array( array( 'external_id' => '20:4-8-15', 'quantity' => 4, 'title' => 'x' ) ) ) ) );
 
 if ( $failures > 0 ) {
 	echo "\n", $failures, " check(s) failed\n";
