@@ -191,6 +191,9 @@ class CatalogueDb {
 		if ( preg_match( "/^SHOW COLUMNS FROM `oc_product` LIKE '(master_id|variant|override)'$/", $sql ) ) {
 			return $this->rows( array( array( 'Field' => 'x' ) ) );
 		}
+		if ( "SHOW COLUMNS FROM `oc_option_value` LIKE 'image'" === $sql ) {
+			return $this->rows( array( array( 'Field' => 'image' ) ) );
+		}
 		if ( preg_match( "/^SHOW TABLES LIKE 'oc_(product_discount|sudemi_listing|sudemi_option_price)'$/", $sql ) ) {
 			return $this->rows( array( array( 'x' => 1 ) ) );
 		}
@@ -288,6 +291,9 @@ $db->values[201]  = array( pov( 1, 'S' ), pov( 2, 'M' ), pov( 3, 'L' ), pov( 4, 
 $db->values[202]  = array( pov( 6, 'White' ), pov( 7, 'Black', '2' ), pov( 8, 'Red', '3' ), pov( 9, 'Navy', '4' ), pov( 10, 'Green', '5', '+', 50, 0 ) );
 $db->values[203]  = array( pov( 14, 'Lycra' ), pov( 15, 'Cotton', '10', '+', 10, 1, '0.05', '+' ) );
 $db->values[204]  = array( pov( 16, '', '20', '+' ) );
+// 1.4.6: a colour's own picture (option_value.image) and the T-shirt's photos.
+$db->products[0]['image'] = 'catalog/tee.jpg';
+$db->values[202][2]['image'] = 'catalog/colours/red.jpg';
 $catalogue        = new \Sudemi\Catalogue( $db, new FakeConfig() );
 $listings         = $catalogue->productsByIds( array( 20, 21 ) );
 $byId             = array();
@@ -311,6 +317,16 @@ check( 'title and group', 'T-shirt (Size: XL, Colour: Red, Material: Cotton)' ==
 check( 'the product\'s barcode and part number are not sent with a combination', null === $xl['gtin'] && '' === $xl['mpn'] && 'SKU20' === $xl['sku'] );
 check( 'specs start with the chosen values; variantAttributes the same', array( 'name' => 'Size', 'values' => array( 'XL' ) ) === $xl['specs'][0]
 	&& array( 'name' => 'Material', 'value' => 'Cotton' ) === $xl['variantAttributes'][2] );
+check( 'photos: the picked colour\'s own picture first, then the product\'s', array( 'https://shop.example/image/catalog/colours/red.jpg', 'https://shop.example/image/catalog/tee.jpg' ) === $xl['images'], $xl['images'] ?? null );
+check( 'photos: a value without a picture keeps the product\'s', array( 'https://shop.example/image/catalog/tee.jpg' ) === ( $byId['20:1-6-14']['images'] ?? null ), $byId['20:1-6-14']['images'] ?? null );
+$withImage = function ( $image ) {
+	return array( 'option' => array( 'product_option_id' => 1 ), 'value' => array( 'image' => $image ) );
+};
+check( 'photos: pictures of every picked value in order, each once, none from an empty one',
+	array( 'https://s.example/image/a.jpg', 'https://s.example/image/b.jpg', 'https://s.example/image/p.jpg' )
+		=== Options::images( array( $withImage( 'a.jpg' ), $withImage( '' ), $withImage( 'b.jpg' ), $withImage( 'a.jpg' ) ), array( 'https://s.example/image/p.jpg', 'https://s.example/image/b.jpg' ), 'https://s.example' ) );
+check( 'photos: an OpenCart without option_value.image (no image key) is the product\'s photos', array( 'https://s.example/image/p.jpg' )
+	=== Options::images( array( array( 'option' => array(), 'value' => array() ) ), array( 'https://s.example/image/p.jpg' ), 'https://s.example' ) );
 check( 'personalisation: the custom name, optional, its add-on with VAT (20 + 21% = 24.20)',
 	array( array( 'key' => '204', 'label' => 'Custom name', 'required' => false, 'type' => 'text', 'maxLength' => 200, 'priceMinor' => 2420 ) ) === $xl['personalisation'], $xl['personalisation'] ?? null );
 // The extension's own "Price for sudemi buyers" (product form) wins over a value row; never negative.

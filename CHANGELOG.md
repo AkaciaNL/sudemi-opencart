@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.4.6
+
+- **Product photos: option value pictures for listings per option.** A listing for one choice of
+  the required options (for example Colour: Red) now starts with the picture you gave that option
+  value in Catalog > Options (a photo of the red one), followed by the product's own photos, each
+  once. A value without a picture keeps the product's photos, as before.
+- Photos on a CDN or another website are accepted by sudemi now, not only photos on your own
+  domain.
+
 ## 1.4.5
 
 - **New orders are no longer confirmed automatically unless you turn it on** (owner decision

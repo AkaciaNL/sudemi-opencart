@@ -128,9 +128,11 @@ class Catalogue
     /**
      * A page of products, as sudemi stores them.
      *
-     * Images are sent as URLs on this shop's own origin, never as bytes: sudemi fetches them
-     * through its egress guard and refuses anything not on the verified shop, which stops a
-     * payload walking it around an internal network one image at a time.
+     * Images are sent as absolute URLs, never as bytes: the product's main image first, then its
+     * other images; a listing per option combination starts with the picked values' own
+     * pictures (option_value.image, a colour's photo). Any public https address is accepted, a
+     * CDN included: sudemi fetches each one through its egress guard (public addresses only) and
+     * shows it through its own signed image proxy.
      *
      * A product with required options (1.4.3) is one listing per combination of their values
      * (see Options); a product whose required option is typed rather than chosen has none.
@@ -305,6 +307,8 @@ class Catalogue
         $listing['shipping'] = $this->shipping->ratesFor($kilograms, (bool) $row['shipping']);
         $listing['specs'] = array_merge($named, $listing['specs']);
         $listing['variantAttributes'] = Options::attributes($picks);
+        // The picked values' own pictures (a colour's photo) first, then the product's photos.
+        $listing['images'] = Options::images($picks, $listing['images'], $this->storeBase());
 
         return $listing;
     }

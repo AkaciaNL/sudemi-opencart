@@ -179,7 +179,8 @@ class Options
         }
         $values = $this->db->query(
             'SELECT pov.product_option_value_id, pov.product_option_id, pov.option_value_id, pov.quantity,
-                    pov.subtract, pov.price, pov.price_prefix, pov.weight, pov.weight_prefix, ovd.name
+                    pov.subtract, pov.price, pov.price_prefix, pov.weight, pov.weight_prefix, ovd.name'
+                . ($this->hasColumn('option_value', 'image') ? ', ov.image' : '') . '
                FROM ' . $this->prefix . 'product_option_value pov
                LEFT JOIN ' . $this->prefix . 'option_value ov ON (ov.option_value_id = pov.option_value_id)
                LEFT JOIN ' . $this->prefix . 'option_value_description ovd
@@ -339,6 +340,8 @@ class Options
             'subtract' => (bool) (int) $row['subtract'],
             'price' => $signed($row['price'], (string) $row['price_prefix']),
             'weight' => $signed($row['weight'], (string) $row['weight_prefix']),
+            // The value's own picture (a colour's photo), a path under image/; '' without one.
+            'image' => isset($row['image']) ? trim((string) $row['image']) : '',
         ];
     }
 
@@ -801,6 +804,22 @@ class Options
         }
 
         return $out;
+    }
+
+    /**
+     * The photos of a listing: the pictures of its picked values (a colour's photo) first, as
+     * <storeBase>/image/<path>, then the product's own photos; each once.
+     */
+    public static function images(array $picks, array $productImages, $base)
+    {
+        $images = [];
+        foreach ($picks as $pick) {
+            if (isset($pick['value']['image']) && $pick['value']['image'] !== '') {
+                $images[] = $base . '/image/' . $pick['value']['image'];
+            }
+        }
+
+        return array_values(array_unique(array_merge($images, $productImages)));
     }
 
     /** The picks per option name: [['name' => 'Size', 'values' => ['M']], ...], in order. */
