@@ -6,6 +6,8 @@
   file option or a required option without values (not listed), and a product with more option
   combinations than sudemi lists: each catalogue push now tells sudemi (issues), and the extension
   page lists them with what sudemi refused, in plain words, in all twelve languages.
+- **Fix (money): a product or option combination without a price is never sent** (never sold
+  free); it is reported as not listed.
 - **New per-product setting "Accept returns of personalised items"** (product form, Data tab, under
   the right of withdrawal; off by default). An item made with a text the buyer typed is not
   returnable by default on sudemi, as EU law allows (Directive 2011/83/EU, art. 16(c)), and buyers

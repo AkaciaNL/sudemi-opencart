@@ -237,7 +237,9 @@ class Catalogue
                 }
             }
             if (!Options::hasOptions($plan)) {
-                $products[] = Withdrawal::apply($listing, $exclusion);
+                if ($this->priced($listing)) {
+                    $products[] = Withdrawal::apply($listing, $exclusion);
+                }
                 continue;
             }
             if (Options::count($plan) > Options::MAX_COMBINATIONS) {
@@ -247,11 +249,26 @@ class Catalogue
                     ['combinations' => Options::count($plan), 'listed' => Options::MAX_COMBINATIONS]);
             }
             foreach (Options::combinations($plan) as $combo) {
-                $products[] = Withdrawal::apply($this->combination($listing, $row, $plan, $combo), $exclusion);
+                $item = $this->combination($listing, $row, $plan, $combo);
+                if ($this->priced($item)) {
+                    $products[] = Withdrawal::apply($item, $exclusion);
+                }
             }
         }
 
         return $products;
+    }
+
+    /** Never sold without a price (never free): a listing without one is not sent, and reported. */
+    private function priced(array $listing)
+    {
+        if (isset($listing['priceMinor']) && (int) $listing['priceMinor'] >= 1) {
+            return true;
+        }
+        $this->issues[$listing['externalId'] . '|' . Issues::MISSING_PRICE] = Issues::make($listing['externalId'], Issues::MISSING_PRICE, 'error', 'price',
+            'Not listed: the product has no price.');
+
+        return false;
     }
 
     /**
