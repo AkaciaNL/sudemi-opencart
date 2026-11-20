@@ -234,7 +234,7 @@ class Sync
                 if ($result === null || $result['status'] !== 200) {
                     return $this->failed($result, 'A batch failed');
                 }
-                Issues::remember($this->store, $chunk, $issues, isset($result['body']) ? $result['body'] : null, $fresh);
+                $this->rememberIssues($chunk, $issues, isset($result['body']) ? $result['body'] : null, $fresh);
                 $fresh = false;
             }
             // Nothing listed on this page but something left out: sent on its own (best effort).
@@ -409,11 +409,11 @@ class Sync
         return $out;
     }
 
-    /** Says in the log which products have more option combinations than are sent. */
     /**
-     * Issues found while building listings that were all left out (a product not listed): sent on
-     * their own, without products, which sudemi takes from 2026-11-19. Best effort: a core that
-     * refuses a push without products changes nothing here, and the shop sees them all the same.
+     * Issues of a full sync page where nothing was listed (every product left out): sent with the
+     * sync, without products, which sudemi takes from 2026-11-19 (one request per page, from the
+     * sync, never while a product is saved). On failure they wait in the queue (Issues::queue)
+     * for the next push or the heartbeat.
      */
     private function sendLeftIssues($syncId, $fresh = false)
     {
@@ -421,12 +421,32 @@ class Sync
         if (empty($left)) {
             return;
         }
-        $body = ['products' => []];
-        if ($syncId !== null) {
-            $body['syncId'] = $syncId;
+        $answer = $this->client->postSigned('/integration/v1/products', Issues::attach(['syncId' => $syncId, 'products' => []], $left));
+        if ($answer === null || $answer['status'] !== 200) {
+            if ($fresh) {
+                $this->rememberIssues([], [], null, true);
+            }
+            $this->queueIssues($left);
+
+            return;
         }
-        $answer = $this->client->postSigned('/integration/v1/products', Issues::attach($body, $left));
-        Issues::remember($this->store, [], $left, $answer !== null && $answer['status'] === 200 && isset($answer['body']) ? $answer['body'] : null, $fresh);
+        $this->rememberIssues([], $left, isset($answer['body']) ? $answer['body'] : null, $fresh);
+    }
+
+    /** Issues::remember, with a failed save in the log (the page keeps the list it had). */
+    private function rememberIssues(array $listings, array $issues, $answer, $fresh = false)
+    {
+        if (!Issues::remember($this->store, $listings, $issues, $answer, $fresh)) {
+            $this->logger->warn('Catalogue issues could not be saved; the list on the extension page was kept as it was.');
+        }
+    }
+
+    /** Issues::queue, with a failed save in the log (the next full sync sends them again). */
+    private function queueIssues(array $issues)
+    {
+        if (!Issues::queue($this->store, $issues)) {
+            $this->logger->warn('Waiting catalogue issues could not be saved; the next full sync sends them again.');
+        }
     }
 
     /** The catalogue's issues (an older catalogue double in the tests has none). */
@@ -529,13 +549,16 @@ class Sync
             }
         }
         $this->catalogue->rememberListed(array_filter($now));
+        // Issues waiting for this family are stale now: its current ones replace them.
+        Issues::unqueue($this->store, array_merge(array_map('strval', $members), array_map('strval', array_keys($listings))));
         if (!empty($listings)) {
             $this->pushListings(array_values($listings), $queue, $heartbeat);
 
             return;
         }
-        // Not listed because of something left out: sudemi and the shop are told why.
-        $this->sendLeftIssues(null);
+        // Not listed because of something left out: sudemi and the shop are told why, with the
+        // next push or by the heartbeat, never a request of its own while saving.
+        $this->queueIssues($this->takeIssues());
 
         $update = $this->catalogue->priceAndStock($family);
         if ($update === null) {
@@ -584,13 +607,19 @@ class Sync
                     $body['catalogueRevision'] = $revision;
                 }
             }
-            // What was left out of this product goes with its first request (Issues).
-            $issues = $i === 0 ? $this->takeIssues() : [];
+            // What was left out of this product goes with its first request (Issues), and with
+            // it the issues still waiting from earlier saves: no request of their own.
+            $own = $i === 0 ? $this->takeIssues() : [];
+            $waiting = $i === 0 ? Issues::queued($this->store, max(0, Issues::MAX_PER_REQUEST - count($own))) : [];
+            $issues = array_merge($own, Issues::flat($waiting));
             $response = $this->client->postSigned('/integration/v1/products', Issues::attach($body, $issues));
             if ($response !== null && $response['status'] === 200) {
-                Issues::remember($this->store, $batch, $issues, isset($response['body']) ? $response['body'] : null);
+                Issues::sent($this->store, $waiting);
+                $this->rememberIssues($batch, $issues, isset($response['body']) ? $response['body'] : null);
             }
             if ($response === null || $response['status'] !== 200) {
+                // Retried with the next push or by the heartbeat.
+                $this->queueIssues($own);
                 $clean = false;
                 foreach ($batch as $listing) {
                     // With the sale and availability: a price update without the sale fields

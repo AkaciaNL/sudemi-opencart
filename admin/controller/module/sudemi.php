@@ -134,6 +134,8 @@ class Sudemi extends \Opencart\System\Engine\Controller
         // Price changes that never got through go with the credential that would have signed
         // them: leaving them would mean a reconnect pushing stale prices.
         $sudemi['queue']->forget();
+        // Catalogue issues waiting to be sent go with it too.
+        $sudemi['store']->delete(\Sudemi\Issues::SETTING_QUEUE);
         $sudemi['store']->delete(\Sudemi\Sync::SETTING_CATEGORIES);
         // A sync in progress belongs to the old connection.
         $sudemi['store']->delete(\Sudemi\Sync::SETTING_STATE);

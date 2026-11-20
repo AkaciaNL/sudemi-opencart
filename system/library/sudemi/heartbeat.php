@@ -23,6 +23,8 @@
 
 namespace Sudemi;
 
+require_once __DIR__ . '/issues.php';
+
 require_once __DIR__ . '/withdrawal.php';
 require_once __DIR__ . '/requests.php';
 require_once __DIR__ . '/changes.php';
@@ -85,6 +87,8 @@ class Heartbeat
         }
 
         $drained = $this->queue->drain();
+        // Catalogue issues no listing push carried (a product not listed): one request at most.
+        Issues::drain($this->store, $this->client);
 
         $beat = [
             'catalogueRevision' => $this->catalogue->revision($this->changes()),
