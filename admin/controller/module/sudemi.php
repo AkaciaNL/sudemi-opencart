@@ -136,6 +136,7 @@ class Sudemi extends \Opencart\System\Engine\Controller
         $sudemi['queue']->forget();
         // Catalogue issues waiting to be sent go with it too.
         $sudemi['store']->delete(\Sudemi\Issues::SETTING_QUEUE);
+        $sudemi['store']->delete(\Sudemi\Orders::SETTING_WAITING);
         $sudemi['store']->delete(\Sudemi\Sync::SETTING_CATEGORIES);
         // A sync in progress belongs to the old connection.
         $sudemi['store']->delete(\Sudemi\Sync::SETTING_STATE);
@@ -1807,6 +1808,23 @@ class Sudemi extends \Opencart\System\Engine\Controller
         } catch (\Throwable $e) {
             // The header must render even when sudemi or the database is unreachable.
         }
+        // Orders waiting for an answer (1.4.5), each with the date to answer by.
+        $waiting = [];
+        try {
+            if (isset($sudemi) && $sudemi['client']->isConnected()) {
+                foreach (array_slice(\Sudemi\Orders::waitingIn($sudemi['store']), 0, 10) as $order) {
+                    $currency = (string) $order['currency'];
+                    $places = $currency !== '' ? \Sudemi\Currency::decimals($currency) : 2;
+                    $waiting[] = sprintf($this->language->get('text_waiting_line'),
+                        (string) $order['items'] !== '' ? $order['items'] : $order['order_id'],
+                        number_format((int) $order['total_minor'] / pow(10, $places), $places, '.', '') . ' ' . $currency,
+                        $this->supportDate((string) $order['respond_by']));
+                }
+                $waitingCount = count(\Sudemi\Orders::waitingIn($sudemi['store']));
+            }
+        } catch (\Throwable $e) {
+            $waiting = [];
+        }
         $banner = null;
         try {
             $banner = isset($sudemi) && $sudemi['client']->isConnected() ? $this->checkoutBanner($sudemi) : null;
@@ -1822,6 +1840,11 @@ class Sudemi extends \Opencart\System\Engine\Controller
             'brand_tagline' => $this->language->get('text_nav_tagline'),
             'nav_label' => $this->language->get('text_nav_label'),
             'checkout' => $banner,
+            'waiting' => $waiting,
+            'waiting_title' => sprintf($this->language->get('text_waiting_title'), isset($waitingCount) ? $waitingCount : count($waiting)),
+            'waiting_note' => $this->language->get('text_waiting_note'),
+            'waiting_button' => $this->language->get('button_waiting_answer'),
+            'waiting_href' => 'index.php?route=extension/sudemi/module/sudemi.orders&user_token=' . $token . '&status=AWAITING_SELLER',
             'checkout_support_href' => 'index.php?route=extension/sudemi/module/sudemi.support&user_token=' . $token,
             'text_checkout_shop_title' => $this->language->get('text_checkout_shop_title'),
             'text_checkout_shop_text' => $this->language->get('text_checkout_shop_text'),

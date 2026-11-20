@@ -222,7 +222,17 @@ class Event extends \Opencart\System\Engine\Controller
                 ['text_menu_support', 'extension/sudemi/module/sudemi.support'], ['text_menu_settings', 'extension/sudemi/module/sudemi']] as $item) {
                 $children[] = ['name' => $label($item[0]), 'href' => $this->url->link($item[1], $token), 'children' => []];
             }
-            $data['menus'][] = ['id' => 'menu-sudemi', 'icon' => 'fa-solid fa-store', 'name' => 'sudemi', 'href' => '', 'children' => $children];
+            // How many orders from sudemi wait for an answer (1.4.5): on every admin page.
+            $waiting = 0;
+            try {
+                require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/store.php';
+                $list = json_decode((string) (new \Sudemi\SettingStore($this->db))->read('sudemi_waiting_orders'), true);
+                $waiting = is_array($list) ? count($list) : 0;
+            } catch (\Throwable $e) {
+                $waiting = 0;
+            }
+            $name = 'sudemi' . ($waiting > 0 ? ' <span class="badge bg-warning text-dark" id="sudemi-waiting-badge">' . (int) $waiting . '</span>' : '');
+            $data['menus'][] = ['id' => 'menu-sudemi', 'icon' => 'fa-solid fa-store', 'name' => $name, 'href' => '', 'children' => $children];
         } catch (\Throwable $e) {
             return;
         }

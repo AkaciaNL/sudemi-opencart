@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.4.5
+
+- **New orders are no longer confirmed automatically unless you turn it on** (owner decision
+  2026-11-20). "Confirm new orders automatically" is now off for a shop that never saved it, so
+  each new order waits for your answer and nothing is accepted before you have checked it. A shop
+  that turned it on keeps it on.
+- **The admin shows the orders from sudemi waiting for your answer**: a count next to sudemi in the
+  menu, and on the extension page each order with what was ordered, the total and the date to
+  answer by. An order not answered by then is released: the buyer is charged nothing and the order
+  is cancelled. sudemi also e-mails you about each new order. The texts are in all twelve
+  languages.
+
 ## 1.4.4
 
 - **What the extension leaves out is reported, to sudemi and to you.** A product with a required

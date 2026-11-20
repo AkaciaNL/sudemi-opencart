@@ -156,6 +156,8 @@ function shop( $currency, array $currencies ) {
 	$client         = new FakeClient( $store );
 	$logger         = new \Sudemi\Logger( $store );
 	$orders         = new \Sudemi\Orders( $db, new FakeConfig( $currency ), $client, $logger, $store );
+	// These cases are about answering orders automatically: switched on, as a shop does (off by default since 1.4.5).
+	$orders->setAutoConfirm( true );
 	return array( $orders, $db, $client, $logger );
 }
 function order( $currency, $unit, $shipping, $quantity = 2 ) {

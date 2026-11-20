@@ -83,6 +83,13 @@
 <nav class="sudemi-tabs" aria-label="{{ nav_label }}" id="sudemi-tabs">
   {% for t in tabs %}<a href="{{ t.href }}" class="{% if t.active %}active{% endif %}" data-tab="{{ t.key }}"{% if t.active %} aria-current="page"{% endif %}><i class="{{ t.icon }}"></i>{{ t.label }}</a>{% endfor %}
 </nav>
+{% if waiting %}
+<div class="alert alert-warning" id="sudemi-waiting-orders" role="alert">
+  <strong>{{ waiting_title }}</strong>
+  <ul class="mb-2">{% for line in waiting %}<li>{{ line }}</li>{% endfor %}</ul>
+  <div>{{ waiting_note }} <a class="btn btn-sm btn-primary" href="{{ waiting_href }}">{{ waiting_button }}</a></div>
+</div>
+{% endif %}
 {% if checkout %}
 {% if checkout.mode == 'SHOP' %}
 <div class="sudemi-checkout sudemi-checkout-shop" id="sudemi-checkout" data-sudemi-checkout="SHOP" data-reason="{{ checkout.reason }}" role="alert">

@@ -170,6 +170,8 @@ function shop( $status = 0, $suffix = '', $age = 60 ) {
 	$store        = new ArrayStore();
 	$client       = new FakeClient( $store );
 	$orders       = new \Sudemi\Orders( $db, new FakeConfig(), $client, new \Sudemi\Logger( $store ), $store );
+	// These cases are about answering orders automatically: switched on, as a shop does (off by default since 1.4.5).
+	$orders->setAutoConfirm( true );
 	return array( $orders, $db, $client, $store );
 }
 function pending( $id = O1 ) {
@@ -394,6 +396,29 @@ foreach ( array( $long, $word, str_repeat( 'x ', 32 ), 'A' ) as $name ) {
 	list( $f, $l ) = $split( $name );
 	check( 'splitName: both halves fit 32 characters (' . mb_substr( $name, 0, 12 ) . ')', mb_strlen( $f ) <= 32 && mb_strlen( $l ) <= 32 && '' !== $f );
 }
+
+// 1.4.5 (owner 2026-11-20): automatic confirmation is off unless the shop turned it on; the orders
+// waiting for an answer are kept for the admin (menu count, list with dates).
+$fresh_store = new ArrayStore();
+$fresh       = new \Sudemi\Orders( new FakeDb(), new FakeConfig(), new FakeClient( $fresh_store ), new \Sudemi\Logger( $fresh_store ), $fresh_store );
+check( 'auto-confirm: a shop that never saved the setting answers by hand', false === $fresh->autoConfirm() );
+$fresh->setAutoConfirm( true );
+check( 'auto-confirm: on when the shop turned it on', true === $fresh->autoConfirm() );
+$fresh->setAutoConfirm( false );
+check( 'auto-confirm: off when the shop turned it off', false === $fresh->autoConfirm() );
+$wait = \Sudemi\Orders::waitingEntries( array(
+	array( 'order_id' => 'b', 'respond_by' => '2026-11-22T10:00:00Z', 'total_minor' => 2490, 'currency_code' => 'EUR', 'lines' => array( array( 'title' => 'Mug', 'quantity' => 2 ) ) ),
+	array( 'order_id' => 'a', 'respond_by' => '2026-11-21T09:00:00Z', 'total_minor' => 900, 'currency_code' => 'PLN', 'lines' => array( array( 'title' => 'Tea', 'quantity' => 1 ) ) ),
+	array( 'respond_by' => 'x' ),
+) );
+check( 'waiting orders: soonest deadline first, with items and total', 2 === count( $wait ) && 'a' === $wait[0]['order_id'] && '1 x Tea' === $wait[0]['items'] && 2490 === $wait[1]['total_minor'] );
+$fresh->rememberWaiting( array( array( 'order_id' => 'c', 'respond_by' => '2026-11-21T09:00:00Z' ) ) );
+check( 'waiting orders kept while answering by hand', 1 === count( \Sudemi\Orders::waitingIn( $fresh_store ) ) );
+$fresh->rememberWaiting( array() );
+check( 'a beat without waiting orders empties the list', array() === \Sudemi\Orders::waitingIn( $fresh_store ) );
+$fresh->setAutoConfirm( true );
+$fresh->rememberWaiting( array( array( 'order_id' => 'c' ) ) );
+check( 'with automatic confirmation nothing is kept', array() === \Sudemi\Orders::waitingIn( $fresh_store ) );
 
 echo $failures ? "\n$failures check(s) failed\n" : "\nall checks passed\n";
 exit( $failures ? 1 : 0 );

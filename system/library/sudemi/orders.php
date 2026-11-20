@@ -2100,8 +2100,17 @@ class Orders
     // and what sudemi answers (the order page, the change feed) is what this shop's copy shows.
     // ------------------------------------------------------------------------------------------
 
-    /** Whether pending orders are answered automatically (the default, as before 1.3.0). */
+    /**
+     * Whether pending orders are answered automatically. Off unless the shop turned it on
+     * (1.4.5, owner 2026-11-20): a shop that never saved the setting answers each order by hand.
+     */
     const SETTING_AUTO_CONFIRM = 'sudemi_auto_confirm';
+
+    /** The orders waiting for the shop's answer, from the last heartbeat (JSON, for the admin). */
+    const SETTING_WAITING = 'sudemi_waiting_orders';
+
+    /** The most waiting orders kept. */
+    const MAX_WAITING = 50;
 
     /** The statuses an order accepted elsewhere (the portal) is booked here in. */
     const IMPORT_STATUSES = array('ACCEPTED', 'PAID');
@@ -2109,11 +2118,72 @@ class Orders
     public function autoConfirm()
     {
         if ($this->store === null) {
-            return true;
+            return false;
         }
-        $value = $this->store->read(self::SETTING_AUTO_CONFIRM);
 
-        return $value === null || $value === '' || (string) $value === '1';
+        return (string) $this->store->read(self::SETTING_AUTO_CONFIRM) === '1';
+    }
+
+    /**
+     * Keeps the orders waiting for an answer (the heartbeat's full pending list, so the copy is
+     * replaced, and emptied when none wait). Only while orders are confirmed by hand.
+     */
+    public function rememberWaiting($pending)
+    {
+        if ($this->store === null) {
+            return;
+        }
+        $list = $this->autoConfirm() ? [] : self::waitingEntries(is_array($pending) ? $pending : []);
+        if (empty($list)) {
+            $this->store->delete(self::SETTING_WAITING);
+
+            return;
+        }
+        $json = json_encode($list, JSON_INVALID_UTF8_SUBSTITUTE);
+        if ($json !== false) {
+            $this->store->write(self::SETTING_WAITING, $json);
+        }
+    }
+
+    /** The waiting orders kept: order_id, respond_by, total_minor, currency, items. Pure. */
+    public static function waitingEntries(array $pending)
+    {
+        $out = [];
+        foreach ($pending as $order) {
+            if (!is_array($order) || empty($order['order_id'])) {
+                continue;
+            }
+            $items = [];
+            foreach (isset($order['lines']) && is_array($order['lines']) ? $order['lines'] : [] as $line) {
+                if (is_array($line) && isset($line['title'])) {
+                    $items[] = (isset($line['quantity']) ? (int) $line['quantity'] : 1) . ' x ' . trim(strip_tags((string) $line['title']));
+                }
+            }
+            $out[] = [
+                'order_id' => (string) $order['order_id'],
+                'respond_by' => isset($order['respond_by']) ? (string) $order['respond_by'] : '',
+                'total_minor' => isset($order['total_minor']) ? (int) $order['total_minor'] : 0,
+                'currency' => isset($order['currency_code']) ? (string) $order['currency_code'] : '',
+                'items' => implode(', ', $items),
+            ];
+            if (count($out) >= self::MAX_WAITING) {
+                break;
+            }
+        }
+        // Soonest deadline first.
+        usort($out, function ($a, $b) {
+            return strcmp($a['respond_by'], $b['respond_by']);
+        });
+
+        return $out;
+    }
+
+    /** The waiting orders kept by rememberWaiting(), read from a setting store. */
+    public static function waitingIn($store)
+    {
+        $list = $store === null ? null : json_decode((string) $store->read(self::SETTING_WAITING), true);
+
+        return is_array($list) ? $list : [];
     }
 
     public function setAutoConfirm($on)

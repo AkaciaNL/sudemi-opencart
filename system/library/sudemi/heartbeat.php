@@ -178,6 +178,10 @@ class Heartbeat
         // Orders whose buyers are waiting on an answer from this shop. Before the full sync
         // below, because each one is money held on someone's card against a deadline, while a
         // catalogue disagreement costs nothing by waiting another five minutes.
+        // The full list on every beat: kept for the admin while orders are answered by hand.
+        if ($this->orders !== null) {
+            $this->orders->rememberWaiting(isset($body['pending_orders']) ? $body['pending_orders'] : []);
+        }
         if (!empty($body['pending_orders']) && $this->orders !== null) {
             $this->orders->handlePending($body['pending_orders']);
         }
