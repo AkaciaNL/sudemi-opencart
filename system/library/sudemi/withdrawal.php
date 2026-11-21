@@ -25,7 +25,7 @@ class Withdrawal
 {
     const FIELD = 'sudemi_withdrawal_exclusion';
     const SETTING_SCHEMA = 'sudemi_schema_version';
-    const SCHEMA_VERSION = '1.4.4-1'; // 1.4.4: accept returns of personalised items, per product
+    const SCHEMA_VERSION = '1.4.7-1'; // 1.4.7: shipping rules sent when shipping settings change
 
     /**
      * Owner decision 2 (2026-11-19): an item made with a text the buyer typed is not returnable by
@@ -50,6 +50,39 @@ class Withdrawal
             'sudemi: tracking code and sudemi order on the order page'],
         ['sudemi_menu', 'admin/view/common/column_left/before', 'extension/sudemi/event.menu',
             'sudemi: orders and shipping in the admin menu'],
+        // 1.4.7: the shop's own shipping rules are sent again (by the cron entry) when a shipping
+        // method's settings, the store settings (currency, weight class, country), a geo zone, a tax
+        // or a weight class change, or a shipping extension is installed or removed.
+        ['sudemi_ship_setting', 'admin/model/setting/setting.editSetting/after', 'extension/sudemi/event.shippingChanged',
+            'sudemi: send the shop\'s shipping rules again'],
+        ['sudemi_ship_setting_del', 'admin/model/setting/setting.deleteSetting/after', 'extension/sudemi/event.shippingChanged',
+            'sudemi: send the shop\'s shipping rules again'],
+        ['sudemi_ship_value', 'admin/model/setting/setting.editValue/after', 'extension/sudemi/event.shippingChanged',
+            'sudemi: send the shop\'s shipping rules again'],
+        ['sudemi_ship_ext_add', 'admin/model/setting/extension.install/after', 'extension/sudemi/event.shippingChanged',
+            'sudemi: send the shop\'s shipping rules again'],
+        ['sudemi_ship_ext_del', 'admin/model/setting/extension.uninstall/after', 'extension/sudemi/event.shippingChanged',
+            'sudemi: send the shop\'s shipping rules again'],
+        ['sudemi_ship_geo_add', 'admin/model/localisation/geo_zone.addGeoZone/after', 'extension/sudemi/event.shippingChanged',
+            'sudemi: send the shop\'s shipping rules again'],
+        ['sudemi_ship_geo_edit', 'admin/model/localisation/geo_zone.editGeoZone/after', 'extension/sudemi/event.shippingChanged',
+            'sudemi: send the shop\'s shipping rules again'],
+        ['sudemi_ship_geo_del', 'admin/model/localisation/geo_zone.deleteGeoZone/after', 'extension/sudemi/event.shippingChanged',
+            'sudemi: send the shop\'s shipping rules again'],
+        ['sudemi_ship_tax_rate', 'admin/model/localisation/tax_rate.editTaxRate/after', 'extension/sudemi/event.shippingChanged',
+            'sudemi: send the shop\'s shipping rules again'],
+        ['sudemi_ship_tax_rate_add', 'admin/model/localisation/tax_rate.addTaxRate/after', 'extension/sudemi/event.shippingChanged',
+            'sudemi: send the shop\'s shipping rules again'],
+        ['sudemi_ship_tax_rate_del', 'admin/model/localisation/tax_rate.deleteTaxRate/after', 'extension/sudemi/event.shippingChanged',
+            'sudemi: send the shop\'s shipping rules again'],
+        ['sudemi_ship_tax_class', 'admin/model/localisation/tax_class.editTaxClass/after', 'extension/sudemi/event.shippingChanged',
+            'sudemi: send the shop\'s shipping rules again'],
+        ['sudemi_ship_tax_class_del', 'admin/model/localisation/tax_class.deleteTaxClass/after', 'extension/sudemi/event.shippingChanged',
+            'sudemi: send the shop\'s shipping rules again'],
+        ['sudemi_ship_weight', 'admin/model/localisation/weight_class.editWeightClass/after', 'extension/sudemi/event.shippingChanged',
+            'sudemi: send the shop\'s shipping rules again'],
+        ['sudemi_ship_weight_del', 'admin/model/localisation/weight_class.deleteWeightClass/after', 'extension/sudemi/event.shippingChanged',
+            'sudemi: send the shop\'s shipping rules again'],
     ];
 
     private $db;

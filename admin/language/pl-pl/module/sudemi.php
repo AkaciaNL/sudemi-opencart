@@ -99,6 +99,10 @@ $_['text_issue_too_many_required_texts'] = 'Produkt wymaga od kupującego więce
 $_['text_issue_too_many_optional_texts'] = 'sudemi pyta kupującego o najwyżej pięć tekstów lub wyborów; opcjonalny nie jest zadawany.';
 $_['text_issue_required_file_upload'] = 'Wymagana opcja to plik lub tekst, którego kupujący nie może podać przez asystenta AI, więc produkt nie jest wystawiony.';
 $_['text_issue_option_without_values'] = 'Wymagana opcja nie ma wartości do wyboru, więc produkt nie jest wystawiony.';
+$_['text_issue_shipping'] = 'Wysyłka (cały sklep)';
+$_['text_issue_shipping_rule_approximated'] = 'Ustawienia wysyłki OpenCart nie da się dokładnie przenieść do sudemi; użyto najwyższej ceny albo kraj nie jest oferowany. Ustaw cenę dla tych krajów na swojej stronie Wysyłka w sudemi.';
+$_['text_issue_shipping_rate_calculated'] = 'Rozszerzenie wysyłki pobiera ceny na żywo od przewoźnika, których sudemi nie może odczytać. Ustaw cenę dla tych krajów na swojej stronie Wysyłka w sudemi.';
+$_['text_issue_shipping_rule_ignored'] = 'sudemi nie przyjęło reguły wysyłki dla tego kraju; zamiast niej naliczana jest tam najwyższa cena wysyłki pojedynczego produktu.';
 $_['entry_option_price'] = 'Cena dla kupujących w sudemi';
 $_['help_option_price'] = 'Doliczana do ceny artykułu, gdy kupujący w sudemi wypełni to pole, bez podatku jak cena produktu (na przykład 20.00 za imię do nadruku). Kasa Twojego sklepu jej nie pobiera: OpenCart nie ma ceny dla tego rodzaju opcji.';
 

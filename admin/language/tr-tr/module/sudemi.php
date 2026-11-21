@@ -99,6 +99,10 @@ $_['text_issue_too_many_required_texts'] = 'Ürün alıcıdan beşten fazla meti
 $_['text_issue_too_many_optional_texts'] = 'sudemi alıcıya en fazla beş metin veya seçim sorar; isteğe bağlı biri sorulmuyor.';
 $_['text_issue_required_file_upload'] = 'Zorunlu bir seçenek, alıcının bir yapay zeka asistanı üzerinden veremeyeceği bir dosya veya metin; bu yüzden ürün listelenmiyor.';
 $_['text_issue_option_without_values'] = 'Zorunlu bir seçeneğin seçilecek değeri yok, bu yüzden ürün listelenmiyor.';
+$_['text_issue_shipping'] = 'Kargo (tüm mağaza)';
+$_['text_issue_shipping_rule_approximated'] = 'Bir OpenCart kargo ayarı sudemi\'ye tam olarak aktarılamıyor; en yüksek fiyat kullanılıyor ya da ülke sunulmuyor. Bu ülkelerin fiyatını sudemi Kargo sayfanızda belirleyin.';
+$_['text_issue_shipping_rate_calculated'] = 'Bir kargo eklentisi fiyatları kargo firmasından anlık olarak alıyor; sudemi bunları okuyamaz. Bu ülkelerin fiyatını sudemi Kargo sayfanızda belirleyin.';
+$_['text_issue_shipping_rule_ignored'] = 'sudemi bu ülkenin kargo kuralını almadı; orada bunun yerine tek bir ürünün en yüksek kargo fiyatı alınır.';
 $_['entry_option_price'] = 'sudemi alıcıları için fiyat';
 $_['help_option_price'] = 'sudemi\'deki bir alıcı bunu doldurduğunda ürünün fiyatına eklenir, ürün fiyatı gibi vergisiz (örneğin baskı için bir isim için 20.00). Kendi mağazanızın ödeme sayfası bunu almaz: OpenCart\'ta bu tür bir seçeneğin fiyatı yoktur.';
 

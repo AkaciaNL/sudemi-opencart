@@ -99,6 +99,10 @@ $_['text_issue_too_many_required_texts'] = '该商品需要买家填写或选择
 $_['text_issue_too_many_optional_texts'] = 'sudemi 最多向买家询问五项文字或选择；一个可选项不会被询问。';
 $_['text_issue_required_file_upload'] = '某个必填选项是买家无法通过 AI 助手提供的文件或文字，因此该商品不上架。';
 $_['text_issue_option_without_values'] = '某个必填选项没有可选值，因此该商品不上架。';
+$_['text_issue_shipping'] = '配送（整个店铺）';
+$_['text_issue_shipping_rule_approximated'] = '某项 OpenCart 配送设置无法准确复制到 sudemi；将使用最高价格，或不向该国家提供。请在 sudemi 的配送页面为这些国家设置价格。';
+$_['text_issue_shipping_rate_calculated'] = '某个配送扩展向承运商实时查询价格，sudemi 无法读取。请在 sudemi 的配送页面为这些国家设置价格。';
+$_['text_issue_shipping_rule_ignored'] = 'sudemi 未接受该国家的配送规则；该国家改为收取单件商品的最高运费。';
 $_['entry_option_price'] = 'sudemi 买家价格';
 $_['help_option_price'] = '当 sudemi 上的买家填写此项时加到商品价格上，与商品价格一样不含税（例如印名字收 20.00）。您自己商店的结账不收此费用：OpenCart 不支持这类选项的价格。';
 

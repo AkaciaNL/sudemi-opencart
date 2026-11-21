@@ -131,6 +131,7 @@ class Sudemi extends \Opencart\System\Engine\Controller
         $sudemi['keys']->forget();
         $sudemi['pairing']->forget();
         $sudemi['heartbeat']->forget();
+        $sudemi['rules']->forget();
         // Price changes that never got through go with the credential that would have signed
         // them: leaving them would mean a reconnect pushing stale prices.
         $sudemi['queue']->forget();
@@ -2020,7 +2021,7 @@ class Sudemi extends \Opencart\System\Engine\Controller
             // (see Pairing::pollInBackground), for shops with no cron entry.
             $connected = $sudemi['client']->isConnected();
             $collect = !$connected && $sudemi['pairing']->pending();
-            if (!$collect && (!$connected || (!$sudemi['heartbeat']->isDue() && !$sudemi['sync']->pending()))) {
+            if (!$collect && (!$connected || (!$sudemi['heartbeat']->isDue() && !$sudemi['sync']->pending() && !$sudemi['rules']->due()))) {
                 return;
             }
         } catch (\Throwable $e) {
@@ -2049,6 +2050,10 @@ class Sudemi extends \Opencart\System\Engine\Controller
                     $sudemi['heartbeat']->run();
                 }
                 $sudemi['sync']->work(\Sudemi\Sync::STEP_PRODUCTS, \Sudemi\Sync::STEP_SECONDS);
+                // Only once no full sync is waiting: the commit asks for the rules again anyway.
+                if (!$sudemi['sync']->pending()) {
+                    $sudemi['rules']->sendIfDue();
+                }
             } catch (\Throwable $e) {
                 $sudemi['logger']->warn('Background step failed: ' . $e->getMessage());
             }
@@ -2184,6 +2189,7 @@ class Sudemi extends \Opencart\System\Engine\Controller
         require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/support.php';
         require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/requests.php';
         require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/changes.php';
+        require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/shipping_rules.php';
 
         $this->load->model('setting/setting');
         $store = new \Sudemi\SettingStore($this->db);
@@ -2207,8 +2213,13 @@ class Sudemi extends \Opencart\System\Engine\Controller
         $support = new \Sudemi\Support($client);
         $requests = new \Sudemi\Requests($store, $client);
 
+        $shipping = new \Sudemi\Shipping($this->db, $this->config);
+        $rules = new \Sudemi\ShippingRulesSender($store, $client, $logger, function () use ($shipping) {
+            return $shipping->rulesPayload();
+        });
+
         return compact('store', 'logger', 'keys', 'client', 'pairing', 'catalogue', 'sync',
-            'queue', 'orders', 'heartbeat', 'withdrawal', 'support', 'requests');
+            'queue', 'orders', 'heartbeat', 'withdrawal', 'support', 'requests', 'rules');
     }
 
     /**
@@ -2235,6 +2246,32 @@ class Sudemi extends \Opencart\System\Engine\Controller
                 'status' => $issue['severity'] === 'error' ? $text['text_issue_not_listed'] : $text['text_issue_partly'],
                 'what' => isset($text[$key]) ? $text[$key] : $text['text_issue_other'],
                 'details' => ((string) $issue['field'] !== '' ? $issue['field'] . ': ' : '') . (string) $issue['message'],
+            ];
+        }
+        // The shop's shipping rules (1.4.7): what could not be copied, and what sudemi did not take.
+        require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/shipping_rules.php';
+        $rules = (new \Sudemi\ShippingRulesSender($store, null, null, function () { return []; }))->state();
+        foreach (isset($rules['issues']) && is_array($rules['issues']) ? $rules['issues'] : [] as $issue) {
+            $code = isset($issue['code']) ? (string) $issue['code'] : '';
+            $countries = isset($issue['details']['countries']) && is_array($issue['details']['countries']) ? $issue['details']['countries'] : [];
+            $rows[] = [
+                'product_id' => 0,
+                'product' => $text['text_issue_shipping'],
+                'status' => $text['text_issue_partly'],
+                'what' => isset($text['text_issue_' . $code]) ? $text['text_issue_' . $code] : $text['text_issue_other'],
+                'details' => implode(', ', array_map('strval', $countries)) . ': ' . (isset($issue['message']) ? (string) $issue['message'] : ''),
+            ];
+        }
+        foreach (isset($rules['ignored']) && is_array($rules['ignored']) ? $rules['ignored'] : [] as $entry) {
+            if (!is_array($entry)) {
+                continue;
+            }
+            $rows[] = [
+                'product_id' => 0,
+                'product' => $text['text_issue_shipping'],
+                'status' => $text['text_issue_partly'],
+                'what' => $text['text_issue_shipping_rule_ignored'],
+                'details' => (isset($entry['country']) ? (string) $entry['country'] : '') . ': ' . (isset($entry['reason']) ? (string) $entry['reason'] : ''),
             ];
         }
 

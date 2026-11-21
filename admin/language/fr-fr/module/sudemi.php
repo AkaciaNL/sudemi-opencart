@@ -99,6 +99,10 @@ $_['text_issue_too_many_required_texts'] = 'Le produit demande plus de cinq text
 $_['text_issue_too_many_optional_texts'] = 'sudemi demande à l\'acheteur au plus cinq textes ou choix ; un facultatif n\'est pas demandé.';
 $_['text_issue_required_file_upload'] = 'Une option obligatoire est un fichier ou un texte que l\'acheteur ne peut pas fournir via un assistant IA, le produit n\'est donc pas référencé.';
 $_['text_issue_option_without_values'] = 'Une option obligatoire n\'a aucune valeur à choisir, le produit n\'est donc pas référencé.';
+$_['text_issue_shipping'] = 'Livraison (toute la boutique)';
+$_['text_issue_shipping_rule_approximated'] = 'Un réglage de livraison d\'OpenCart ne peut pas être repris exactement sur sudemi ; le prix le plus élevé est utilisé, ou le pays n\'est pas proposé. Fixez le prix pour ces pays sur votre page Livraison de sudemi.';
+$_['text_issue_shipping_rate_calculated'] = 'Une extension de livraison demande des tarifs en direct au transporteur, que sudemi ne peut pas lire. Fixez le prix pour ces pays sur votre page Livraison de sudemi.';
+$_['text_issue_shipping_rule_ignored'] = 'sudemi n\'a pas repris la règle de livraison pour ce pays ; le prix de livraison le plus élevé d\'un seul article y est facturé à la place.';
 $_['entry_option_price'] = 'Prix pour les acheteurs sudemi';
 $_['help_option_price'] = 'Ajouté au prix de l\'article quand un acheteur sur sudemi remplit ce champ, hors taxes comme le prix du produit (par exemple 20.00 pour un nom à imprimer). La caisse de votre propre boutique ne le facture pas : OpenCart n\'a pas de prix pour ce type d\'option.';
 

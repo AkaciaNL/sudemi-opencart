@@ -437,6 +437,33 @@ class Event extends \Opencart\System\Engine\Controller
         $services['orders']->report($sudemiId, $event, $orderId);
     }
 
+    /**
+     * A shipping method's settings, the store settings, a geo zone, a tax or a weight class
+     * changed, or a shipping extension was installed or removed: the shop's shipping rules are
+     * sent again. Only a flag here (one setting); the cron entry builds and sends them.
+     *
+     * @param mixed $output ignored
+     */
+    public function shippingChanged(string &$route, array &$args, &$output): void
+    {
+        try {
+            $first = isset($args[0]) && is_string($args[0]) ? $args[0] : '';
+            if (strpos($route, 'setting/setting') !== false
+                && strpos($first, 'shipping_') !== 0 && $first !== 'config') {
+                return;
+            }
+            if (strpos($route, 'setting/extension') !== false && $first !== 'shipping') {
+                return;
+            }
+            require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/store.php';
+            require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/shipping_rules.php';
+            \Sudemi\ShippingRulesSender::request(new \Sudemi\SettingStore($this->db));
+        } catch (\Throwable $e) {
+            // Swallowed deliberately: see the class comment. The hourly check sends them anyway.
+            return;
+        }
+    }
+
     private function push(int $productId): void
     {
         if ($productId <= 0) {

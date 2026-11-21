@@ -99,6 +99,10 @@ $_['text_issue_too_many_required_texts'] = 'Il prodotto chiede all\'acquirente p
 $_['text_issue_too_many_optional_texts'] = 'sudemi chiede all\'acquirente al massimo cinque testi o scelte; uno facoltativo non viene chiesto.';
 $_['text_issue_required_file_upload'] = 'Un\'opzione obbligatoria è un file o un testo che l\'acquirente non può dare tramite un assistente IA, quindi il prodotto non è elencato.';
 $_['text_issue_option_without_values'] = 'Un\'opzione obbligatoria non ha valori tra cui scegliere, quindi il prodotto non è elencato.';
+$_['text_issue_shipping'] = 'Spedizione (tutto il negozio)';
+$_['text_issue_shipping_rule_approximated'] = 'Un\'impostazione di spedizione di OpenCart non può essere copiata esattamente su sudemi; viene usato il prezzo più alto, oppure il paese non viene offerto. Imposta il prezzo per questi paesi nella tua pagina Spedizione di sudemi.';
+$_['text_issue_shipping_rate_calculated'] = 'Un\'estensione di spedizione chiede prezzi in tempo reale al corriere, che sudemi non può leggere. Imposta il prezzo per questi paesi nella tua pagina Spedizione di sudemi.';
+$_['text_issue_shipping_rule_ignored'] = 'sudemi non ha accettato la regola di spedizione per questo paese; lì viene invece addebitato il prezzo di spedizione più alto di un singolo articolo.';
 $_['entry_option_price'] = 'Prezzo per gli acquirenti sudemi';
 $_['help_option_price'] = 'Si aggiunge al prezzo dell\'articolo quando un acquirente su sudemi compila questo campo, senza tasse come il prezzo del prodotto (ad esempio 20.00 per un nome da stampare). La cassa del tuo negozio non lo addebita: OpenCart non ha un prezzo per questo tipo di opzione.';
 

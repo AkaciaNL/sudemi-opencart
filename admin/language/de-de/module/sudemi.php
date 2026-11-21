@@ -99,6 +99,10 @@ $_['text_issue_too_many_required_texts'] = 'Das Produkt braucht mehr als fünf T
 $_['text_issue_too_many_optional_texts'] = 'sudemi fragt den Käufer höchstens fünf Texte oder Auswahlen; eine optionale wird nicht abgefragt.';
 $_['text_issue_required_file_upload'] = 'Eine Pflichtoption ist eine Datei oder ein Text, den der Käufer über einen KI-Assistenten nicht angeben kann, daher wird das Produkt nicht gelistet.';
 $_['text_issue_option_without_values'] = 'Eine Pflichtoption hat keine Werte zur Auswahl, daher wird das Produkt nicht gelistet.';
+$_['text_issue_shipping'] = 'Versand (ganzer Shop)';
+$_['text_issue_shipping_rule_approximated'] = 'Eine Versandeinstellung von OpenCart lässt sich nicht genau zu sudemi übernehmen; der höchste Preis wird verwendet, oder das Land wird nicht angeboten. Legen Sie den Preis für diese Länder auf Ihrer sudemi-Seite Versand fest.';
+$_['text_issue_shipping_rate_calculated'] = 'Eine Versanderweiterung fragt Live-Preise beim Versanddienst ab, die sudemi nicht lesen kann. Legen Sie den Preis für diese Länder auf Ihrer sudemi-Seite Versand fest.';
+$_['text_issue_shipping_rule_ignored'] = 'sudemi hat die Versandregel für dieses Land nicht übernommen; dort wird stattdessen der höchste Versandpreis eines einzelnen Artikels berechnet.';
 $_['entry_option_price'] = 'Preis für sudemi-Käufer';
 $_['help_option_price'] = 'Wird zum Preis des Artikels addiert, wenn ein Käufer auf sudemi dies ausfüllt, ohne Steuer wie der Produktpreis (zum Beispiel 20.00 für einen Namen zum Aufdrucken). Die Kasse Ihres eigenen Shops berechnet ihn nicht: OpenCart kennt für diese Art von Option keinen Preis.';
 

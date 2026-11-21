@@ -16,6 +16,7 @@ require_once __DIR__ . '/issues.php';
 
 require_once __DIR__ . '/currency.php';
 require_once __DIR__ . '/options.php';
+require_once __DIR__ . '/shipping_rules.php';
 
 class Sync
 {
@@ -278,6 +279,8 @@ class Sync
 
             return 'held';
         }
+        // The shop's own shipping rules follow every committed full sync (sent by the cron entry).
+        ShippingRulesSender::request($this->store);
         // Everything removed before the sync started is gone from sudemi now.
         if ((int) $state['removals'] > (int) $this->store->read(self::SETTING_REMOVALS_SYNCED)) {
             $this->store->write(self::SETTING_REMOVALS_SYNCED, (int) $state['removals']);

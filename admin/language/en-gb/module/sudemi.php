@@ -99,6 +99,10 @@ $_['text_issue_too_many_required_texts'] = 'The product needs more than five tex
 $_['text_issue_too_many_optional_texts'] = 'sudemi asks the buyer at most five texts or choices; an optional one is not asked.';
 $_['text_issue_required_file_upload'] = 'A required option is a file or a text the buyer cannot give through an AI assistant, so the product is not listed.';
 $_['text_issue_option_without_values'] = 'A required option has no values to choose from, so the product is not listed.';
+$_['text_issue_shipping'] = 'Shipping (whole shop)';
+$_['text_issue_shipping_rule_approximated'] = 'An OpenCart shipping setting cannot be copied exactly to sudemi; the highest price is used, or the country is not offered. Set the price for these countries on your sudemi Shipping page.';
+$_['text_issue_shipping_rate_calculated'] = 'A shipping extension asks its carrier for live prices, which sudemi cannot read. Set the price for these countries on your sudemi Shipping page.';
+$_['text_issue_shipping_rule_ignored'] = 'sudemi did not take the shipping rule for this country; the highest price of one item is charged there instead.';
 $_['entry_option_price'] = 'Price for sudemi buyers';
 $_['help_option_price'] = 'Added to the item\'s price when a buyer on sudemi fills this in, without tax like the product price (for example 20.00 for a name to print). Your own shop\'s checkout does not charge it: OpenCart has no price for this kind of option.';
 

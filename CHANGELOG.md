@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.4.7
+
+- **Parcels are charged by your own OpenCart shipping rules.** Several items from your shop to one
+  country travel in one parcel, and sudemi now charges that parcel the way your own checkout
+  would. After every full catalogue sync, and when you change a shipping method, the store
+  settings, a geo zone, a tax or a weight class, the extension sends sudemi one rule per country
+  (by the next cron run; never during your admin page):
+  - Flat rate: the flat cost once per parcel.
+  - Per item: the cost for every item in the parcel.
+  - Weight based: your weight bands (converted to grams from your store's weight class); nothing
+    is offered above the last band, as in OpenCart. Several geo zones, or a flat rate next to
+    them: the lowest price at each weight, as a buyer could choose in your checkout.
+  - Free Shipping with a minimum total: free from that total. OpenCart compares the total without
+    tax, sudemi the goods with tax, so the minimum is raised by the highest product tax rate: a
+    parcel never ships free when your shop would charge for it.
+  - Prices include the shipping method's tax, as before.
+- What cannot be copied exactly (per item next to a flat or weight rate, broken weight entries, a
+  weight class that cannot be converted, a minimum total with a fixed-amount tax) is reported to
+  sudemi and listed on the extension page; the price used is never lower than your shop's. Store
+  pickup, carrier modules with live rates and other shipping extensions are reported when they are
+  the only way to a country; set a price on your sudemi Shipping page for those countries. The
+  texts are in all twelve languages.
+
 ## 1.4.6
 
 - **Product photos: option value pictures for listings per option.** A listing for one choice of

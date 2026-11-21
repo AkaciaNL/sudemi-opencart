@@ -26,6 +26,7 @@ class Cron extends \Opencart\System\Engine\Controller
         require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/client.php';
         require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/pairing.php';
         require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/shipping.php';
+        require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/shipping_rules.php';
         require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/catalogue.php';
         require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/sync.php';
         require_once DIR_EXTENSION . 'sudemi/system/library/sudemi/queue.php';
@@ -78,6 +79,17 @@ class Cron extends \Opencart\System\Engine\Controller
         // The full sync the beat (or a product's withdrawal setting) asked for, or the rest of
         // one that admin page loads started. Only this entry runs it to the end.
         $sync->work();
+        // The shop's own shipping rules, when a full sync's commit or a shipping setting asked for
+        // them (or for the hourly check).
+        $shipping = new \Sudemi\Shipping($this->db, $this->config);
+        $rules = new \Sudemi\ShippingRulesSender($store, $client, $logger, function () use ($shipping) {
+            return $shipping->rulesPayload();
+        });
+        try {
+            $rules->sendIfDue();
+        } catch (\Throwable $e) {
+            $logger->warn('Shipping rules not sent: ' . $e->getMessage());
+        }
 
         // A beat that could not reach sudemi is still a successful cron run: the shop's own
         // scheduler must not start mailing failures because a marketplace was briefly down.

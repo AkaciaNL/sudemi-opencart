@@ -99,6 +99,10 @@ $_['text_issue_too_many_required_texts'] = 'Het product vraagt meer dan vijf tek
 $_['text_issue_too_many_optional_texts'] = 'sudemi vraagt de koper hoogstens vijf teksten of keuzes; een optionele wordt niet gevraagd.';
 $_['text_issue_required_file_upload'] = 'Een verplichte optie is een bestand of tekst die de koper niet via een AI-assistent kan geven, dus het product wordt niet vermeld.';
 $_['text_issue_option_without_values'] = 'Een verplichte optie heeft geen waarden om uit te kiezen, dus het product wordt niet vermeld.';
+$_['text_issue_shipping'] = 'Verzending (hele winkel)';
+$_['text_issue_shipping_rule_approximated'] = 'Een verzendinstelling van OpenCart kan niet precies naar sudemi worden overgenomen; de hoogste prijs wordt gebruikt, of het land wordt niet aangeboden. Stel de prijs voor deze landen in op je sudemi-pagina Verzending.';
+$_['text_issue_shipping_rate_calculated'] = 'Een verzendextensie vraagt live prijzen op bij de vervoerder, die sudemi niet kan lezen. Stel de prijs voor deze landen in op je sudemi-pagina Verzending.';
+$_['text_issue_shipping_rule_ignored'] = 'sudemi heeft de verzendregel voor dit land niet overgenomen; daar wordt in plaats daarvan de hoogste verzendprijs van een enkel artikel gerekend.';
 $_['entry_option_price'] = 'Prijs voor sudemi-kopers';
 $_['help_option_price'] = 'Komt bij de prijs van het artikel als een koper op sudemi dit invult, zonder btw zoals de productprijs (bijvoorbeeld 20.00 voor een naam om te bedrukken). De kassa van je eigen winkel rekent dit niet: OpenCart kent geen prijs voor dit soort optie.';
 
