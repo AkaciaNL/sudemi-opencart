@@ -420,5 +420,30 @@ $fresh->setAutoConfirm( true );
 $fresh->rememberWaiting( array( array( 'order_id' => 'c' ) ) );
 check( 'with automatic confirmation nothing is kept', array() === \Sudemi\Orders::waitingIn( $fresh_store ) );
 
+// Why a payout is on hold (payout.on_hold), next to the due date.
+check( 'hold: chargeback', 'text_payout_hold_chargeback' === \Sudemi\Orders::payoutHoldKey( array( 'state' => 'scheduled', 'due_at' => null, 'on_hold' => 'chargeback' ) ) );
+check( 'hold: cancellation request', 'text_payout_hold_cancellation_request' === \Sudemi\Orders::payoutHoldKey( array( 'on_hold' => 'cancellation_request' ) ) );
+check( 'hold: return request', 'text_payout_hold_return_request' === \Sudemi\Orders::payoutHoldKey( array( 'on_hold' => 'return_request' ) ) );
+check( 'hold: an unknown future reason is a plain "On hold", never the code', 'text_payout_hold' === \Sudemi\Orders::payoutHoldKey( array( 'on_hold' => 'tax_review' ) ) );
+check( 'hold: null, missing, blank, not a string or no payout: not on hold',
+	'' === \Sudemi\Orders::payoutHoldKey( array( 'on_hold' => null, 'due_at' => '2026-12-01T00:00:00Z' ) )
+	&& '' === \Sudemi\Orders::payoutHoldKey( array( 'state' => 'scheduled' ) )
+	&& '' === \Sudemi\Orders::payoutHoldKey( array( 'on_hold' => ' ' ) )
+	&& '' === \Sudemi\Orders::payoutHoldKey( array( 'on_hold' => array( 'x' ) ) )
+	&& '' === \Sudemi\Orders::payoutHoldKey( null ) );
+$hold_keys = array( 'entry_payout_on_hold', 'text_payout_hold', 'text_payout_hold_chargeback', 'text_payout_hold_cancellation_request', 'text_payout_hold_return_request' );
+$hold_texts = array();
+foreach ( glob( __DIR__ . '/../admin/language/*/module/sudemi.php' ) as $file ) {
+	$_    = array();
+	$lang = basename( dirname( dirname( $file ) ) );
+	include $file;
+	foreach ( $hold_keys as $key ) {
+		check( "$lang: $key present, without a long dash", isset( $_[ $key ] ) && '' !== trim( $_[ $key ] ) && false === strpos( $_[ $key ], "\u{2014}" ) );
+	}
+	$hold_texts[ $lang ] = isset( $_['text_payout_hold_return_request'] ) ? $_['text_payout_hold_return_request'] : '';
+}
+check( 'hold texts in twelve languages, each its own', 12 === count( $hold_texts ) && 12 === count( array_unique( $hold_texts ) ) );
+check( 'hold text in German (the portal\'s wording)', 'Zurückgehalten: offene Rückgabeanfrage' === $hold_texts['de-de'] );
+
 echo $failures ? "\n$failures check(s) failed\n" : "\nall checks passed\n";
 exit( $failures ? 1 : 0 );

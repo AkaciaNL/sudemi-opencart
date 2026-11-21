@@ -80,6 +80,7 @@
               {% if order.payout.expected %}<tr><th>{{ entry_payout_expected }}</th><td>{{ order.payout.expected }}</td></tr>{% endif %}
               <tr><th>{{ column_paid_out }}</th><td>{{ order.payout.paid_out }}</td></tr>
               {% if order.payout.due %}<tr><th>{{ entry_payout_due }}</th><td>{{ order.payout.due }}</td></tr>{% endif %}
+              {% if order.payout.hold %}<tr><th>{{ entry_payout_on_hold }}</th><td id="sudemi-payout-hold">{{ order.payout.hold }}</td></tr>{% endif %}
             </table>
           </div>
         </div>

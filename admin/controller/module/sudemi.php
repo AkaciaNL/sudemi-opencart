@@ -1568,6 +1568,7 @@ class Sudemi extends \Opencart\System\Engine\Controller
             'net' => \Sudemi\Currency::format(isset($row['your_net_minor']) ? (int) $row['your_net_minor'] : 0, $currency),
             'refunded' => !empty($row['refunded_minor']) ? \Sudemi\Currency::format((int) $row['refunded_minor'], $currency) : '',
             'payout' => $payout !== null ? $this->payoutLabel(isset($payout['state']) ? (string) $payout['state'] : '') : '',
+            'payout_hold' => $this->payoutHold($payout),
             'tracking' => $tracking !== null ? trim((isset($tracking['carrier']) ? (string) $tracking['carrier'] : '') . ' ' . (isset($tracking['code']) ? (string) $tracking['code'] : '')) : '',
             'customer' => isset($row['customer_name']) ? (string) $row['customer_name'] : '',
             'respond_by' => $this->supportDate(isset($row['respond_by']) ? $row['respond_by'] : ''),
@@ -1666,6 +1667,7 @@ class Sudemi extends \Opencart\System\Engine\Controller
                 'expected' => isset($payout['expected_minor']) && $payout['expected_minor'] !== null ? $format($payout['expected_minor'], $payoutCurrency) : '',
                 'paid_out' => $format(isset($payout['paid_out_minor']) ? $payout['paid_out_minor'] : 0, $payoutCurrency),
                 'due' => $this->supportDate(isset($payout['due_at']) ? $payout['due_at'] : ''),
+                'hold' => $this->payoutHold($payout),
             ],
             'request' => $request === null ? null : [
                 'kind' => $this->requestKind(isset($request['kind']) ? (string) $request['kind'] : ''),
@@ -1686,6 +1688,14 @@ class Sudemi extends \Opencart\System\Engine\Controller
         $label = $this->language->get($key);
 
         return $label !== $key ? $label : $status;
+    }
+
+    /** Why the payout is on hold, in the admin's language, or ''. */
+    private function payoutHold($payout): string
+    {
+        $key = \Sudemi\Orders::payoutHoldKey($payout);
+
+        return $key !== '' ? (string) $this->language->get($key) : '';
     }
 
     private function payoutLabel(string $state): string

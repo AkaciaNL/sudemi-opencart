@@ -133,6 +133,23 @@ class Orders
         return self::resolvedOutcome($response, $body);
     }
 
+    /**
+     * Why an order's payout is on hold (payout.on_hold): the language key of the reason, '' when
+     * it is not on hold. A reason this extension does not know yet is a plain "On hold"
+     * (text_payout_hold), never the raw code. Pure.
+     *
+     * @param mixed $payout the order's payout object
+     */
+    public static function payoutHoldKey($payout)
+    {
+        if (!is_array($payout) || !isset($payout['on_hold']) || !is_string($payout['on_hold']) || trim($payout['on_hold']) === '') {
+            return '';
+        }
+        $reason = trim($payout['on_hold']);
+
+        return in_array($reason, ['chargeback', 'cancellation_request', 'return_request'], true) ? 'text_payout_hold_' . $reason : 'text_payout_hold';
+    }
+
     private static function bodyOf($response)
     {
         if (!is_array($response) || !isset($response['status'])) {

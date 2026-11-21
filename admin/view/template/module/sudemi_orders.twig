@@ -159,7 +159,7 @@
               <td>{{ o.status_label }}{% if o.request %}<br><span class="badge bg-warning text-dark">{{ text_history_return_requested }}</span>{% endif %}</td>
               <td>{{ o.total }}{% if o.refunded %}<br><small class="text-danger">{{ text_refunded_short }} {{ o.refunded }}</small>{% endif %}</td>
               <td>{{ o.net }}</td>
-              <td>{{ o.payout }}</td>
+              <td>{{ o.payout }}{% if o.payout_hold %}<br><small class="sudemi-payout-hold">{{ o.payout_hold }}</small>{% endif %}</td>
               <td>{{ o.tracking }}<input type="text" class="form-control form-control-sm sudemi-row-tracking mt-1" maxlength="100" placeholder="{{ entry_tracking }}" hidden></td>
               <td>{{ o.customer }}</td>
               <td>{% if o.local_href %}<a href="{{ o.local_href }}">#{{ o.local }}</a>{% endif %}</td>

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.4.8
+
+- **The sudemi Orders page shows why a payout is on hold.** When sudemi holds an order's payout
+  (`payout.on_hold`), the order list shows the reason under the payout: an open card dispute
+  (chargeback), an open cancellation request or an open return request. The order page shows it
+  in its own row "Payout on hold" in the payout card. The payout follows once it is resolved. A
+  reason this version does not know yet shows as "On hold". The texts are in all twelve
+  languages.
+
 ## 1.4.7
 
 - **Parcels are charged by your own OpenCart shipping rules.** Several items from your shop to one
