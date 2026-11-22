@@ -222,8 +222,8 @@ class Catalogue
             // false is sent too, so switching it off reaches sudemi. Every combination carries it.
             $listing['personalisationReturnable'] = !empty($row['personalisation_returnable']);
             if (!empty($plan['texts'])) {
-                // What sudemi cannot ask (a "-" price, more than five required) is reported; a
-                // required one keeps the product off sudemi (owner 2026-11-19).
+                // What sudemi cannot ask (more than five required) is reported; a required one
+                // keeps the product off sudemi (owner 2026-11-19). A "-" price is a discount.
                 $screen = Options::screen($plan);
                 foreach ($screen['issues'] as $found) {
                     $this->issues[$productId . '|' . $found[0] . '|' . $found[2]] = Issues::make($productId, $found[0], $found[1], $found[2],
@@ -541,12 +541,22 @@ class Catalogue
         return $from && $mm ? (int) round((float) $length * $mm / $from) : 0;
     }
 
-    /** sudemi personalisation (texts, dates, choices), the add-on prices with tax in minor units. */
+    /**
+     * sudemi personalisation (texts, dates, choices), the add-on prices with tax in minor units,
+     * per item: a "-" price is a negative priceMinor (a discount; sudemi never takes the unit
+     * price below 0). The tax is worked out on the amount and the sign put back.
+     */
     private function personalisation(array $plan, $taxClassId)
     {
         $out = [];
         $minor = function ($price) use ($taxClassId) {
-            return $price > 0 ? (int) $this->minor($this->shipping->withStoreTax($price, $taxClassId)) : 0;
+            $price = (float) $price;
+            if ($price == 0.0) {
+                return 0;
+            }
+            $amount = (int) $this->minor($this->shipping->withStoreTax(abs($price), $taxClassId));
+
+            return $price < 0 ? -$amount : $amount;
         };
         foreach (Options::personalisation($plan) as $entry) {
             $price = $minor($entry['price']);

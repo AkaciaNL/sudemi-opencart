@@ -437,47 +437,21 @@ class Options
      * sudemi buyers" from the product form, else the price of a value row kept on that option.
      */
     /**
-     * The typed and chosen options sudemi can ask, and what it cannot (owner 2026-11-19): an
-     * option with a price that lowers the price (a "-" value, a negative add-on) cannot be charged
-     * through sudemi yet. A required one keeps the product off sudemi (blocked, an error issue);
-     * an optional one is left out (a warning issue). More than MAX_TEXTS required ones block the
-     * product; optional ones beyond it are left out. Pure.
+     * The typed and chosen options sudemi can ask, and what it cannot (owner 2026-11-19). Since
+     * 1.4.9 an option with a "-" price (a value that lowers the price) is a discount per item:
+     * OpenCart's cart takes it off every unit, and sudemi does the same (never below 0), so it is
+     * asked like any other option. OpenCart has no option price charged once per order line, so
+     * every option price is per item. More than MAX_TEXTS required ones block the product (an
+     * error issue); optional ones beyond it are left out (a warning issue). Pure.
      *
      * @return array{texts:array,issues:array,blocked:string|null} texts: the plan's options to
      *               ask; issues: [code, severity, option name, why]
      */
     public static function screen(array $plan)
     {
-        $texts = [];
+        $texts = $plan['texts'];
         $issues = [];
         $blocked = null;
-        foreach ($plan['texts'] as $option) {
-            $negative = false;
-            if (in_array($option['type'], self::CHOICE_TYPES, true)) {
-                foreach ($option['values'] as $value) {
-                    $negative = $negative || (float) $value['price'] < 0;
-                }
-            } else {
-                $price = 0.0;
-                if (isset($option['sudemiPrice']) && $option['sudemiPrice'] !== null) {
-                    $price = (float) $option['sudemiPrice'];
-                } else {
-                    foreach ($option['values'] as $value) {
-                        $price += (float) $value['price'];
-                    }
-                }
-                $negative = $price < 0;
-            }
-            if ($negative) {
-                $issues[] = ['addon_negative_price', $option['required'] ? 'error' : 'warning', (string) $option['name'],
-                    'it lowers the price (a discount), which sudemi cannot charge yet'];
-                if ($option['required'] && $blocked === null) {
-                    $blocked = 'addon_negative_price';
-                }
-                continue;
-            }
-            $texts[] = $option;
-        }
         $required = count(array_filter($texts, function ($o) {
             return !empty($o['required']);
         }));
@@ -515,7 +489,8 @@ class Options
                     // as a text, and without it would refuse the whole product.
                     'maxLength' => self::MAX_TEXT,
                     'price' => 0.0,
-                    // Each value its own price (+/-; sudemi only adds, so a "-" is no add-on).
+                    // Each value its own price per item, signed by its prefix: a "-" value is a
+                    // discount (sudemi never takes the unit price below 0).
                     'choices' => self::choiceList($option['values']),
                 ];
             }
@@ -529,8 +504,7 @@ class Options
                     $price += $value['price'];
                 }
             }
-            // sudemi adds a price when the text is filled in, never takes one off.
-            $price = max(0.0, $price);
+            // Added to every unit when the text is filled in; negative is a discount per item.
 
             $format = isset(self::FORMATS[$option['type']]) ? self::FORMATS[$option['type']] : null;
             $note = $format === null ? '' : ' (' . $format['note'] . ')';
@@ -565,7 +539,7 @@ class Options
                 continue;
             }
             $seen[mb_strtolower($label, 'UTF-8')] = true;
-            $out[] = ['key' => (string) $value['product_option_value_id'], 'label' => $label, 'price' => max(0.0, $value['price'])];
+            $out[] = ['key' => (string) $value['product_option_value_id'], 'label' => $label, 'price' => (float) $value['price']];
         }
 
         return $out;

@@ -128,8 +128,8 @@ $gift  = Options::plan( array( $size, $wrap, $extra ) );
 $given = Options::personalisation( $gift );
 check( 'an optional radio is a choice, a required checkbox a multi_choice; no combinations for them', 3 === Options::count( $gift ) && 2 === count( $given )
 	&& 'multi_choice' === $given[0]['type'] && true === $given[0]['required'] && 'choice' === $given[1]['type'] && false === $given[1]['required'], $given );
-check( 'choices: key = product_option_value_id, label, price; a value out of stock is left out; a "-" price is no add-on',
-	array( array( 'key' => '81', 'label' => 'Paper', 'price' => 3.0 ), array( 'key' => '83', 'label' => 'Discount', 'price' => 0.0 ) ) === $given[1]['choices']
+check( 'choices: key = product_option_value_id, label, price; a value out of stock is left out; a "-" price is a discount per item',
+	array( array( 'key' => '81', 'label' => 'Paper', 'price' => 3.0 ), array( 'key' => '83', 'label' => 'Discount', 'price' => -1.0 ) ) === $given[1]['choices']
 	&& array( '91', '92' ) === array_column( $given[0]['choices'], 'key' ), $given );
 $rows = Options::personalRows( $gift, array( array( 'key' => '90', 'type' => 'multi_choice', 'choice_keys' => array( '91', '92' ), 'value' => 'Card, Ribbon' ),
 	array( 'key' => '80', 'type' => 'choice', 'choice_key' => '81', 'value' => 'Paper' ) ) );
@@ -329,7 +329,7 @@ check( 'photos: an OpenCart without option_value.image (no image key) is the pro
 	=== Options::images( array( array( 'option' => array(), 'value' => array() ) ), array( 'https://s.example/image/p.jpg' ), 'https://s.example' ) );
 check( 'personalisation: the custom name, optional, its add-on with VAT (20 + 21% = 24.20)',
 	array( array( 'key' => '204', 'label' => 'Custom name', 'required' => false, 'type' => 'text', 'maxLength' => 200, 'priceMinor' => 2420 ) ) === $xl['personalisation'], $xl['personalisation'] ?? null );
-// The extension's own "Price for sudemi buyers" (product form) wins over a value row; never negative.
+// The extension's own "Price for sudemi buyers" (product form) wins over a value row; a negative one is a discount per item.
 $db->options[20][3]['sudemi_price'] = '25.0000';
 $own = ( new \Sudemi\Catalogue( $db, new FakeConfig() ) )->productsByIds( array( 20 ) );
 check( 'the price set on the product form (25.00 + 21% = 30.25) wins over the value row', 3025 === $own[0]['personalisation'][0]['priceMinor'], $own[0]['personalisation'] );
@@ -337,11 +337,12 @@ $db->options[20][3]['sudemi_price'] = '-5.0000';
 $negcat = new \Sudemi\Catalogue( $db, new FakeConfig() );
 $neg    = $negcat->productsByIds( array( 20 ) );
 $negiss = $negcat->takeIssues();
-// Owner rule 2026-11-19: never sent as a free add-on (the buyer would pay too much). The optional
-// custom name is not asked; the T-shirt stays listed; a warning issue says why.
-check( 'a negative price on the optional custom name: not asked (never as free), the T-shirt still listed, a warning issue',
-	! empty( $neg ) && ! isset( $neg[0]['personalisation'] ) && 'addon_negative_price' === $negiss[0]['code'] && 'warning' === $negiss[0]['severity'],
-	array( isset( $neg[0]['personalisation'] ), $negiss ) );
+// 1.4.9 (core 2026-11-21): a negative price is a discount per item, sent as it is (-5.00 + 21% =
+// -6.05); sudemi never takes the unit price below 0. Nothing is reported.
+check( 'a negative price on the optional custom name: asked, a discount of 6.05 per item (VAT included), no issue',
+	! empty( $neg ) && isset( $neg[0]['personalisation'][0] ) && -605 === $neg[0]['personalisation'][0]['priceMinor'] && ! isset( $neg[0]['personalisation'][0]['priceMode'] )
+	&& array() === array_values( array_filter( $negiss, function ( $i ) { return 'addon_negative_price' === $i['code']; } ) ),
+	array( $neg[0]['personalisation'] ?? null, $negiss ) );
 unset( $db->options[20][3]['sudemi_price'] );
 check( 'amounts typed in the form', '20.0000' === Options::parseAmount( '20' ) && '20.5000' === Options::parseAmount( ' 20,50 ' )
 	&& '-1.0000' === Options::parseAmount( '-1' ) && '2.5000' === Options::parseAmount( '+2.5' ) && null === Options::parseAmount( '' )
@@ -639,16 +640,19 @@ $backorders = new \Sudemi\Orders( $odb, $checkout, $client, $logger, $store );
 check( 'the shop sells without stock (Stock Checkout on): 4 XL (3 in stock) is taken, as in its storefront',
 	null === $shortfall->invoke( $backorders, array( 'lines' => array( array( 'external_id' => '20:4-8-15', 'quantity' => 4, 'title' => 'x' ) ) ) ) );
 
-// Owner rule 2026-11-19: an option whose price lowers the price (a "-" value) cannot be charged
-// through sudemi. REQUIRED: the product is not listed (an error issue); OPTIONAL: left out (a warning).
+// 1.4.9 (core 2026-11-21): an option whose price lowers the price (a "-" value) is a discount per
+// item, as OpenCart's cart takes it off every unit: asked, required or not, nothing reported.
 $disc_opt = opt( 61, 'Club discount', 'checkbox', array( pov( 611, 'Member', '3', '-' ) ), true );
 $scr      = Options::screen( Options::plan( array( $disc_opt ) ) );
-check( 'required negative option (a required checkbox with a "-" price): the product is blocked, an error issue',
-	'addon_negative_price' === $scr['blocked'] && 'error' === $scr['issues'][0][1] && array() === $scr['texts'], $scr );
-$wrap_opt = opt( 62, 'Gift wrap', 'select', array( pov( 621, 'Paper', '2', '-' ) ), false );
+check( 'required negative option (a required checkbox with a "-" price): asked, nothing blocked or reported',
+	null === $scr['blocked'] && array() === $scr['issues'] && 1 === count( $scr['texts'] ), $scr );
+$pers = Options::personalisation( array( 'texts' => $scr['texts'] ) );
+check( 'its value is a choice at -3.00 per item (signed by the prefix), no once-per-line mode',
+	-3.0 === $pers[0]['choices'][0]['price'] && 'multi_choice' === $pers[0]['type'] && ! isset( $pers[0]['priceMode'] ), $pers );
+$wrap_opt = opt( 62, 'Gift wrap', 'select', array( pov( 621, 'Paper', '2', '-' ), pov( 622, 'Box', '1.5', '+' ) ), false );
 $scr      = Options::screen( Options::plan( array( $wrap_opt, $name ) ) );
-check( 'optional negative option: left out with a warning, the product stays listed with the custom name',
-	null === $scr['blocked'] && 'warning' === $scr['issues'][0][1] && 'Gift wrap' === $scr['issues'][0][2] && 1 === count( $scr['texts'] ), $scr );
+check( 'optional negative option: asked with the custom name, nothing reported',
+	null === $scr['blocked'] && array() === $scr['issues'] && 2 === count( $scr['texts'] ), $scr );
 $six_req = Options::plan( array_map( function ( $i ) { return opt( 70 + $i, 'Line ' . $i, 'text', array(), true ); }, range( 1, 6 ) ) );
 check( 'six required texts: blocked (too_many_required_texts)', 'too_many_required_texts' === Options::screen( $six_req )['blocked'] );
 check( 'an option without a "-" price: nothing blocked, nothing reported', array( 'texts' => Options::plan( array( $name ) )['texts'], 'issues' => array(), 'blocked' => null ) === Options::screen( Options::plan( array( $name ) ) ) );

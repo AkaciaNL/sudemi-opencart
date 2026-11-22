@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.4.9
+
+- **Options that lower the price are offered on sudemi.** An option value with a "-" price (for
+  example "No gift box -1.50", or a "Club member" checkbox at -3.00), and a negative "Price for
+  sudemi buyers" on a typed option, are now sent to sudemi as a discount on every unit, exactly
+  as your OpenCart cart takes it off every unit (with your tax, as your prices are shown). sudemi
+  never takes a unit price below 0. Before, such an option was left out and reported as
+  `addon_negative_price`, and a product that required one was not listed.
+- OpenCart has no option price charged once per order line (every option price is per item), so
+  the extension sends no once-per-line fees. An order line is written as before: the option on
+  the product line, the price paid per unit.
+
 ## 1.4.8
 
 - **The sudemi Orders page shows why a payout is on hold.** When sudemi holds an order's payout
