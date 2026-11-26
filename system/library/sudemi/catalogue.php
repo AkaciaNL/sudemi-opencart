@@ -74,6 +74,24 @@ class Catalogue
         return trim(str_replace("\u{00A0}", ' ', $text));
     }
 
+    /**
+     * 1.4.10 (sudemi owner decision 2026-11-26): a product description as HTML, so buyers see its
+     * paragraphs, lists and headings. OpenCart stores the editor's HTML escaped once more
+     * ("&lt;p&gt;..."); that is undone once. A description stored unescaped (by an import) is sent
+     * as it is. sudemi keeps only p, br, ul, ol, li, strong, b, em, i, h3 and h4 (h1/h2 as h3, h5/h6
+     * as h4) and removes everything else itself: scripts, styles, frames and their content, every
+     * attribute, links (their text stays), images.
+     */
+    public static function html($value)
+    {
+        $html = (string) $value;
+        if (strpos($html, '<') === false && strpos($html, '&lt;') !== false) {
+            $html = html_entity_decode($html, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        }
+
+        return trim($html);
+    }
+
     /** Settings the Shop profile page saves (1.4.0); they win over the store's own values. */
     const PROFILE_DESCRIPTION = 'sudemi_profile_description';
     const PROFILE_SUPPORT_EMAIL = 'sudemi_profile_support_email';
@@ -196,7 +214,8 @@ class Catalogue
                 // OpenCart 4 variants share their master product's id: sudemi shows them as one
                 // product with a choice of sizes or colours. Null for a product without variants.
                 'itemGroupId' => isset($groups[$productId]) ? (string) $groups[$productId] : null,
-                'description' => self::plain($row['description']),
+                // As HTML (1.4.10): sudemi keeps the paragraphs, lists and headings and removes the rest.
+                'description' => self::html($row['description']),
                 'url' => $this->productUrl($productId),
                 // OpenCart stores prices without tax; buyers are shown and charged the price with it.
                 'priceMinor' => null, // with the sale and quantity prices below (pricing())

@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.4.10
+
+- **Product descriptions keep their paragraphs, lists and headings.** The extension sends the
+  product's description as the editor's HTML instead of as text with every tag removed, so
+  buyers see its paragraphs, bullet lists and headings. sudemi keeps only simple formatting
+  (paragraphs, line breaks, lists, bold, italic and two heading sizes) and removes everything
+  else itself: scripts, styles, embedded frames, images, links (their text stays) and every
+  attribute. AI assistants still read the description as plain text.
+- After the update the extension sends the whole catalogue once more with the next heartbeat, so
+  every product's description arrives as HTML. Nothing to do.
+
 ## 1.4.9
 
 - **Options that lower the price are offered on sudemi.** An option value with a "-" price (for

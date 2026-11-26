@@ -25,7 +25,9 @@ class Withdrawal
 {
     const FIELD = 'sudemi_withdrawal_exclusion';
     const SETTING_SCHEMA = 'sudemi_schema_version';
-    const SCHEMA_VERSION = '1.4.7-1'; // 1.4.7: shipping rules sent when shipping settings change
+    // 1.4.7: shipping rules sent when shipping settings change. 1.4.10: every product sent again
+    // once (descriptions as HTML).
+    const SCHEMA_VERSION = '1.4.10-1';
 
     /**
      * Owner decision 2 (2026-11-19): an item made with a text the buyer typed is not returnable by
@@ -136,7 +138,8 @@ class Withdrawal
      */
     public function ensureSchema($store, $force = false)
     {
-        if (!$force && $store->read(self::SETTING_SCHEMA) === self::SCHEMA_VERSION) {
+        $previous = $store->read(self::SETTING_SCHEMA);
+        if (!$force && $previous === self::SCHEMA_VERSION) {
             return;
         }
         $this->db->query(
@@ -212,6 +215,10 @@ class Withdrawal
                     . $this->db->escape($event[1]) . "', `action` = '" . $this->db->escape($event[2])
                     . "', `status` = '1', `sort_order` = '1'");
             }
+        }
+        if (!empty($previous) && $previous !== self::SCHEMA_VERSION) {
+            // An upgrade (1.4.10): the next heartbeat sends the whole catalogue, descriptions as HTML.
+            $store->write(self::SETTING_RESYNC_DUE, 1);
         }
         $store->write(self::SETTING_SCHEMA, self::SCHEMA_VERSION);
     }
