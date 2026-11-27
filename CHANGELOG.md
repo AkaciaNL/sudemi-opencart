@@ -10,6 +10,11 @@
   attribute. AI assistants still read the description as plain text.
 - After the update the extension sends the whole catalogue once more with the next heartbeat, so
   every product's description arrives as HTML. Nothing to do.
+- **Orders in another currency than the shop default are booked, not declined.** An order placed
+  in a currency that is no longer the shop's default (for example after changing the default
+  currency) is booked in that currency when the shop has it switched on. An order in a currency
+  the shop does not have waits and is reported to sudemi (sync issue order_currency_unavailable)
+  with how to fix it, instead of being declined.
 
 ## 1.4.9
 
