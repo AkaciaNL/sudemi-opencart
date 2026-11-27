@@ -184,6 +184,15 @@ class Heartbeat
         }
         if (!empty($body['pending_orders']) && $this->orders !== null) {
             $this->orders->handlePending($body['pending_orders']);
+            // Waiting orders in a currency this shop does not have switched on: the shop and
+            // sudemi are told how to fix it, on every beat while it holds (manual answers too).
+            if (method_exists($this->orders, 'reportCurrencyProblems')) {
+                try {
+                    $this->orders->reportCurrencyProblems($body['pending_orders']);
+                } catch (\Exception $e) {
+                    $this->logger->error('Could not report the orders that wait for a currency: ' . $e->getMessage());
+                }
+            }
         }
 
         // Orders this shop accepted while the buyer's payment still covered other shops: now

@@ -23,6 +23,12 @@ class Issues
     const ADDON_NEGATIVE_PRICE = 'addon_negative_price';
     const TOO_MANY_REQUIRED_TEXTS = 'too_many_required_texts';
     const TOO_MANY_OPTIONAL_TEXTS = 'too_many_optional_texts';
+    /**
+     * Shop-wide, not about a product: waiting sudemi orders are in a currency this shop does not
+     * have switched on, so they cannot be booked (Orders::reportCurrencyProblems). Sent on its own
+     * on every heartbeat while it holds, never kept on the catalogue issues list.
+     */
+    const ORDER_CURRENCY_UNAVAILABLE = 'order_currency_unavailable';
 
     /** The codes the extension page has plain words for (text_issue_<code>). */
     const CODES = [self::REQUIRED_FILE_UPLOAD, self::OPTION_WITHOUT_VALUES, self::VARIANT_CAP, self::MISSING_PRICE,

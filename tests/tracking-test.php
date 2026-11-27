@@ -154,6 +154,9 @@ class FakeDb {
 			return $this->rows( array( array( 'n' => $n ) ) );
 		}
 		// 1.4.3: no master_id column (OpenCart 3 / before variants), no options on these orders.
+		if ( 0 === strpos( $sql, 'SELECT currency_id, code, value, status FROM oc_currency' ) ) {
+			return $this->rows( array() ); // a shop without the order's currency
+		}
 		if ( 0 === strpos( $sql, 'SHOW COLUMNS FROM' ) || 0 === strpos( $sql, 'SELECT oo.product_option_value_id' ) ) {
 			return $this->rows( array() );
 		}
@@ -454,6 +457,22 @@ foreach ( array( 'unreachable' => null, 'HTTP 503' => array( 'status' => 503, 'b
 		null !== $thrown && ! isset( $db->sudemi[ O2 ] ) && array( 'GET /integration/v1/orders/' . O2 ) === $client->paths()
 		&& false !== strpos( (string) $store->read( 'sudemi_log' ), 'its order page could not be read' ) );
 }
+
+// Accepted on the portal in a currency this shop does not have: kept for a later beat (booked once
+// the currency is switched on), never marked as handled (owner 2026-11-27).
+list( $orders, $db, $client, $store ) = shop( 2, 'PAID' );
+$client->answers = array( array( 'status' => 200, 'body' => array( 'order_id' => O2, 'status' => 'PAID', 'revision' => 3, 'destination_country' => 'DE',
+	'money' => array( 'total_minor' => 1345, 'shipping_minor' => 495, 'currency_code' => 'GBP' ),
+	'lines' => array( array( 'external_id' => '7', 'title' => 'Mug', 'quantity' => 1, 'unit_price_minor' => 850 ) ) ) ) );
+$thrown = null;
+try {
+	$orders->applyChange( array( 'order_id' => O2, 'status' => 'PAID', 'revision' => 3, 'refunded_minor' => 0, 'tracking' => null, 'request' => null ) );
+} catch ( \Sudemi\ApplyLater $e ) {
+	$thrown = $e;
+}
+check( 'feed PAID in a currency the shop does not have: ApplyLater, revision NOT saved, the fix in the log',
+	null !== $thrown && ! isset( $db->sudemi[ O2 ] ) && false !== strpos( $thrown->getMessage(), 'this shop has no GBP currency' )
+	&& false !== strpos( (string) $store->read( 'sudemi_log' ), 'System > Localisation > Currencies' ) );
 
 // ---- 6. the texts in every language ---------------------------------------------------------------
 $keys = array( 'text_tracking_saved', 'text_tracking_sent', 'text_tracking_unchanged', 'text_tracking_retry', 'error_tracking_final',

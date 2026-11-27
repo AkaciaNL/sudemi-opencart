@@ -3,8 +3,10 @@
  * Currency step 3 (1.2.12).
  *
  * 1. Minor units follow ISO 4217 (JPY none, KWD three, EUR/PLN/HUF two), never a fixed x 100.
- * 2. An order in a currency that is not the shop's default, or that is switched off in the shop,
- *    is declined with the reason and nothing is booked.
+ * 2. An order in another currency than the shop's default is booked in that currency when the
+ *    shop has it (a shop that changed its default currency, owner 2026-11-27). One in a currency
+ *    the shop does not have, or has switched off, is neither booked nor declined: it waits, and a
+ *    shop-wide order_currency_unavailable issue tells the shop and sudemi how to fix it.
  * 3. An order in the shop's currency is booked with its currency id, code and rate, at amounts
  *    in that currency's decimals (PLN and JPY); orders from a core without currency_code as before.
  * 4. A refund carries the order's currency; one in another currency is refused and not sent.
@@ -204,25 +206,93 @@ check( 'format: 1345 PLN, 1500 JPY, 123456 EUR', '13.45 PLN' === Currency::forma
 check( 'supported shop currencies (contract 4c)', Currency::isSupported( 'PLN' ) && Currency::isSupported( 'try' ) && Currency::isSupported( 'EUR' ) && Currency::isSupported( 'JPY' ) && Currency::isSupported( 'USD' ) && ! Currency::isSupported( 'ISK' ) && ! Currency::isSupported( null ) );
 check( 'normalise refuses what is not a code', null === Currency::normalise( 'euro' ) && null === Currency::normalise( "EU'R" ) && 'EUR' === Currency::normalise( ' eur ' ) );
 
-// ---- 2. which orders are declined ----------------------------------------------------------------
+// ---- 2. which orders cannot be booked (owner 2026-11-27) -------------------------------------------
 check( 'refusal: same currency, enabled -> none', null === \Sudemi\Orders::currencyRefusal( 'PLN', 'PLN', $PLN ) );
-check( 'refusal: other currency than the shop default', 'this shop sells in PLN, not in EUR' === \Sudemi\Orders::currencyRefusal( 'EUR', 'PLN', $EUR ) );
-check( 'refusal: currency switched off in the shop', 'this shop cannot take payments in PLN right now' === \Sudemi\Orders::currencyRefusal( 'PLN', 'PLN', array( 'status' => '0' ) + $PLN ) );
-check( 'refusal: currency not in the shop at all', null !== \Sudemi\Orders::currencyRefusal( 'PLN', 'PLN', null ) );
+check( 'refusal: another currency than the shop default, which the shop has -> none (booked in it)',
+	null === \Sudemi\Orders::currencyRefusal( 'EUR', 'PLN', $EUR ) );
+check( 'refusal: currency switched off in the shop', 'the order was paid in PLN and the PLN currency is switched off in this shop' === \Sudemi\Orders::currencyRefusal( 'PLN', 'PLN', array( 'status' => '0' ) + $PLN ) );
+check( 'refusal: currency not in the shop at all', 'the order was paid in GBP and this shop has no GBP currency' === \Sudemi\Orders::currencyRefusal( 'GBP', 'EUR', null ) );
+check( 'refusal: a currency row without a rate', null !== \Sudemi\Orders::currencyRefusal( 'PLN', 'EUR', array( 'value' => '0' ) + $PLN ) );
 check( 'refusal: no usable code', null !== \Sudemi\Orders::currencyRefusal( '', 'PLN', $PLN ) );
 
-list( $orders, $db, $client, $logger ) = shop( 'PLN', array( 'PLN' => $PLN, 'EUR' => $EUR ) );
-$orders->handlePending( array( order( 'EUR', 850, 495 ) ) );
-check( 'EUR order to a PLN shop: declined with the reason, nothing booked, stock untouched',
-	array( 'POST /integration/v1/orders/' . O1 . '/reject' ) === paths( $client )
-	&& 'this shop sells in PLN, not in EUR' === $client->calls[0][2]['reason'] && array() === $db->writes );
-check( 'the decline is in the extension log', logged( $logger, 'this shop sells in PLN, not in EUR' ) );
+// The owner's case (prod 2026-11-27): the shop switched its default from USD to EUR while a USD
+// order waited. It is booked in USD at the USD row's rate; the amounts shown are what was paid.
+$USD = array( 'currency_id' => '2', 'code' => 'USD', 'value' => '1.08000000', 'status' => '1' );
+list( $orders, $db, $client, $logger ) = shop( 'EUR', array( 'EUR' => $EUR, 'USD' => $USD ) );
+$orders->handlePending( array( order( 'USD', 1999, 495, 1 ) ) );
+$insert = $db->inserts( 'order' );
+check( 'USD order after the default became EUR: booked once, then /accept sent (nothing declined)',
+	1 === count( $insert ) && array( 'POST /integration/v1/orders/' . O1 . '/accept' ) === paths( $client ) );
+check( 'USD order: currency id 2, code USD, rate 1.08 of the USD row',
+	false !== strpos( $insert[0], "currency_id = '2'" ) && false !== strpos( $insert[0], "currency_code = 'USD'" ) && false !== strpos( $insert[0], "currency_value = '1.08'" ) );
+$m = array();
+preg_match( "/ total = '([0-9.]+)'/", $insert[0], $m );
+check( 'USD order: the order page shows exactly 24.94 USD (stored / rate, as OpenCart does)',
+	isset( $m[1] ) && '24.94' === number_format( round( round( (float) $m[1], 4 ) * 1.08, 2 ), 2, '.', '' ) );
+$totals = $db->inserts( 'order_total' );
+$shown  = array();
+foreach ( $totals as $row ) {
+	preg_match( "/code = '([a-z_]+)'.* value = '(-?[0-9.E-]+)'/", $row, $m );
+	$shown[ $m[1] ] = number_format( round( round( (float) $m[2], 4 ) * 1.08, 2 ), 2, '.', '' );
+}
+check( 'USD order: shipping 4.95 and total 24.94 shown in USD', '4.95' === $shown['shipping'] && '24.94' === $shown['total'] );
+check( 'USD order: nothing about a currency in the log', ! logged( $logger, 'currency' ) );
+
+// A currency the shop does not have: nothing booked, nothing declined; the order waits and the
+// shop and sudemi are told how to fix it.
+list( $orders, $db, $client, $logger ) = shop( 'EUR', array( 'EUR' => $EUR ) );
+$waiting = array( 'respond_by' => '2026-11-29T10:00:00Z' ) + order( 'GBP', 850, 495 );
+$orders->handlePending( array( $waiting ) );
+check( 'GBP order to a shop without GBP: not declined, nothing booked, stock untouched',
+	array() === paths( $client ) && array() === $db->writes );
+check( 'the wait and the fix are in the extension log',
+	logged( $logger, 'this shop has no GBP currency' ) && logged( $logger, 'System > Localisation > Currencies' ) );
+$client->answers = array( array( 'status' => 200, 'body' => array() ) );
+check( 'reported to sudemi', true === $orders->reportCurrencyProblems( array( $waiting ) ) );
+$sent = $client->calls[0];
+$issue = $sent[2]['issues'][0];
+check( 'as a shop-wide order_currency_unavailable issue on the products push (no products)',
+	'POST /integration/v1/products' === $sent[0] . ' ' . $sent[1] && array() === $sent[2]['products']
+	&& 'order_currency_unavailable' === $issue['code'] && '' === $issue['externalId'] && 'error' === $issue['severity'] && 'currency' === $issue['field'] );
+$details = (array) $issue['details'];
+check( 'the issue names the currency, the order, its deadline and the fix',
+	array( 'GBP' ) === $details['currencies'] && O1 === $details['orders'][0]['orderId'] && '2026-11-29T10:00:00Z' === $details['orders'][0]['respondBy']
+	&& false !== strpos( $issue['message'], 'this shop has no GBP currency' ) && false !== strpos( $issue['message'], 'decline the order' )
+	&& false !== strpos( $issue['message'], '11111111' ) );
+
+list( $orders, $db, $client ) = shop( 'EUR', array( 'EUR' => $EUR, 'USD' => $USD ) );
+check( 'nothing reported when every waiting order can be booked',
+	false === $orders->reportCurrencyProblems( array( order( 'USD', 850, 495 ), order( 'EUR', 850, 495 ) ) ) && array() === $client->calls );
+check( 'nothing reported for an empty list', false === $orders->reportCurrencyProblems( array() ) && array() === $client->calls );
+check( 'currencyIssue: none for none', null === \Sudemi\Orders::currencyIssue( array() ) );
+$two = \Sudemi\Orders::currencyIssue( array(
+	array( 'order_id' => 'b', 'currency' => 'GBP', 'respond_by' => '2026-11-30T00:00:00Z', 'reason' => 'r2' ),
+	array( 'order_id' => 'a', 'currency' => 'CHF', 'respond_by' => '2026-11-29T00:00:00Z', 'reason' => 'r1' ),
+) );
+check( 'currencyIssue: soonest deadline first, both currencies, count in the message',
+	'a' === $two['details']->orders[0]['orderId'] && array( 'CHF', 'GBP' ) === $two['details']->currencies
+	&& 0 === strpos( $two['message'], '2 waiting order(s)' ) && false !== strpos( $two['message'], 'r1' ) );
+
+// Accept by hand (the sudemi Orders page): the same rule, and the answer says what to do.
+function detail( $currency ) {
+	return array( 'order_id' => O1, 'status' => 'AWAITING_SELLER', 'destination_country' => 'DE',
+		'money' => array( 'total_minor' => 1345, 'shipping_minor' => 495, 'currency_code' => $currency ),
+		'lines' => array( array( 'external_id' => '7', 'title' => 'Mug', 'quantity' => 1, 'unit_price_minor' => 850 ) ) );
+}
+list( $orders, $db, $client ) = shop( 'EUR', array( 'EUR' => $EUR, 'USD' => $USD ) );
+$ready = $orders->prepareAccept( O1, detail( 'USD' ) );
+check( 'Accept by hand, USD order in a shop now on EUR: booked in USD', true === $ready['ok'] && 1 === count( $db->inserts( 'order' ) )
+	&& false !== strpos( $db->inserts( 'order' )[0], "currency_code = 'USD'" ) );
+list( $orders, $db, $client ) = shop( 'EUR', array( 'EUR' => $EUR ) );
+$ready = $orders->prepareAccept( O1, detail( 'GBP' ) );
+check( 'Accept by hand, GBP order in a shop without GBP: not booked, nothing sent, the reason says how to fix it',
+	false === $ready['ok'] && 'shortfall' === $ready['error'] && array() === $db->writes && array() === $client->calls
+	&& false !== strpos( $ready['reason'], 'this shop has no GBP currency' ) && false !== strpos( $ready['reason'], 'System > Localisation > Currencies' ) );
 
 list( $orders, $db, $client ) = shop( 'PLN', array( 'PLN' => array( 'status' => '0' ) + $PLN ) );
 $orders->handlePending( array( order( 'PLN', 850, 495 ) ) );
-check( 'PLN order while PLN is switched off: declined, nothing booked',
-	array( 'POST /integration/v1/orders/' . O1 . '/reject' ) === paths( $client ) && array() === $db->writes
-	&& false !== strpos( $client->calls[0][2]['reason'], 'cannot take payments in PLN' ) );
+check( 'PLN order while PLN is switched off: waits, nothing booked, nothing declined',
+	array() === paths( $client ) && array() === $db->writes );
 
 // ---- 3. booked in the order's currency -----------------------------------------------------------
 list( $orders, $db, $client ) = shop( 'PLN', array( 'PLN' => $PLN ) );

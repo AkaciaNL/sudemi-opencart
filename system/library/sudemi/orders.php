@@ -4,6 +4,7 @@ namespace Sudemi;
 require_once __DIR__ . '/currency.php';
 require_once __DIR__ . '/shipping.php';
 require_once __DIR__ . '/options.php';
+require_once __DIR__ . '/issues.php';
 
 /**
  * Answering sudemi's question: can this shop actually fulfil the order?
@@ -268,19 +269,20 @@ class Orders
             return;
         }
 
-        // The currency first: an order this shop cannot book in the currency the buyer paid must
-        // not become a local order in another one (a PLN order written as EUR misstates every
-        // amount on it). Declined with the reason, which is not a failure of stock.
+        // The currency first. The order is booked in the currency the buyer paid in, whatever the
+        // shop's default currency is now (a shop that switched from USD to EUR still books its USD
+        // orders). Only a currency the shop does not have (or has switched off) stops it, and then
+        // nothing is booked and nothing is declined: the order waits, the shop and sudemi are told
+        // how to fix it (reportCurrencyProblems: switch the currency on, or decline the order), and
+        // a later heartbeat books it once the currency is there. Never booked in another currency:
+        // a PLN order written as EUR misstates every amount on it.
         $currencyProblem = $this->currencyProblem($pending);
         if ($currencyProblem !== null) {
-            $this->client->postSigned(
-                '/integration/v1/orders/' . rawurlencode($sudemiId) . '/reject',
-                array('reason' => $currencyProblem)
-            );
             $this->logger->error(sprintf(
-                'Declined sudemi order %s: %s. Nothing was charged. Check the default currency under System > Settings > Store > Local and that it is enabled under System > Localisation > Currencies.',
+                'sudemi order %s waits: %s. %s',
                 $sudemiId,
-                $currencyProblem
+                $currencyProblem,
+                self::CURRENCY_FIX
             ));
 
             return;
@@ -653,28 +655,109 @@ class Orders
         );
     }
 
+    /** How the merchant fixes an order whose currency this shop cannot book (log, Orders page, sudemi issue). */
+    const CURRENCY_FIX = 'Switch the currency on under System > Localisation > Currencies (rate above 0) and the order is booked on the next heartbeat, or decline the order on the sudemi Orders page. sudemi declines it itself when its respond-by time passes.';
+
     /**
-     * The reason an order in $orderCode cannot be booked by a shop whose default currency is
-     * $shopCode, or null. $row is the shop's currency row for $orderCode (null when the shop
-     * has none). Plain words: sudemi passes the reason on.
+     * The reason an order in $orderCode cannot be booked in this shop, or null. $row is the shop's
+     * currency row for $orderCode (null when the shop has none).
+     *
+     * The shop's default currency ($shopCode) does not matter (before, an order in any
+     * other currency was refused, so a shop that changed its default currency could not book the
+     * orders placed before the change). OpenCart books an order in any currency it has a row for,
+     * amounts in the default currency and currency_value the rate, exactly as its own checkout does
+     * for a buyer who picked another currency. Plain words for the merchant.
      *
      * @return string|null
      */
     public static function currencyRefusal($orderCode, $shopCode, $row)
     {
         $order = Currency::normalise($orderCode);
-        $shop = Currency::normalise($shopCode);
         if ($order === null) {
             return 'the order did not say which currency it was paid in';
         }
-        if ($shop !== null && $order !== $shop) {
-            return sprintf('this shop sells in %s, not in %s', $shop, $order);
+        if ($row === null) {
+            return sprintf('the order was paid in %s and this shop has no %s currency', $order, $order);
         }
-        if ($row === null || empty($row['status'])) {
-            return sprintf('this shop cannot take payments in %s right now', $order);
+        if (empty($row['status'])) {
+            return sprintf('the order was paid in %s and the %s currency is switched off in this shop', $order, $order);
+        }
+        if (!isset($row['value']) || (float) $row['value'] <= 0) {
+            return sprintf('the order was paid in %s and the %s currency has no exchange rate in this shop', $order, $order);
         }
 
         return null;
+    }
+
+    /**
+     * Tells sudemi (and so the shop's sync issues and sudemi's admin) about the waiting orders this
+     * shop cannot book because of their currency, with how to fix it. Sent on every heartbeat while
+     * there are any (manual and automatic confirmation alike); sudemi closes the issue once a
+     * heartbeat passes without it. Nothing is sent when every waiting order can be booked.
+     *
+     * @param array $pending the heartbeat's pending_orders
+     *
+     * @return bool whether an issue was sent
+     */
+    public function reportCurrencyProblems($pending)
+    {
+        if (empty($pending) || !is_array($pending)) {
+            return false;
+        }
+        $stuck = array();
+        foreach ($pending as $order) {
+            if (!is_array($order) || empty($order['order_id']) || $this->localRow((string) $order['order_id']) !== null) {
+                continue;
+            }
+            $problem = $this->currencyProblem($order);
+            if ($problem !== null) {
+                $stuck[] = array(
+                    'order_id' => (string) $order['order_id'],
+                    'currency' => (string) Currency::normalise(isset($order['currency_code']) ? $order['currency_code'] : ''),
+                    'respond_by' => isset($order['respond_by']) ? (string) $order['respond_by'] : '',
+                    'reason' => $problem,
+                );
+            }
+        }
+        $issue = self::currencyIssue($stuck);
+        if ($issue === null) {
+            return false;
+        }
+        $answer = $this->client->postSigned('/integration/v1/products', Issues::attach(array('products' => array()), array($issue)));
+
+        return $answer !== null && (int) $answer['status'] === 200;
+    }
+
+    /**
+     * The shop-wide issue for waiting orders this shop cannot book because of their currency
+     * (docs/sync-issues.md order_currency_unavailable), or null when there are none. Pure.
+     *
+     * @param array $stuck [order_id, currency, respond_by, reason] per order
+     */
+    public static function currencyIssue(array $stuck)
+    {
+        if (empty($stuck)) {
+            return null;
+        }
+        usort($stuck, function ($a, $b) {
+            return strcmp($a['respond_by'], $b['respond_by']);
+        });
+        $currencies = array_values(array_unique(array_filter(array_map(function ($o) {
+            return $o['currency'];
+        }, $stuck))));
+        $orders = array_map(function ($o) {
+            return array('orderId' => $o['order_id'], 'currency' => $o['currency'], 'respondBy' => $o['respond_by']);
+        }, array_slice($stuck, 0, 25));
+        $first = $stuck[0];
+
+        return Issues::make('', Issues::ORDER_CURRENCY_UNAVAILABLE, 'error', 'currency', sprintf(
+            '%d waiting order(s) cannot be booked in this shop: %s (order %s%s). %s',
+            count($stuck),
+            $first['reason'],
+            substr($first['order_id'], 0, 8),
+            $first['respond_by'] !== '' ? ', answer by ' . $first['respond_by'] : '',
+            self::CURRENCY_FIX
+        ), array('currencies' => $currencies, 'orders' => $orders, 'platform' => 'opencart'));
     }
 
     /** The shop's currency row for a code (currency_id, code, value, status), or null. */
@@ -796,14 +879,17 @@ class Orders
      */
     private function createLocalOrder(array $pending, $sudemiId)
     {
-        // Checked by currencyProblem() already: the order's currency is the shop's own and is
-        // enabled. EUR from a core that does not send one (it charged in EUR only).
+        // Checked by currencyProblem() already: the shop has the order's currency, switched on and
+        // with a rate. It need not be the default currency: a shop that changed its default books
+        // the orders placed before in the currency they were paid in. EUR from a core that does
+        // not send one (it charged in EUR only).
         $currency = isset($pending['currency_code']) ? (string) Currency::normalise($pending['currency_code']) : 'EUR';
         $currencyRow = $this->currencyRow($currency);
         $currencyId = $currencyRow !== null ? (int) $currencyRow['currency_id'] : 0;
         // OpenCart keeps an order's amounts in the default currency and shows them times
-        // currency_value. The order is in the default currency, so the value is 1 in a sound
-        // shop; dividing by it keeps what the order page shows equal to what the buyer paid.
+        // currency_value, as its own checkout does for a buyer paying in another currency.
+        // Dividing by the row's rate keeps what the order page shows equal to what the buyer paid
+        // (rate 1 for the default currency). Nothing is converted beyond that.
         $value = $currencyRow !== null && (float) $currencyRow['value'] > 0 ? (float) $currencyRow['value'] : 1.0;
         $amount = function ($minor) use ($currency, $value) {
             return Currency::fromMinor($minor, $currency) / $value;
@@ -2287,11 +2373,15 @@ class Orders
         }
         $pending = self::pendingFromDetail($detail);
         $problem = $this->currencyProblem($pending);
-        if ($problem === null) {
+        if ($problem !== null) {
+            // Said with what to do: the order's currency is missing or switched off here.
+            $problem .= '. ' . self::CURRENCY_FIX;
+        } else {
             $problem = $this->firstShortfall($pending);
         }
         if ($problem !== null) {
-            // Nothing is sent: the person decides (decline it, or fix the stock and accept again).
+            // Nothing is sent: the person decides (decline it, or fix the stock or the currency and
+            // accept again).
             return array('ok' => false, 'order_id' => 0, 'error' => 'shortfall', 'reason' => $problem);
         }
         $got = $this->obtainLocalOrder($pending, $sudemiId);
@@ -2474,7 +2564,13 @@ class Orders
                 $pending = self::pendingFromDetail($detail);
                 $problem = $this->currencyProblem($pending);
                 if ($problem !== null) {
-                    $this->logger->error(sprintf('sudemi order %s was accepted on sudemi but cannot be booked here: %s.', $sudemiId, $problem));
+                    // Paid or about to be: it has to reach the shop's books. Kept on the retry list
+                    // (read again on later heartbeats, for up to a week) so it is booked as soon as
+                    // the currency is switched on, instead of being marked as handled.
+                    $this->logger->error(sprintf('sudemi order %s was accepted on sudemi but cannot be booked here: %s. %s',
+                        $sudemiId, $problem, self::CURRENCY_FIX));
+
+                    throw new ApplyLater($problem);
                 } else {
                     $got = $this->obtainLocalOrder($pending, $sudemiId);
                     if ($got['state'] === 'busy') {
